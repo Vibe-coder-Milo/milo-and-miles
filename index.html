@@ -747,34 +747,65 @@ body.noscroll { overflow: hidden; }
 .gmap-pin:focus-visible { outline: none; }
 .gmap-pin:focus-visible .lpin { outline: 3px solid var(--color-focus); outline-offset: 2px; }
 
-:root[data-accent="onyx"] .nextup { border: 2px solid var(--color-now); }
 /* text on the 'now' colour */
 :root { --color-now-ink: var(--color-accent-ink); }
 .tab .today { color: var(--color-now-ink); }
 
-/* ===== dark colour: Onyx & indigo, with tropical mint for what's happening now ===== */
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"])[data-accent="onyx"] {
-    --color-page: oklch(13.5% 0.004 285); --color-section: oklch(18.5% 0.006 285); --section-edge: oklch(27% 0.01 285); --color-bar: oklch(15.5% 0.005 285);
-    --color-paper: oklch(16% 0.005 285); --color-paper-2: oklch(23% 0.008 285); --color-paper-3: oklch(29% 0.01 285);
-    --color-card: oklch(20.5% 0.007 285); --color-card-edge: oklch(30% 0.01 285); --color-rule: oklch(28% 0.009 285); --color-edge: oklch(52% 0.012 285);
-    --color-ink: oklch(96.5% 0.004 285); --color-ink-2: oklch(87% 0.008 285); --color-muted: oklch(73% 0.012 285); --color-pencil: oklch(73% 0.012 285);
-    --color-accent: oklch(56% 0.26 285); --color-accent-strong: oklch(50% 0.26 285); --color-accent-ink: oklch(99% 0.003 285); --color-accent-wash: oklch(24% 0.07 285);
-    --color-now: oklch(88% 0.12 168); --color-success: oklch(85% 0.12 168); --color-focus: oklch(85% 0.12 168);
-    --color-visited: oklch(70% 0.19 285); --color-upcoming: oklch(88% 0.12 168);
-    --color-map-sea: oklch(19% 0.02 285); --color-map-land: oklch(29% 0.01 285); --color-map-edge: oklch(38% 0.02 285); --color-map-arc: oklch(70% 0.19 285 / 0.75);
-    --nextup-bg: oklch(22% 0.06 285); --nextup-edge: oklch(88% 0.12 168); --color-now-ink: oklch(20% 0.04 168);
-} }
-:root[data-theme="dark"][data-accent="onyx"] {
-    --color-page: oklch(13.5% 0.004 285); --color-section: oklch(18.5% 0.006 285); --section-edge: oklch(27% 0.01 285); --color-bar: oklch(15.5% 0.005 285);
-    --color-paper: oklch(16% 0.005 285); --color-paper-2: oklch(23% 0.008 285); --color-paper-3: oklch(29% 0.01 285);
-    --color-card: oklch(20.5% 0.007 285); --color-card-edge: oklch(30% 0.01 285); --color-rule: oklch(28% 0.009 285); --color-edge: oklch(52% 0.012 285);
-    --color-ink: oklch(96.5% 0.004 285); --color-ink-2: oklch(87% 0.008 285); --color-muted: oklch(73% 0.012 285); --color-pencil: oklch(73% 0.012 285);
-    --color-accent: oklch(56% 0.26 285); --color-accent-strong: oklch(50% 0.26 285); --color-accent-ink: oklch(99% 0.003 285); --color-accent-wash: oklch(24% 0.07 285);
-    --color-now: oklch(88% 0.12 168); --color-success: oklch(85% 0.12 168); --color-focus: oklch(85% 0.12 168);
-    --color-visited: oklch(70% 0.19 285); --color-upcoming: oklch(88% 0.12 168);
-    --color-map-sea: oklch(19% 0.02 285); --color-map-land: oklch(29% 0.01 285); --color-map-edge: oklch(38% 0.02 285); --color-map-arc: oklch(70% 0.19 285 / 0.75);
-    --nextup-bg: oklch(22% 0.06 285); --nextup-edge: oklch(88% 0.12 168); --color-now-ink: oklch(20% 0.04 168);
+/* ===== dark colour: Onyx, indigo & mint (from your palette: #101010, #6321FB, #88FFC0) =====
+   Onyx for the page and dark details, indigo for every panel, mint for buttons, stop numbers,
+   selected options, today and the places you've been. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"])[data-accent="onyx"] { --color-page: #101010; --color-bar: #101010;
+    --color-section: #6321fb; --section-edge: #7440ff; --section-shadow: none;
+    --color-card: #6321fb; --color-card-edge: #8a5cff;
+    --color-paper: #2c0c8a; --color-paper-2: #4a17c9; --color-paper-3: #3a12a6;
+    --color-ink: #ffffff; --color-ink-2: #f3efff; --color-muted: #e4dcff; --color-pencil: #e4dcff;
+    --color-rule: #8458ff; --color-edge: #c2adff;
+    --color-accent: #88ffc0; --color-accent-strong: #b0ffd6; --color-accent-ink: #101010; --color-accent-wash: #3a12a6;
+    --color-now: #88ffc0; --color-now-ink: #101010; --color-success: #88ffc0; --color-focus: #88ffc0;
+    --color-visited: #88ffc0; --color-upcoming: #ffffff;
+    --color-mark-2: #101010; --color-mark-2-ink: #88ffc0;
+    --color-error: #ffd2d2; --color-error-wash: #3d0d2a; --color-warn: #ffe08a; --color-warn-wash: #2e1f00;
+    --color-map-sea: #101010; --color-map-land: #2f0f94; --color-map-edge: #7a4dff; --color-map-arc: #88ffc0;
+    --color-overlay: rgb(0 0 0 / 0.72); --shadow-card: 0 12px 32px -12px rgb(0 0 0 / 0.6);
+    --nextup-bg: #101010; --nextup-fg: #ffffff; --nextup-sub: #e4dcff; --nextup-edge: #88ffc0;
+    --color-drop: #2c0c8a; --color-home: #ffffff; }
+  :root:not([data-theme="light"])[data-accent="onyx"] .seg button[aria-pressed="true"], :root:not([data-theme="light"])[data-accent="onyx"] .chip[aria-pressed="true"] { background: #88ffc0; color: #101010; border-color: #88ffc0; }
+  :root:not([data-theme="light"])[data-accent="onyx"] .seg { background: #4a17c9; }
+  :root:not([data-theme="light"])[data-accent="onyx"] .chip { background: transparent; border-color: #c2adff; }
+  :root:not([data-theme="light"])[data-accent="onyx"] .todayband { background: #6321fb; border-color: #6321fb; }
+  :root:not([data-theme="light"])[data-accent="onyx"] .nextup { border: 2px solid #88ffc0; }
+  :root:not([data-theme="light"])[data-accent="onyx"] .fp-card { background: #101010; border-color: #101010; }
+  :root:not([data-theme="light"])[data-accent="onyx"] .lpin.hotel { box-shadow: 0 0 0 2px #88ffc0; }
+  :root:not([data-theme="light"])[data-accent="onyx"] .fp-lab.v, :root:not([data-theme="light"])[data-accent="onyx"] .fp-lab.u { color: #101010; }
+  :root:not([data-theme="light"])[data-accent="onyx"] .tab .today { background: #88ffc0; color: #101010; }
+  :root:not([data-theme="light"])[data-accent="onyx"] .bars .fill { background: #88ffc0; }
 }
+:root[data-theme="dark"][data-accent="onyx"] { --color-page: #101010; --color-bar: #101010;
+    --color-section: #6321fb; --section-edge: #7440ff; --section-shadow: none;
+    --color-card: #6321fb; --color-card-edge: #8a5cff;
+    --color-paper: #2c0c8a; --color-paper-2: #4a17c9; --color-paper-3: #3a12a6;
+    --color-ink: #ffffff; --color-ink-2: #f3efff; --color-muted: #e4dcff; --color-pencil: #e4dcff;
+    --color-rule: #8458ff; --color-edge: #c2adff;
+    --color-accent: #88ffc0; --color-accent-strong: #b0ffd6; --color-accent-ink: #101010; --color-accent-wash: #3a12a6;
+    --color-now: #88ffc0; --color-now-ink: #101010; --color-success: #88ffc0; --color-focus: #88ffc0;
+    --color-visited: #88ffc0; --color-upcoming: #ffffff;
+    --color-mark-2: #101010; --color-mark-2-ink: #88ffc0;
+    --color-error: #ffd2d2; --color-error-wash: #3d0d2a; --color-warn: #ffe08a; --color-warn-wash: #2e1f00;
+    --color-map-sea: #101010; --color-map-land: #2f0f94; --color-map-edge: #7a4dff; --color-map-arc: #88ffc0;
+    --color-overlay: rgb(0 0 0 / 0.72); --shadow-card: 0 12px 32px -12px rgb(0 0 0 / 0.6);
+    --nextup-bg: #101010; --nextup-fg: #ffffff; --nextup-sub: #e4dcff; --nextup-edge: #88ffc0;
+    --color-drop: #2c0c8a; --color-home: #ffffff; }
+:root[data-theme="dark"][data-accent="onyx"] .seg button[aria-pressed="true"], :root[data-theme="dark"][data-accent="onyx"] .chip[aria-pressed="true"] { background: #88ffc0; color: #101010; border-color: #88ffc0; }
+:root[data-theme="dark"][data-accent="onyx"] .seg { background: #4a17c9; }
+:root[data-theme="dark"][data-accent="onyx"] .chip { background: transparent; border-color: #c2adff; }
+:root[data-theme="dark"][data-accent="onyx"] .todayband { background: #6321fb; border-color: #6321fb; }
+:root[data-theme="dark"][data-accent="onyx"] .nextup { border: 2px solid #88ffc0; }
+:root[data-theme="dark"][data-accent="onyx"] .fp-card { background: #101010; border-color: #101010; }
+:root[data-theme="dark"][data-accent="onyx"] .lpin.hotel { box-shadow: 0 0 0 2px #88ffc0; }
+:root[data-theme="dark"][data-accent="onyx"] .fp-lab.v, :root[data-theme="dark"][data-accent="onyx"] .fp-lab.u { color: #101010; }
+:root[data-theme="dark"][data-accent="onyx"] .tab .today { background: #88ffc0; color: #101010; }
+:root[data-theme="dark"][data-accent="onyx"] .bars .fill { background: #88ffc0; }
 
 /* OpenStreetMap tiles have no dark style: darken them to match the dark theme */
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .osm-tiles { filter: grayscale(0.9) invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); } }
@@ -2000,7 +2031,7 @@ function scrSettings(){
       <p class="state ${library.helperUrl ? 'ok' : 'warn'}">${I(library.helperUrl ? 'check' : 'alert','sm')}${library.helperUrl ? 'Connected' : 'Not set up'}</p>
       <div class="chips"><button type="button" class="btn" data-act="dialog" data-d="helper">${library.helperUrl ? 'Change it' : 'Set it up'}</button>${library.helperUrl ? '<button type="button" class="btn btn--quiet" data-act="delhelper">Disconnect</button>' : ''}</div></section>
     <section class="set box" aria-labelledby="h-look"><h2 id="h-look">Appearance</h2><p>Automatic follows this device's light or dark setting.</p>
-      <div class="seg" role="group" aria-label="Appearance"><button type="button" data-act="theme" data-v="auto" aria-pressed="${dev.theme === 'auto'}">Automatic</button><button type="button" data-act="theme" data-v="light" aria-pressed="${dev.theme === 'light'}">Light</button><button type="button" data-act="theme" data-v="dark" aria-pressed="${dev.theme === 'dark'}">Dark</button></div><h3 style="margin-top:var(--space-sm)">Colour in dark mode</h3><div class="seg accentpick" role="group" aria-label="Colour in dark mode">${[['onyx','Onyx & indigo','linear-gradient(135deg, oklch(56% 0.26 285) 55%, oklch(88% 0.12 168) 55%)'],['orange','Orange','oklch(76% 0.15 58)'],['pink','Bubblegum','oklch(79% 0.15 350)'],['lime','Signal lime','oklch(90% 0.2 126)'],['dawn','First light','oklch(86% 0.075 42)']].map(([v, l, c]) => `<button type="button" data-act="accent" data-v="${v}" aria-pressed="${dev.accent === v}"><span class="swatch" style="background:${c}"></span>${l}</button>`).join('')}</div></section>
+      <div class="seg" role="group" aria-label="Appearance"><button type="button" data-act="theme" data-v="auto" aria-pressed="${dev.theme === 'auto'}">Automatic</button><button type="button" data-act="theme" data-v="light" aria-pressed="${dev.theme === 'light'}">Light</button><button type="button" data-act="theme" data-v="dark" aria-pressed="${dev.theme === 'dark'}">Dark</button></div><h3 style="margin-top:var(--space-sm)">Colour in dark mode</h3><div class="seg accentpick" role="group" aria-label="Colour in dark mode">${[['onyx','Onyx, indigo & mint','linear-gradient(135deg, #101010 33%, #6321fb 33% 66%, #88ffc0 66%)'],['orange','Orange','oklch(76% 0.15 58)'],['pink','Bubblegum','oklch(79% 0.15 350)'],['lime','Signal lime','oklch(90% 0.2 126)'],['dawn','First light','oklch(86% 0.075 42)']].map(([v, l, c]) => `<button type="button" data-act="accent" data-v="${v}" aria-pressed="${dev.accent === v}"><span class="swatch" style="background:${c}"></span>${l}</button>`).join('')}</div></section>
     <section class="set box" aria-labelledby="h-size"><h2 id="h-size">Text size on this device</h2><p>The iPad and the computer each keep their own size.</p>
       <div class="chips" style="align-items:center"><button type="button" class="btn" data-act="sz" data-d="-1" aria-label="Smaller text">Smaller</button><span class="num" style="min-width:4rem;text-align:center">${Math.round(dev.scale * 100)}%</span><button type="button" class="btn" data-act="sz" data-d="1" aria-label="Larger text">Larger</button></div></section>
     <section class="set box" aria-labelledby="h-bk"><h2 id="h-bk">Backups</h2><p>${sync.token ? 'Sync already keeps every version. ' : ''}A downloaded backup is an extra copy you keep yourself, for example in Google Drive. Keys and tokens are never in it.</p>
