@@ -694,18 +694,23 @@ a.btn { text-decoration: none; }
 
 /* ===== home: footprint map, every place you've been lit up ===== */
 .worldfig { gap: var(--space-lg); }
-.fp-top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-md) var(--space-lg); }
-.fp-card { display: flex; flex-direction: column; gap: var(--space-2xs); min-width: min(100%, 20rem); padding: var(--space-lg); border: 1px solid var(--color-rule); border-radius: var(--radius-card); background: var(--color-card); }
-.fp-figs { display: flex; gap: var(--space-xl); }
+.fp-card { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: var(--space-lg) 0; border: 1px solid var(--color-rule); border-radius: var(--radius-card); background: var(--color-card); }
+.fp-stat { display: flex; flex-direction: column; gap: var(--space-2xs); min-width: 0; padding-inline: var(--space-lg); border-left: 1px solid var(--color-rule); }
+.fp-stat:first-child { border-left: 0; }
 .fp-num { display: flex; align-items: baseline; gap: var(--space-xs); margin: 0; font-variant-numeric: tabular-nums; }
-.fp-num b { font-size: 3rem; line-height: 1; font-weight: 600; letter-spacing: -0.03em; color: var(--color-visited); }
-.fp-num span { font-size: var(--text-xl); color: var(--color-muted); }
-.fp-bar { height: 6px; margin-block: var(--space-xs); border-radius: 3px; background: var(--color-paper-3); overflow: hidden; }
+.fp-num b { font-size: 2.25rem; line-height: 1.05; font-weight: 600; letter-spacing: -0.02em; color: var(--color-ink); }
+.fp-stat.main .fp-num b { color: var(--color-visited); }
+.fp-num span { font-size: var(--text-lg); color: var(--color-muted); }
+.fp-bar { height: 5px; margin-top: var(--space-2xs); border-radius: 3px; background: var(--color-paper-3); overflow: hidden; }
 .fp-bar span { display: block; height: 100%; border-radius: 3px; background: var(--color-visited); }
-@media (max-width: 40rem) { .fp-card { width: 100%; } }
-.fp-more { display: flex; gap: var(--space-lg); margin: var(--space-2xs) 0 0; }
-.fp-more dt { font-size: var(--text-sm); color: var(--color-muted); }
-.fp-more dd { margin: 0; font-size: var(--text-lg); font-weight: 600; color: var(--color-ink); font-variant-numeric: tabular-nums; }
+.fp-legend { justify-content: flex-end; margin-bottom: calc(var(--space-sm) * -1); }
+@media (max-width: 52rem) {
+  .fp-card { grid-template-columns: repeat(6, minmax(0, 1fr)); row-gap: var(--space-lg); }
+  .fp-stat.main { grid-column: span 3; }
+  .fp-stat:not(.main) { grid-column: span 2; }
+  .fp-stat:nth-child(3) { border-left: 0; }
+}
+@media (max-width: 40rem) { .fp-stat { padding-inline: var(--space-md); } .fp-stat .wide { display: none; } .fp-num b { font-size: 1.9rem; } }
 .fp-map { position: relative; aspect-ratio: 2 / 1; border-radius: 8px; overflow: hidden; background: var(--color-map-sea); touch-action: pan-y; -webkit-user-select: none; user-select: none; cursor: grab; }
 .fp-map:active { cursor: grabbing; }
 @media (max-width: 40rem) { .fp-map { aspect-ratio: 4 / 3.6; } }
@@ -1785,13 +1790,14 @@ function footHTML(){
   const sel = S.hlRegion && fp.lit[S.hlRegion]; wmPrep(); const su = S.hlRegion && WM.byKey[S.hlRegion];
   const cap = sel ? `<div class="hcap"><b>${esc(su.n)}${su.n !== WM.countries[su.cc][0] ? ', ' + esc(WM.countries[su.cc][0]) : ''}</b><span class="sub">${esc(sel.cities.join(', '))}</span>${[...sel.trips].map(t => `<button type="button" class="link" data-act="opentrip" data-id="${t.id}">${esc(tripLabel(t))}, ${range(tripStart(t), tripEnd(t))}</button>`).join('')}<button type="button" class="iconbtn" data-act="fpu" data-k="${esc(S.hlRegion)}" aria-label="Close">${I('x','sm')}</button></div>` : '';
   const pct = Math.max(fp.countries ? 1.5 : 0, fp.countries / 195 * 100).toFixed(1);
-  return `<div class="fp-top">
-      <div class="fp-card">
-        <div class="fp-figs"><div><span class="sub">Countries lit up</span><p class="fp-num"><b>${fp.countries}</b><span>/ 195</span></p></div><div><span class="sub">Regions lit up</span><p class="fp-num"><b>${fp.regions}</b></p></div></div>
-        <div class="fp-bar" role="img" aria-label="${fp.countries} of 195 countries"><span style="width:${pct}%"></span></div>
-        <dl class="fp-more"><div><dt>Cities</dt><dd>${fp.cities}</dd></div><div><dt>Days away</dt><dd>${fp.days}</dd></div><div><dt>Trips</dt><dd>${fp.trips}</dd></div></dl></div>
-      <ul class="legend" aria-label="Map key"><li><span class="key"></span>Visited</li><li><span class="key up"></span>Coming up</li></ul>
+  return `<div class="fp-card">
+      <div class="fp-stat main"><span class="sub">Countries<span class="wide"> lit up</span></span><p class="fp-num"><b>${fp.countries}</b><span>/ 195</span></p><div class="fp-bar" role="img" aria-label="${fp.countries} of 195 countries"><span style="width:${pct}%"></span></div></div>
+      <div class="fp-stat main"><span class="sub">Regions<span class="wide"> lit up</span></span><p class="fp-num"><b>${fp.regions}</b></p></div>
+      <div class="fp-stat"><span class="sub">Cities</span><p class="fp-num"><b>${fp.cities}</b></p></div>
+      <div class="fp-stat"><span class="sub">Days<span class="wide"> away</span></span><p class="fp-num"><b>${fp.days}</b></p></div>
+      <div class="fp-stat"><span class="sub">Trips</span><p class="fp-num"><b>${fp.trips}</b></p></div>
     </div>
+    <ul class="legend fp-legend" aria-label="Map key"><li><span class="key"></span>Visited</li><li><span class="key up"></span>Coming up</li></ul>
     <div class="fp-map" id="fpmap" role="img" aria-label="World map with the places you've been lit up. Pinch, double-tap or use the buttons to zoom.">
       <div class="fp-svgslot"></div><div id="fplabs" aria-hidden="true"></div>
       <div class="wm-zoom"><button type="button" class="iconbtn" data-act="fpzoom" data-d="1" aria-label="Zoom in">${I('plus')}</button><button type="button" class="iconbtn" data-act="fpzoom" data-d="-1" aria-label="Zoom out">${I('minus')}</button><button type="button" class="btn btn--quiet wm-reset" data-act="fpfit">Fit my places</button><button type="button" class="btn btn--quiet wm-reset" data-act="fpworld">Whole world</button></div>
