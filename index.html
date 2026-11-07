@@ -656,9 +656,6 @@ input.input, select.input, .item-tools select { height: var(--control-h); paddin
 .leaflet-control-attribution a { color: var(--color-ink-2); }
 .mapoff { position: absolute; inset: 0; display: grid; place-items: center; padding: var(--space-lg); text-align: center; }
 
-/* OpenStreetMap tiles have no dark style: darken them to match the dark theme */
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .osm-tiles { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.85) saturate(0.6); } }
-:root[data-theme="dark"] .osm-tiles { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.85) saturate(0.6); }
 .item-name .row-open { min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: left; }
 
 /* ===== app extras ===== */
@@ -671,6 +668,76 @@ input.input, select.input, .item-tools select { height: var(--control-h); paddin
 .dialog details[open] { display: flex; flex-direction: column; gap: var(--space-sm); }
 a.btn { text-decoration: none; }
 .tab:disabled { opacity: 0.45; cursor: not-allowed; }
+
+
+/* ===== home map: zoom, visited and upcoming colours ===== */
+:root { --color-visited: var(--color-accent); --color-upcoming: oklch(62% 0.16 45); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --color-upcoming: var(--color-ink); } }
+:root[data-theme="dark"] { --color-upcoming: var(--color-ink); }
+.wm-dot { fill: var(--color-visited); }
+.wm-ring { stroke: var(--color-upcoming); fill: color-mix(in oklab, var(--color-upcoming) 20%, var(--color-map-land)); }
+.wm-arc.up { stroke: var(--color-upcoming); }
+.key { background: var(--color-visited); }
+.key.up { background: transparent; border: 2px solid var(--color-upcoming); }
+.world { touch-action: pan-y; -webkit-user-select: none; user-select: none; overflow: hidden; }
+.world.zoomed { touch-action: none; cursor: grab; }
+.world.zoomed:active { cursor: grabbing; }
+.wm-zoom { position: absolute; right: var(--space-xs); bottom: var(--space-xs); display: flex; align-items: center; gap: var(--space-2xs); }
+.wm-zoom .iconbtn { width: 40px; height: 40px; background: var(--color-card); border: 1px solid var(--color-rule); border-radius: var(--radius-pill); }
+.wm-zoom .wm-reset { min-height: 40px; background: var(--color-card); font-size: var(--text-sm); }
+.wm-group { pointer-events: auto; margin: 0; padding: 2px 4px; border: 0; background: none; font: inherit; font-size: var(--text-sm); color: var(--color-ink); text-decoration: underline dotted; text-underline-offset: 0.2em; cursor: zoom-in; }
+.wm-group:focus-visible { outline: 2px solid var(--color-focus); }
+@media (max-width: 48rem) { .world.zoomed .wm-lab { display: block; } }
+
+/* ===== whole-trip map: one colour per day ===== */
+:root { --day-0: oklch(50% 0.15 255); --day-1: oklch(54% 0.18 25); --day-2: oklch(50% 0.13 150); --day-3: oklch(50% 0.17 305); --day-4: oklch(56% 0.14 65); --day-5: oklch(50% 0.11 205); --day-6: oklch(54% 0.18 345); --day-7: oklch(48% 0.1 110); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --day-0: oklch(74% 0.13 255); --day-1: oklch(74% 0.15 25); --day-2: oklch(76% 0.13 150); --day-3: oklch(74% 0.15 305); --day-4: oklch(80% 0.13 75); --day-5: oklch(76% 0.11 205); --day-6: oklch(76% 0.14 345); --day-7: oklch(78% 0.11 110); } }
+:root[data-theme="dark"] { --day-0: oklch(74% 0.13 255); --day-1: oklch(74% 0.15 25); --day-2: oklch(76% 0.13 150); --day-3: oklch(74% 0.15 305); --day-4: oklch(80% 0.13 75); --day-5: oklch(76% 0.11 205); --day-6: oklch(76% 0.14 345); --day-7: oklch(78% 0.11 110); }
+.lpin.bubble { width: auto; min-width: 100%; padding: 0 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
+.daykey { display: flex; flex-wrap: wrap; gap: var(--space-2xs) var(--space-xs); margin: 0; padding: 0; list-style: none; }
+.daykey button { display: inline-flex; align-items: center; gap: var(--space-2xs); min-height: 32px; padding: 0 var(--space-xs); border: 1px solid var(--color-rule); border-radius: var(--radius-pill); background: none; color: var(--color-ink-2); font-size: var(--text-sm); cursor: pointer; }
+.daykey button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.daykey .sw { width: 10px; height: 10px; border-radius: 50%; background: var(--cat); }
+@media (hover: hover) { .daykey button:hover { border-color: var(--color-ink); color: var(--color-ink); } }
+
+/* ===== map tiles: OpenStreetMap is muted so it reads as a quiet backdrop ===== */
+.osm-tiles { filter: grayscale(0.85) brightness(1.04) contrast(0.92); }
+.gmap-pin { position: absolute; cursor: pointer; }
+.gmap-pin:focus-visible { outline: none; }
+.gmap-pin:focus-visible .lpin { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+
+:root[data-accent="onyx"] .nextup { border: 2px solid var(--color-now); }
+/* text on the 'now' colour */
+:root { --color-now-ink: var(--color-accent-ink); }
+.tab .today { color: var(--color-now-ink); }
+
+/* ===== dark colour: Onyx & indigo, with tropical mint for what's happening now ===== */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"])[data-accent="onyx"] {
+    --color-page: oklch(13.5% 0.004 285); --color-section: oklch(18.5% 0.006 285); --section-edge: oklch(27% 0.01 285); --color-bar: oklch(15.5% 0.005 285);
+    --color-paper: oklch(16% 0.005 285); --color-paper-2: oklch(23% 0.008 285); --color-paper-3: oklch(29% 0.01 285);
+    --color-card: oklch(20.5% 0.007 285); --color-card-edge: oklch(30% 0.01 285); --color-rule: oklch(28% 0.009 285); --color-edge: oklch(52% 0.012 285);
+    --color-ink: oklch(96.5% 0.004 285); --color-ink-2: oklch(87% 0.008 285); --color-muted: oklch(73% 0.012 285); --color-pencil: oklch(73% 0.012 285);
+    --color-accent: oklch(56% 0.26 285); --color-accent-strong: oklch(50% 0.26 285); --color-accent-ink: oklch(99% 0.003 285); --color-accent-wash: oklch(24% 0.07 285);
+    --color-now: oklch(88% 0.12 168); --color-success: oklch(85% 0.12 168); --color-focus: oklch(85% 0.12 168);
+    --color-visited: oklch(70% 0.19 285); --color-upcoming: oklch(88% 0.12 168);
+    --color-map-sea: oklch(19% 0.02 285); --color-map-land: oklch(29% 0.01 285); --color-map-edge: oklch(38% 0.02 285); --color-map-arc: oklch(70% 0.19 285 / 0.75);
+    --nextup-bg: oklch(22% 0.06 285); --nextup-edge: oklch(88% 0.12 168); --color-now-ink: oklch(20% 0.04 168);
+} }
+:root[data-theme="dark"][data-accent="onyx"] {
+    --color-page: oklch(13.5% 0.004 285); --color-section: oklch(18.5% 0.006 285); --section-edge: oklch(27% 0.01 285); --color-bar: oklch(15.5% 0.005 285);
+    --color-paper: oklch(16% 0.005 285); --color-paper-2: oklch(23% 0.008 285); --color-paper-3: oklch(29% 0.01 285);
+    --color-card: oklch(20.5% 0.007 285); --color-card-edge: oklch(30% 0.01 285); --color-rule: oklch(28% 0.009 285); --color-edge: oklch(52% 0.012 285);
+    --color-ink: oklch(96.5% 0.004 285); --color-ink-2: oklch(87% 0.008 285); --color-muted: oklch(73% 0.012 285); --color-pencil: oklch(73% 0.012 285);
+    --color-accent: oklch(56% 0.26 285); --color-accent-strong: oklch(50% 0.26 285); --color-accent-ink: oklch(99% 0.003 285); --color-accent-wash: oklch(24% 0.07 285);
+    --color-now: oklch(88% 0.12 168); --color-success: oklch(85% 0.12 168); --color-focus: oklch(85% 0.12 168);
+    --color-visited: oklch(70% 0.19 285); --color-upcoming: oklch(88% 0.12 168);
+    --color-map-sea: oklch(19% 0.02 285); --color-map-land: oklch(29% 0.01 285); --color-map-edge: oklch(38% 0.02 285); --color-map-arc: oklch(70% 0.19 285 / 0.75);
+    --nextup-bg: oklch(22% 0.06 285); --nextup-edge: oklch(88% 0.12 168); --color-now-ink: oklch(20% 0.04 168);
+}
+
+/* OpenStreetMap tiles have no dark style: darken them to match the dark theme */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .osm-tiles { filter: grayscale(0.9) invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); } }
+:root[data-theme="dark"] .osm-tiles { filter: grayscale(0.9) invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); }
 
 /* ===== print (Save as PDF from Overview) ===== */
 @media print {
@@ -694,6 +761,7 @@ a.btn { text-decoration: none; }
   <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></symbol>
   <symbol id="i-grip" viewBox="0 0 24 24"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" stroke-width="2.6"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
   <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
@@ -750,7 +818,7 @@ const CATEGORY_RENAME_MAP = { 'Flights':'Air ticket', 'Hotels':'Hotel', 'Other':
 // Google's free monthly allowance per call type. Place Details asks for basic fields only, which keeps
 // it in the Essentials tier (10,000 a month). Text Search is Pro tier (5,000), so it only runs when
 // suggestions come back empty. Never add editorialSummary, ratings or hours: they move to costlier tiers.
-const USAGE = [['autocomplete','Suggestions as you type',10000],['textSearch','Name searches',5000],['placeDetails','Place details',10000]];
+const USAGE = [['mapLoads','Map loads',10000],['autocomplete','Suggestions as you type',10000],['textSearch','Name searches',5000],['placeDetails','Place details',10000]];
 
 /* ===== small helpers ===== */
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
@@ -776,6 +844,8 @@ function normalizeTimeForInput(str){
 
 /* ===== device settings: theme, colour and text size belong to each device ===== */
 const dev = Object.assign({ scale:1, theme:'auto', accent:'lime', id:uid() }, readJSON(LS_DEVICE) || {});
+// Onyx & indigo is the dark colour unless this device picked another one in Settings.
+if(!dev.accentPicked) dev.accent = 'onyx';
 function saveDev(){ writeJSON(LS_DEVICE, dev); }
 saveDev();
 
@@ -990,7 +1060,7 @@ function loadGoogleMapsScript(apiKey){
   googleMapsLoadingPromise = new Promise((resolve, reject) => {
     try{
       // Google's official bootstrap loader (verbatim), parameterised with the user's key.
-      (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({key: apiKey, v: "weekly"});
+      (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({key: apiKey, v: "weekly", language: "en"});
       window.google.maps.importLibrary('places').then(() => resolve()).catch(reject);
     }catch(err){ reject(err); }
   });
@@ -1100,66 +1170,156 @@ function cityPoint(name, t){
   return { lat: ps.reduce((a, p) => a + p.lat, 0) / ps.length, lon: ps.reduce((a, p) => a + p.lon, 0) / ps.length, country:'' };
 }
 
-/* ===== world map, centred on Singapore (1 unit = 1 degree, Singapore at x 180) ===== */
+/* ===== what has been travelled so far ===== */
+// Days and cities count once they have happened: past trips in full, and the trip you're on up to today.
+function travelled(t){
+  const td = isoLocal(today());
+  if(t.kind === 'maponly'){
+    const a = t.start, b = okDate(t.end) ? t.end : t.start;
+    if(!okDate(a) || a > td) return { days:0, cities:[] };
+    const end = b < td ? b : td;
+    return { days:Math.round((new Date(end) - new Date(a)) / 864e5) + 1, cities:t.cities.filter(Boolean) };
+  }
+  const past = isPast(t);
+  const done = t.days.filter(d => okDate(d.date) ? d.date <= td : past);
+  const cities = [];
+  done.forEach(d => { const c = cityName(d.city); if(c && !cities.some(x => x.toLowerCase() === c.toLowerCase())) cities.push(c); });
+  return { days:done.length, cities };
+}
+
+/* ===== world map, centred on Singapore (1 unit = 1 degree, Singapore at x 180). Zooms and pans. ===== */
 const W = (lon, lat) => [((lon - HOME.lon + 540) % 360), 90 - lat];
+const WVB = [0, 14, 360, 124];
+let WV = null; // the zoomed view [x, y, w, h], or null for the whole world
+const wv = () => WV || WVB;
 function mapCities(){
   const out = new Map();
   Object.values(library.trips).forEach(t => {
-    const past = isPast(t);
+    const seen = travelled(t).cities.map(c => c.toLowerCase());
     tripCities(t).forEach(name => {
       const pt = cityPoint(name, t); if(!pt) return;
       const k = name.toLowerCase(); const o = out.get(k) || { name, pt, past:false, trips:[] };
-      o.past = o.past || past; o.trips.push(t); out.set(k, o);
+      o.past = o.past || seen.includes(k); o.trips.push(t); out.set(k, o);
     });
   });
   return [...out.values()];
 }
+const dotR = () => 360 * 0.0048 * (wv()[2] / 360);
 function worldMap(){
-  const vb = [0, 14, 360, 124]; const r = vb[2] * 0.0048; const H = W(HOME.lon, HOME.lat);
-  const cities = mapCities();
-  let s = `<svg viewBox="${vb.join(' ')}" role="img" aria-label="World map centred on Singapore, marking the cities you have visited and the ones coming up"><path class="wm-land" d="${LAND}"/>`;
+  const H = W(HOME.lon, HOME.lat); const cities = mapCities(); const r = dotR();
+  let s = `<svg id="wsvg" viewBox="${wv().join(' ')}" role="img" aria-label="World map centred on Singapore. Visited cities and the ones coming up are marked. Pinch, double-tap or use the zoom buttons to look closer."><path class="wm-land" d="${LAND}"/>`;
   Object.values(library.trips).forEach(t => {
     const first = tripCities(t)[0]; if(!first) return; const c = cityPoint(first, t); if(!c) return;
     const Pp = W(c.lon, c.lat);
     const mx = (H[0] + Pp[0]) / 2, my = (H[1] + Pp[1]) / 2, dx = Pp[0] - H[0], dy = Pp[1] - H[1], len = Math.hypot(dx, dy) || 1;
     if(len < 2) return;
     let px = -dy / len, py = dx / len; if(py > 0){ px = -px; py = -py; }
-    s += `<path class="wm-arc ${isPast(t) ? '' : 'up'}" d="M${H[0]} ${H[1]} Q${(mx + px * len * .2).toFixed(2)} ${(my + py * len * .2).toFixed(2)} ${Pp[0].toFixed(2)} ${Pp[1].toFixed(2)}"/>`;
+    s += `<path class="wm-arc ${travelled(t).days ? '' : 'up'}" d="M${H[0]} ${H[1]} Q${(mx + px * len * .2).toFixed(2)} ${(my + py * len * .2).toFixed(2)} ${Pp[0].toFixed(2)} ${Pp[1].toFixed(2)}"/>`;
   });
   cities.forEach(c => {
-    const [x, y] = W(c.pt.lon, c.pt.lat); const rr = S.hlCity === c.name ? r * 1.7 : r;
-    s += `<circle class="${c.past ? 'wm-dot' : 'wm-ring'}" data-act="hl" data-c="${esc(c.name)}" cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${rr}"><title>${esc(c.name)}${c.past ? '' : ', coming up'}</title></circle>`;
+    const [x, y] = W(c.pt.lon, c.pt.lat);
+    s += `<circle class="${c.past ? 'wm-dot' : 'wm-ring'}" data-act="hl" data-c="${esc(c.name)}" cx="${x.toFixed(3)}" cy="${y.toFixed(3)}" r="${S.hlCity === c.name ? r * 1.7 : r}"><title>${esc(c.name)}${c.past ? ', visited' : ', coming up'}</title></circle>`;
   });
   s += `<rect class="wm-home" x="${H[0] - r}" y="${H[1] - r}" width="${r * 2}" height="${r * 2}" transform="rotate(45 ${H[0]} ${H[1]})"><title>Singapore, home</title></rect></svg>`;
-  const pos = (lon, lat) => { const [x, y] = W(lon, lat); return `left:${((x - vb[0]) / vb[2] * 100).toFixed(2)}%;top:${((y - vb[1]) / vb[3] * 100).toFixed(2)}%`; };
-  // Label cities, merging ones that sit close together ("Tokyo, Hakone"), and place each label on
-  // whichever side is free so labels never overlap. Sizes are in map units at desktop width.
+  return `<div class="world ${WV ? 'zoomed' : ''}" id="world">${s}<div id="wlabs">${worldLabels(cities)}</div>
+    <div class="wm-zoom"><button type="button" class="iconbtn" data-act="wzoom" data-d="1" aria-label="Zoom in">${I('plus')}</button><button type="button" class="iconbtn" data-act="wzoom" data-d="-1" aria-label="Zoom out" ${WV ? '' : 'disabled'}>${I('minus')}</button>${WV ? `<button type="button" class="btn btn--quiet wm-reset" data-act="wreset">Whole world</button>` : ''}</div></div>`;
+}
+// Labels: cities close together on screen share one label ("Guangzhou +3"); tap it to zoom in.
+// Each label goes on whichever side is free. Sizes are map units at desktop width, scaled with the zoom.
+function worldLabels(cities = mapCities()){
+  const v = wv(); const k = v[2] / 360; const r = dotR(); const H = W(HOME.lon, HOME.lat);
+  const pos = (x, y) => `left:${((x - v[0]) / v[2] * 100).toFixed(3)}%;top:${((y - v[1]) / v[3] * 100).toFixed(3)}%`;
+  const inView = (x, y) => x >= v[0] && x <= v[0] + v[2] && y >= v[1] && y <= v[1] + v[3];
   const groups = [];
-  cities.map(c => ({ c, xy:W(c.pt.lon, c.pt.lat) })).sort((a, b) => b.c.trips.length - a.c.trips.length).forEach(o => {
-    const g = groups.find(g => Math.hypot(g.xy[0] - o.xy[0], g.xy[1] - o.xy[1]) < 7);
-    if(g) g.names.push(o.c.name); else groups.push({ xy:o.xy, c:o.c, names:[o.c.name] });
+  cities.map(c => ({ c, xy:W(c.pt.lon, c.pt.lat) })).filter(o => inView(o.xy[0], o.xy[1])).sort((a, b) => b.c.trips.length - a.c.trips.length).forEach(o => {
+    const g = groups.find(g => Math.hypot(g.xy[0] - o.xy[0], g.xy[1] - o.xy[1]) < 7 * k);
+    if(g){ g.names.push(o.c.name); g.pts.push(o.xy); } else groups.push({ xy:o.xy, c:o.c, names:[o.c.name], pts:[o.xy] });
   });
-  const CH = 2.6, LH = 5.6, GAP = 3.6;
+  const CH = 2.6 * k, LH = 5.6 * k, GAP = 3.6 * k;
   const rect = (x, y, side, w) => side === 'l' ? [x - GAP - w, y - LH / 2, x - GAP, y + LH / 2] : side === 'b' ? [x - w / 2, y + GAP, x + w / 2, y + GAP + LH] : side === 't' ? [x - w / 2, y - GAP - LH, x + w / 2, y - GAP] : [x + GAP, y - LH / 2, x + GAP + w, y + LH / 2];
   const hit = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
-  const inMap = r => r[0] >= vb[0] && r[2] <= vb[0] + vb[2] && r[1] >= vb[1] && r[3] <= vb[1] + vb[3];
-  const placed = [rect(H[0], H[1], 'b', 9 * CH)];
+  const fits = q => q[0] >= v[0] && q[2] <= v[0] + v[2] && q[1] >= v[1] && q[3] <= v[1] + v[3];
+  const placed = inView(H[0], H[1]) ? [rect(H[0], H[1], 'b', 9 * CH)] : [];
   cities.forEach(c => { const [x, y] = W(c.pt.lon, c.pt.lat); placed.push([x - r, y - r, x + r, y + r]); });
-  const own = g => { const [x, y] = g.xy; return [x - r * 1.2, y - r * 1.2, x + r * 1.2, y + r * 1.2]; };
   let labs = '';
   groups.forEach(g => {
     const hl = g.names.includes(S.hlCity);
     const texts = hl ? [S.hlCity] : [g.names.slice(0, 2).join(', ') + (g.names.length > 2 ? ` +${g.names.length - 2}` : ''), g.names[0] + (g.names.length > 1 ? ` +${g.names.length - 1}` : '')];
     const at = hl ? cities.find(c => c.name === S.hlCity).pt : g.c.pt; const [x, y] = W(at.lon, at.lat);
-    const others = placed.filter(p => !hit(p, own(g)) || p[2] - p[0] > r * 3);
+    const own = [x - r * 1.2, y - r * 1.2, x + r * 1.2, y + r * 1.2];
+    const others = placed.filter(p => !hit(p, own) || p[2] - p[0] > r * 3);
     for(const txt of texts){
-      const side = ['r', 'l', 't', 'b'].find(sd => { const rr = rect(x, y, sd, txt.length * CH); return inMap(rr) && !others.some(p => hit(p, rr)); });
-      if(side || hl){ const sd = side || 'r'; placed.push(rect(x, y, sd, txt.length * CH)); labs += `<span class="wm-lab ${hl ? 'hl ' : ''}${sd === 'r' ? '' : sd}" style="${pos(at.lon, at.lat)}" aria-hidden="true">${esc(txt)}</span>`; break; }
+      const side = ['r', 'l', 't', 'b'].find(sd => { const q = rect(x, y, sd, txt.length * CH); return fits(q) && !others.some(p => hit(p, q)); });
+      if(!side && !hl) continue;
+      const sd = side || 'r'; placed.push(rect(x, y, sd, txt.length * CH));
+      const cls = `wm-lab ${hl ? 'hl ' : ''}${sd === 'r' ? '' : sd}`;
+      if(g.names.length > 1 && !hl){
+        const xs = g.pts.map(p => p[0]), ys = g.pts.map(p => p[1]);
+        labs += `<button type="button" class="${cls} wm-group" style="${pos(x, y)}" data-act="wfit" data-b="${[Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)].map(n => n.toFixed(2)).join(',')}" aria-label="Zoom in on ${esc(g.names.join(', '))}">${esc(txt)}</button>`;
+      } else labs += `<span class="${cls}" style="${pos(x, y)}" aria-hidden="true">${esc(txt)}</span>`;
+      break;
     }
   });
-  labs += `<span class="wm-lab b home" style="${pos(HOME.lon, HOME.lat)}" aria-hidden="true">Singapore</span>`;
-  return `<div class="world">${s}${labs}</div>`;
+  if(inView(H[0], H[1])) labs += `<span class="wm-lab b home" style="${pos(H[0], H[1])}" aria-hidden="true">Singapore</span>`;
+  return labs;
 }
+function setWorldView(x, y, w){
+  const MINW = 360 / 28; w = Math.max(MINW, Math.min(360, w));
+  if(w >= 359.9){ WV = null; }
+  else { const h = w * WVB[3] / WVB[2]; x = Math.max(0, Math.min(360 - w, x)); y = Math.max(WVB[1], Math.min(WVB[1] + WVB[3] - h, y)); WV = [x, y, w, h]; }
+  paintWorld();
+}
+function zoomWorld(f, ux, uy){
+  const v = wv(); if(ux == null){ ux = v[0] + v[2] / 2; uy = v[1] + v[3] / 2; }
+  const w = v[2] / f; setWorldView(ux - (ux - v[0]) * (w / v[2]), uy - (uy - v[1]) * (w / v[2]), w);
+}
+function paintWorld(){
+  const el = document.getElementById('world'); if(!el) return;
+  const v = wv(); const svg = document.getElementById('wsvg'); svg.setAttribute('viewBox', v.join(' '));
+  const r = dotR(); svg.querySelectorAll('circle[data-c]').forEach(c => c.setAttribute('r', c.dataset.c === S.hlCity ? r * 1.7 : r));
+  const H = W(HOME.lon, HOME.lat); const hm = svg.querySelector('.wm-home');
+  hm.setAttribute('x', H[0] - r); hm.setAttribute('y', H[1] - r); hm.setAttribute('width', r * 2); hm.setAttribute('height', r * 2);
+  document.getElementById('wlabs').innerHTML = worldLabels();
+  el.classList.toggle('zoomed', !!WV);
+  const zb = el.querySelector('.wm-zoom'); zb.querySelector('[data-d="-1"]').disabled = !WV;
+  const rs = zb.querySelector('.wm-reset');
+  if(WV && !rs) zb.insertAdjacentHTML('beforeend', '<button type="button" class="btn btn--quiet wm-reset" data-act="wreset">Whole world</button>');
+  if(!WV && rs){ rs.remove(); }
+}
+// Drag to pan, pinch or ctrl-scroll (trackpad pinch) to zoom, double-tap to zoom in.
+const WP = { pts:new Map(), moved:0 };
+const toUnits = (el, cx, cy) => { const b = el.getBoundingClientRect(); const v = wv(); return [v[0] + (cx - b.left) / b.width * v[2], v[1] + (cy - b.top) / b.height * v[3]]; };
+document.addEventListener('pointerdown', e => {
+  const el = e.target.closest && e.target.closest('#world'); if(!el || e.target.closest('.wm-zoom')) return;
+  WP.pts.set(e.pointerId, [e.clientX, e.clientY]); WP.moved = 0; WP.el = el;
+  if(WP.pts.size === 2){ const [a, b] = [...WP.pts.values()]; WP.pinch = { d:Math.hypot(a[0] - b[0], a[1] - b[1]), w:wv()[2] }; }
+});
+document.addEventListener('pointermove', e => {
+  if(!WP.pts.has(e.pointerId)) return;
+  const prev = WP.pts.get(e.pointerId); WP.pts.set(e.pointerId, [e.clientX, e.clientY]);
+  if(WP.pts.size === 2 && WP.pinch){
+    const [a, b] = [...WP.pts.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    const [ux, uy] = toUnits(WP.el, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); const v = wv(); const w = WP.pinch.w * WP.pinch.d / Math.max(d, 1);
+    setWorldView(ux - (ux - v[0]) * (w / v[2]), uy - (uy - v[1]) * (w / v[2]), w); WP.moved = 99; e.preventDefault(); return;
+  }
+  if(!WV) return;
+  const b = WP.el.getBoundingClientRect(); const v = wv();
+  const dx = (e.clientX - prev[0]) / b.width * v[2], dy = (e.clientY - prev[1]) / b.height * v[3];
+  WP.moved += Math.abs(e.clientX - prev[0]) + Math.abs(e.clientY - prev[1]);
+  setWorldView(v[0] - dx, v[1] - dy, v[2]); e.preventDefault();
+}, { passive:false });
+const endWorldPointer = e => { WP.pts.delete(e.pointerId); if(WP.pts.size < 2) WP.pinch = null; };
+document.addEventListener('pointerup', endWorldPointer); document.addEventListener('pointercancel', endWorldPointer);
+document.addEventListener('wheel', e => {
+  const el = e.target.closest && e.target.closest('#world'); if(!el || !e.ctrlKey) return;
+  e.preventDefault(); const [ux, uy] = toUnits(el, e.clientX, e.clientY); zoomWorld(Math.exp(-e.deltaY * 0.01), ux, uy);
+}, { passive:false });
+document.addEventListener('dblclick', e => {
+  const el = e.target.closest && e.target.closest('#world'); if(!el || e.target.closest('.wm-zoom')) return;
+  const [ux, uy] = toUnits(el, e.clientX, e.clientY); zoomWorld(2, ux, uy);
+});
+// A tap after dragging the map is not a tap on a city.
+document.addEventListener('click', e => { if(WP.moved > 8 && e.target.closest && e.target.closest('#world')){ e.stopImmediatePropagation(); e.preventDefault(); WP.moved = 0; } }, true);
 
 /* ===== Google Maps links ===== */
 // What a shared link can hold: coordinates (full links), or only the text Google searched for. Links shared
@@ -1449,10 +1609,10 @@ const tripLabel = t => t.tripName || 'Untitled trip';
 /* ===== Home ===== */
 function scrHome(){
   const trips = Object.values(library.trips);
-  const past = trips.filter(isPast);
-  const cities = new Map(); past.forEach(t => tripCities(t).forEach(c => cities.set(c.toLowerCase(), c)));
+  const done = trips.map(t => ({ t, tv:travelled(t) })).filter(x => x.tv.days);
+  const cities = new Map(); done.forEach(x => x.tv.cities.forEach(c => cities.set(c.toLowerCase(), c)));
   const countries = new Set([...cities.values()].map(c => { const g = cityGeo(c); return g && g.country; }).filter(Boolean));
-  const daysAway = past.reduce((a, t) => a + tripLen(t), 0);
+  const daysAway = done.reduce((a, x) => a + x.tv.days, 0);
   const next = trips.filter(isUpcoming).sort((a, b) => tripStart(a).localeCompare(tripStart(b)))[0];
   const now = findTodayTrip();
   const band = now
@@ -1472,7 +1632,7 @@ function scrHome(){
       <div class="home-head"><div><h1 id="h-world">Where you've been</h1></div>
         <ul class="legend" aria-label="Map key"><li><span class="key"></span>Visited</li><li><span class="key up"></span>Coming up</li><li><span class="key home"></span>Home</li></ul></div>
       ${worldMap()}
-      <dl class="stats"><div><dt>Countries</dt><dd>${countries.size}</dd></div><div><dt>Cities</dt><dd>${cities.size}</dd></div><div><dt>Days away</dt><dd>${daysAway}</dd></div><div><dt>Trips taken</dt><dd>${past.length}</dd></div></dl>
+      <dl class="stats"><div><dt>Countries</dt><dd>${countries.size}</dd></div><div><dt>Cities</dt><dd>${cities.size}</dd></div><div><dt>Days away</dt><dd>${daysAway}</dd></div><div><dt>Trips taken</dt><dd>${done.length}</dd></div></dl>
     </section>
     <section class="box" aria-labelledby="h-trips"><div class="sechead"><h2 id="h-trips">${I('plane')}Your trips</h2><div class="chips"><button type="button" class="btn" data-act="dialog" data-d="past">${I('plus','sm')}Add a past trip</button><button type="button" class="btn btn--primary" data-act="dialog" data-d="newtrip">${I('plus','sm')}New trip</button></div></div>
       ${trips.length ? `<div class="tablewrap"><table class="trips"><thead><tr><th scope="col">Trip</th><th scope="col">Dates</th><th scope="col">Cities</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Delete</span></th></tr></thead><tbody>${rows}</tbody></table></div>
@@ -1581,6 +1741,7 @@ function mapAside(){
     <div class="seg" role="group" aria-label="Map shows"><button type="button" data-act="mapm" data-m="day" aria-pressed="${S.mapMode === 'day'}">This day</button><button type="button" data-act="mapm" data-m="trip" aria-pressed="${S.mapMode === 'trip'}">Whole trip</button></div>
     <div>${picking ? `<div class="pickbar"><span>Tap the map where ${esc(picking.p.name)} is.</span><button type="button" class="btn" data-act="pickcancel">Cancel</button></div>` : ''}<div class="tmapwrap"></div></div>
     ${groups ? `<div class="field"><label for="findp">Find a place on the map</label><select id="findp" class="input" data-in="findplace"><option value="">Choose a place</option>${groups}</select></div>` : ''}
+    ${S.mapMode === 'trip' && !focusPl ? `<div class="field"><span class="label" id="lbl-dk">Pins show the stop number in each day's colour. Tap a group to zoom in, or a day to open it.</span><ul class="daykey" aria-labelledby="lbl-dk">${t.days.map((d, j) => d.places.some(p => p.type === 'activity' && p.lat != null) ? `<li><button type="button" data-act="mapday" data-i="${j}" style="--cat:${dayColour(j)}"><span class="sw"></span>Day ${j + 1}${d.city ? ', ' + esc(cityName(d.city)) : ''}</button></li>` : '').join('')}</ul></div>` : ''}
     ${S.mapFocus ? `<div><button type="button" class="link" data-act="unfocus">Show the whole ${S.mapMode === 'trip' ? 'trip' : 'day'} again</button></div>` : ''}
     ${popup || `<p class="sub maphint">Select a pin to see its details.</p>`}
     ${unplaced.length ? `<div class="unplaced"><b>${unplaced.length === 1 ? 'One place is' : unplaced.length + ' places are'} not on the map yet</b>${unplaced.map(p => `<div class="r"><span>${esc(p.name)}</span><button type="button" class="btn" data-act="pick" data-id="${p.id}">Drop a pin</button></div>`).join('')}</div>` : ''}
@@ -1728,7 +1889,7 @@ function scrSettings(){
   return `<div class="screen">${syncBanner()}<header class="pagehead"><h1>Settings</h1><button type="button" class="btn" data-act="nav" data-to="${t ? 'overview' : 'home'}">Close settings</button></header>
   <div class="set-grid">
     <section class="set box" aria-labelledby="h-sync"><h2 id="h-sync">Sync</h2>${syncSec}</section>
-    <section class="set box" aria-labelledby="h-key"><h2 id="h-key">Google Maps key</h2><p>Powers place search. ${sync.token ? 'It\'s saved in your private repo, so you enter it once for every device.' : 'Without one, search uses a free service that finds fewer places.'}</p>
+    <section class="set box" aria-labelledby="h-key"><h2 id="h-key">Google Maps key</h2><p>Powers the map and place search. ${sync.token ? 'It\'s saved in your private repo, so you enter it once for every device.' : 'Without one, the map and search use free services that find fewer places and show local-language names.'}</p>
       <dl class="kv"><dt>Key</dt><dd class="num">${key ? `${S.showKey ? esc(key) : 'Ends in ' + esc(key.slice(-3))} <button type="button" class="link" data-act="showkey">${S.showKey ? 'Hide key' : 'Show key'}</button>` : 'Not added'}</dd></dl>
       <div class="chips"><button type="button" class="btn" data-act="dialog" data-d="key">${key ? 'Change the key' : 'Add a key'}</button>${key ? '<button type="button" class="btn btn--quiet" data-act="askdelkey">Remove it</button>' : ''}</div>
       <p class="sub">Browsers can still read a map key, so in Google Cloud restrict yours to vibe-coder-milo.github.io. That stops other sites from using it.</p>
@@ -1737,7 +1898,7 @@ function scrSettings(){
       <p class="state ${library.helperUrl ? 'ok' : 'warn'}">${I(library.helperUrl ? 'check' : 'alert','sm')}${library.helperUrl ? 'Connected' : 'Not set up'}</p>
       <div class="chips"><button type="button" class="btn" data-act="dialog" data-d="helper">${library.helperUrl ? 'Change it' : 'Set it up'}</button>${library.helperUrl ? '<button type="button" class="btn btn--quiet" data-act="delhelper">Disconnect</button>' : ''}</div></section>
     <section class="set box" aria-labelledby="h-look"><h2 id="h-look">Appearance</h2><p>Automatic follows this device's light or dark setting.</p>
-      <div class="seg" role="group" aria-label="Appearance"><button type="button" data-act="theme" data-v="auto" aria-pressed="${dev.theme === 'auto'}">Automatic</button><button type="button" data-act="theme" data-v="light" aria-pressed="${dev.theme === 'light'}">Light</button><button type="button" data-act="theme" data-v="dark" aria-pressed="${dev.theme === 'dark'}">Dark</button></div><h3 style="margin-top:var(--space-sm)">Colour in dark mode</h3><div class="seg accentpick" role="group" aria-label="Colour in dark mode">${[['orange','Orange','oklch(76% 0.15 58)'],['pink','Bubblegum','oklch(79% 0.15 350)'],['lime','Signal lime','oklch(90% 0.2 126)'],['dawn','First light','oklch(86% 0.075 42)']].map(([v, l, c]) => `<button type="button" data-act="accent" data-v="${v}" aria-pressed="${dev.accent === v}"><span class="swatch" style="background:${c}"></span>${l}</button>`).join('')}</div></section>
+      <div class="seg" role="group" aria-label="Appearance"><button type="button" data-act="theme" data-v="auto" aria-pressed="${dev.theme === 'auto'}">Automatic</button><button type="button" data-act="theme" data-v="light" aria-pressed="${dev.theme === 'light'}">Light</button><button type="button" data-act="theme" data-v="dark" aria-pressed="${dev.theme === 'dark'}">Dark</button></div><h3 style="margin-top:var(--space-sm)">Colour in dark mode</h3><div class="seg accentpick" role="group" aria-label="Colour in dark mode">${[['onyx','Onyx & indigo','linear-gradient(135deg, oklch(56% 0.26 285) 55%, oklch(88% 0.12 168) 55%)'],['orange','Orange','oklch(76% 0.15 58)'],['pink','Bubblegum','oklch(79% 0.15 350)'],['lime','Signal lime','oklch(90% 0.2 126)'],['dawn','First light','oklch(86% 0.075 42)']].map(([v, l, c]) => `<button type="button" data-act="accent" data-v="${v}" aria-pressed="${dev.accent === v}"><span class="swatch" style="background:${c}"></span>${l}</button>`).join('')}</div></section>
     <section class="set box" aria-labelledby="h-size"><h2 id="h-size">Text size on this device</h2><p>The iPad and the computer each keep their own size.</p>
       <div class="chips" style="align-items:center"><button type="button" class="btn" data-act="sz" data-d="-1" aria-label="Smaller text">Smaller</button><span class="num" style="min-width:4rem;text-align:center">${Math.round(dev.scale * 100)}%</span><button type="button" class="btn" data-act="sz" data-d="1" aria-label="Larger text">Larger</button></div></section>
     <section class="set box" aria-labelledby="h-bk"><h2 id="h-bk">Backups</h2><p>${sync.token ? 'Sync already keeps every version. ' : ''}A downloaded backup is an extra copy you keep yourself, for example in Google Drive. Keys and tokens are never in it.</p>
@@ -1790,75 +1951,170 @@ function pastCheckHTML(cs){
   return `<ul class="facts">${cs.map(c => { const k = c.toLowerCase(); const g = library.cityCache[k]; const found = g && !g.miss; if(!g && !cityQueue.has(k)){ cityQueue.add(k); pumpCities(); } return `<li>${I(found ? 'check' : 'alert','sm')}${esc(c)}${found ? (g.country ? `, ${esc(g.country)}` : '') : g ? ', not found. Check the spelling' : ', looking it up…'}</li>`; }).join('')}</ul>`;
 }
 
-/* ===== trip map (Leaflet with CARTO tiles: free, no Google map loads) ===== */
-let MAP = null;
-// Map tiles: OpenStreetMap is free with no key (dark mode darkens it with a filter). CARTO's nicer
-// light and dark styles are used only when a CARTO key is saved, since without one they carry a watermark.
+/* ===== trip map =====
+   With a Google key: a Google map in a quiet style with English labels. Each page visit is one "map load",
+   well inside Google's free 10,000 a month. Without a key, or offline: Leaflet with muted OpenStreetMap
+   tiles. Both sit behind the same few calls, so the rest of the app doesn't care which one is showing. */
+let MAP = null, GOOGLE_MAPS = null, googleBroken = false, googleLoading = false;
+window.gm_authFailure = () => { googleBroken = true; if(MAP && MAP.kind === 'google'){ MAP.el.remove(); MAP = null; } toast('Google turned the map key down, so the free map is showing. Check the key in Settings.'); if(S.screen === 'itinerary') render(); };
+const worldPx = (lat, lon, z) => { const s = 256 * 2 ** z; const sin = Math.min(0.9999, Math.max(-0.9999, Math.sin(lat * Math.PI / 180))); return [(lon + 180) / 360 * s, (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * s]; };
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+// Map tiles without a key: OpenStreetMap, muted by CSS. A CARTO key, if saved, switches to CARTO's styles.
 function tileLayer(dark){
   const k = (library.cartoApiKey || '').trim();
-  if(k) return L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark ? 'dark_all' : 'rastertiles/voyager'}/{z}/{x}/{y}{r}.png?api_key=${encodeURIComponent(k)}`, { maxZoom:20, subdomains:'abcd', attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>' });
+  if(k) return L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png?api_key=${encodeURIComponent(k)}`, { maxZoom:20, subdomains:'abcd', attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>' });
   return L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, className:'osm-tiles', attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' });
+}
+function leafletAdapter(el){
+  const map = L.map(el, { zoomControl:true, worldCopyJump:true });
+  map.attributionControl.setPrefix(false); map.setView([HOME.lat, HOME.lon], 4);
+  const layer = L.layerGroup().addTo(map); let tiles = null, tileSig = '';
+  return { kind:'leaflet', el,
+    theme(dark){ const sig = dark + '|' + library.cartoApiKey; if(sig === tileSig) return; tileSig = sig; if(tiles) map.removeLayer(tiles); tiles = tileLayer(dark).addTo(map); },
+    zoom: () => map.getZoom(),
+    setView: (lat, lon, z) => map.setView([lat, lon], z),
+    fit: (pts, maxZoom) => map.fitBounds(L.latLngBounds(pts), { padding:[36, 36], maxZoom }),
+    clear: () => layer.clearLayers(),
+    pin: (lat, lon, o) => { const w = o.w || o.size; L.marker([lat, lon], { icon:L.divIcon({ className:'lpin-wrap', html:o.html, iconSize:[w, o.size], iconAnchor:[w / 2, o.size / 2] }), title:o.title, alt:o.title, keyboard:true, riseOnHover:true, zIndexOffset:o.z || 0 }).on('click', o.onClick).addTo(layer); },
+    line: pts => L.polyline(pts, { className:'lroute', weight:2, dashArray:'5 6', interactive:false }).addTo(layer),
+    onClick: cb => map.on('click', ev => cb(ev.latlng.lat, ev.latlng.lng)),
+    onZoom: cb => map.on('zoomend', cb),
+    picking: on => el.classList.toggle('picking', on),
+    resize: () => map.invalidateSize({ pan:false }),
+  };
+}
+const GS_BASE = [
+  { featureType:'poi', stylers:[{ visibility:'off' }] }, { featureType:'poi.park', elementType:'geometry', stylers:[{ visibility:'on' }] },
+  { featureType:'transit', elementType:'labels.icon', stylers:[{ visibility:'off' }] }, { featureType:'road', elementType:'labels.icon', stylers:[{ visibility:'off' }] },
+];
+const GSTYLE_LIGHT = GS_BASE.concat([
+  { elementType:'geometry', stylers:[{ color:'#f2f3f5' }] }, { featureType:'water', elementType:'geometry', stylers:[{ color:'#cde0ea' }] },
+  { featureType:'poi.park', elementType:'geometry', stylers:[{ color:'#e2ece3' }] }, { featureType:'road', elementType:'geometry', stylers:[{ color:'#ffffff' }] },
+  { featureType:'road.highway', elementType:'geometry', stylers:[{ color:'#e4e6ea' }] }, { featureType:'transit.line', elementType:'geometry', stylers:[{ color:'#d9dce2' }] },
+  { elementType:'labels.text.fill', stylers:[{ color:'#5a606c' }] }, { elementType:'labels.text.stroke', stylers:[{ color:'#ffffff' }] },
+  { featureType:'administrative', elementType:'geometry.stroke', stylers:[{ color:'#c6cbd3' }] },
+]);
+const GSTYLE_DARK = GS_BASE.concat([
+  { elementType:'geometry', stylers:[{ color:'#1b1b20' }] }, { featureType:'water', elementType:'geometry', stylers:[{ color:'#11141d' }] },
+  { featureType:'poi.park', elementType:'geometry', stylers:[{ color:'#1d2520' }] }, { featureType:'road', elementType:'geometry', stylers:[{ color:'#2a2b32' }] },
+  { featureType:'road.highway', elementType:'geometry', stylers:[{ color:'#34353e' }] }, { featureType:'transit.line', elementType:'geometry', stylers:[{ color:'#2c2d34' }] },
+  { elementType:'labels.text.fill', stylers:[{ color:'#9b9fab' }] }, { elementType:'labels.text.stroke', stylers:[{ color:'#16161a' }] },
+  { featureType:'administrative', elementType:'geometry.stroke', stylers:[{ color:'#393a44' }] },
+]);
+function googleAdapter(el, g){
+  const map = new g.Map(el, { center:{ lat:HOME.lat, lng:HOME.lon }, zoom:4, disableDefaultUI:true, zoomControl:true, clickableIcons:false, gestureHandling:'greedy', keyboardShortcuts:false, styles:GSTYLE_LIGHT });
+  trackApiCall('mapLoads');
+  let items = [];
+  class Pin extends g.OverlayView {
+    constructor(lat, lon, o){ super(); this.at = new google.maps.LatLng(lat, lon); this.o = o; }
+    onAdd(){
+      const o = this.o; const d = this.d = document.createElement('div');
+      d.className = 'gmap-pin'; d.innerHTML = o.html; d.title = o.title; d.tabIndex = 0; d.setAttribute('role', 'button'); d.setAttribute('aria-label', o.title);
+      d.style.width = (o.w || o.size) + 'px'; d.style.height = o.size + 'px'; d.style.zIndex = String(100 + (o.z || 0));
+      const go = e => { e.stopPropagation(); o.onClick(); };
+      d.addEventListener('click', go); d.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); go(e); } });
+      g.OverlayView.preventMapHitsAndGesturesFrom(d);
+      this.getPanes().overlayMouseTarget.appendChild(d);
+    }
+    draw(){ const p = this.getProjection().fromLatLngToDivPixel(this.at); if(!p || !this.d) return; this.d.style.left = (p.x - (this.o.w || this.o.size) / 2) + 'px'; this.d.style.top = (p.y - this.o.size / 2) + 'px'; }
+    onRemove(){ if(this.d) this.d.remove(); }
+  }
+  return { kind:'google', el,
+    theme: dark => map.setOptions({ styles: dark ? GSTYLE_DARK : GSTYLE_LIGHT }),
+    zoom: () => map.getZoom(),
+    setView: (lat, lon, z) => { map.setCenter({ lat, lng:lon }); map.setZoom(z); },
+    fit: (pts, maxZoom) => { const b = new google.maps.LatLngBounds(); pts.forEach(p => b.extend({ lat:p[0], lng:p[1] })); map.fitBounds(b, 36); google.maps.event.addListenerOnce(map, 'idle', () => { if(map.getZoom() > maxZoom) map.setZoom(maxZoom); }); },
+    clear: () => { items.forEach(i => i.setMap(null)); items = []; },
+    pin: (lat, lon, o) => { const p = new Pin(lat, lon, o); p.setMap(map); items.push(p); },
+    line: pts => { items.push(new g.Polyline({ map, path:pts.map(p => ({ lat:p[0], lng:p[1] })), clickable:false, strokeOpacity:0, icons:[{ icon:{ path:'M 0,-1 0,1', strokeOpacity:0.85, strokeColor:cssVar('--color-ink-2') || '#444', scale:2 }, offset:'0', repeat:'11px' }] })); },
+    onClick: cb => map.addListener('click', ev => cb(ev.latLng.lat(), ev.latLng.lng())),
+    onZoom: cb => { let t; map.addListener('zoom_changed', () => { clearTimeout(t); t = setTimeout(cb, 120); }); },
+    picking: on => map.setOptions({ draggableCursor: on ? 'crosshair' : null }),
+    resize: () => {},
+  };
 }
 function mountMap(){
   const host = document.querySelector('.mapcol .tmapwrap'); if(!host) return;
-  if(typeof L === 'undefined'){ host.innerHTML = '<p class="empty mapoff">The map could not load. Check the internet connection and open this day again.</p>'; return; }
+  const want = gkey() && !googleBroken && navigator.onLine ? 'google' : 'leaflet';
+  if(MAP && MAP.kind !== want){ MAP.el.remove(); MAP = null; }
   if(!MAP){
+    if(want === 'google' && !GOOGLE_MAPS){
+      host.innerHTML = '<p class="sub mapoff">Loading the map…</p>';
+      if(!googleLoading){
+        googleLoading = true;
+        loadGoogleMapsScript(gkey()).then(() => google.maps.importLibrary('maps')).then(g => { GOOGLE_MAPS = g; })
+          .catch(() => { googleBroken = true; }).finally(() => { googleLoading = false; if(S.screen === 'itinerary') mountMap(); });
+      }
+      return;
+    }
+    if(want === 'leaflet' && typeof L === 'undefined'){ host.innerHTML = '<p class="empty mapoff">The map could not load. Check the internet connection and open this day again.</p>'; return; }
+    host.innerHTML = '';
     const el = document.createElement('div'); el.className = 'lmap'; host.appendChild(el);
-    const map = L.map(el, { zoomControl:true, worldCopyJump:true, tap:true });
-    map.attributionControl.setPrefix(false);
-    map.setView([HOME.lat, HOME.lon], 4);
-    map.on('click', ev => { if(S.picking) dropPin(ev.latlng.lat, ev.latlng.lng); });
-    MAP = { el, map, tiles:null, layer:L.layerGroup().addTo(map), sig:'', view:'', dark:null };
-  } else host.appendChild(MAP.el);
-  const dark = isDark();
-  if(MAP.dark !== dark || MAP.tileKey !== library.cartoApiKey){
-    if(MAP.tiles) MAP.map.removeLayer(MAP.tiles);
-    MAP.tiles = tileLayer(dark).addTo(MAP.map);
-    MAP.dark = dark; MAP.tileKey = library.cartoApiKey;
-  }
-  MAP.el.classList.toggle('picking', !!S.picking);
-  MAP.map.invalidateSize({ pan:false });
+    MAP = want === 'google' ? googleAdapter(el, GOOGLE_MAPS) : leafletAdapter(el);
+    MAP.view = ''; MAP.sig = '';
+    MAP.onClick((lat, lon) => { if(S.picking) dropPin(lat, lon); });
+    MAP.onZoom(() => { if(S.lastMap && S.lastMap.filter === 'all' && MAP.el.isConnected) drawMarkers(); });
+  } else { host.innerHTML = ''; host.appendChild(MAP.el); }
+  MAP.theme(isDark()); MAP.picking(!!S.picking); MAP.resize();
   drawMarkers();
 }
+const dayColour = i => `var(--day-${i % 8})`;
+function dayRange(days){
+  const n = days.map(i => i + 1); const parts = [];
+  for(let i = 0; i < n.length; i++){ let j = i; while(j + 1 < n.length && n[j + 1] === n[j] + 1) j++; parts.push(j > i + 1 ? `${n[i]}–${n[j]}` : j === i + 1 ? `${n[i]}, ${n[j]}` : `${n[i]}`); i = j; }
+  return 'Days ' + parts.join(', ');
+}
 function drawMarkers(){
-  const t = T(); const nums = numbering(t); const { filter, focus } = S.lastMap;
-  const marks = []; const route = [];
-  const add = (p, i, small) => {
-    if(p.lat == null || p.type === 'flight') return;
-    const hotel = p.type === 'hotel';
-    marks.push({ id:p.id, lat:p.lat, lon:p.lon, hotel, cls: hotel ? 'hotel c-hotel' : 'c-' + p.category, txt: small ? '' : hotel ? 'H' : String(nums[p.id] || ''), small, label: (small ? `Day ${i + 1}, ` : '') + p.name });
-  };
+  const t = T(); const nums = numbering(t); const { filter, focus } = S.lastMap; const z = MAP.zoom();
+  const marks = []; const route = []; const all = [];
+  const popup = id => () => { if(S.picking) return; S.mapPopup = id; render(); };
+  const hotelPin = (p, small) => ({ lat:p.lat, lon:p.lon, html:`<span class="lpin hotel c-hotel ${small ? 'small' : ''} ${focus === p.id || S.mapPopup === p.id ? 'focus' : ''}">H</span>`, size:small ? 20 : 28, title:'Hotel: ' + p.name, z:0, onClick:popup(p.id) });
   if(filter === 'all'){
-    const seenHotel = new Set();
-    t.days.forEach((d, i) => d.places.forEach(p => { if(p.type === 'hotel'){ if(seenHotel.has(p.name)) return; seenHotel.add(p.name); } add(p, i, true); }));
+    // Whole trip: each day has its own colour and pins show the stop number. Stops that would overlap at
+    // this zoom join into one bubble ("Day 2 · 4", or "Days 1–3"); tapping a bubble zooms in on it.
+    const seen = new Set(); const stops = [];
+    t.days.forEach((d, i) => d.places.forEach(p => {
+      if(p.lat == null || p.type === 'flight') return; all.push([p.lat, p.lon]);
+      if(p.type === 'hotel'){ if(!seen.has(p.name)){ seen.add(p.name); marks.push(hotelPin(p, true)); } return; }
+      stops.push({ p, i, n:nums[p.id], px:worldPx(p.lat, p.lon, z) });
+    }));
+    const groups = [];
+    stops.forEach(s => { const g = groups.find(g => Math.hypot(g.px[0] - s.px[0], g.px[1] - s.px[1]) < 46); if(g) g.m.push(s); else groups.push({ px:s.px, m:[s] }); });
+    groups.forEach(g => {
+      if(g.m.length === 1){ const s = g.m[0]; marks.push({ lat:s.p.lat, lon:s.p.lon, html:`<span class="lpin ${focus === s.p.id || S.mapPopup === s.p.id ? 'focus' : ''}" style="--cat:${dayColour(s.i)}">${s.n}</span>`, size:28, title:`Day ${s.i + 1}, stop ${s.n}: ${s.p.name}`, z:100, onClick:popup(s.p.id) }); return; }
+      const days = [...new Set(g.m.map(s => s.i))].sort((a, b) => a - b);
+      const label = days.length === 1 ? `Day ${days[0] + 1} · ${g.m.length}` : dayRange(days);
+      const lat = g.m.reduce((a, s) => a + s.p.lat, 0) / g.m.length, lon = g.m.reduce((a, s) => a + s.p.lon, 0) / g.m.length;
+      marks.push({ lat, lon, html:`<span class="lpin bubble" style="--cat:${days.length === 1 ? dayColour(days[0]) : 'var(--color-ink-2)'}">${label}</span>`, size:28, w:22 + label.length * 7, title:`${label}, ${g.m.length} stops. Zoom in`, z:200, onClick:() => MAP.fit(g.m.map(s => [s.p.lat, s.p.lon]), 17) });
+    });
   } else {
     const d = t.days[filter];
-    if(d){ d.places.forEach(p => add(p, filter, false)); planOf(d).forEach(e => { if(e.kind === 'place' && e.p.lat != null) route.push([e.p.lat, e.p.lon]); }); }
+    if(d){
+      d.places.forEach(p => {
+        if(p.lat == null || p.type === 'flight') return; all.push([p.lat, p.lon]);
+        if(p.type === 'hotel'){ marks.push(hotelPin(p, false)); return; }
+        marks.push({ lat:p.lat, lon:p.lon, html:`<span class="lpin c-${p.category} ${focus === p.id || S.mapPopup === p.id ? 'focus' : ''}">${nums[p.id] || ''}</span>`, size:28, title:`Stop ${nums[p.id]}: ${p.name}`, z:100, onClick:popup(p.id) });
+      });
+      planOf(d).forEach(e => { if(e.kind === 'place' && e.p.lat != null) route.push([e.p.lat, e.p.lon]); });
+    }
   }
-  const sig = JSON.stringify([marks, route, focus, S.mapPopup]);
-  const viewSig = JSON.stringify([filter, focus, filter === 'all' ? t.id : (t.days[filter] || {}).id, marks.length]);
+  const sig = JSON.stringify([marks.map(m => [m.lat, m.lon, m.html, m.title]), route, isDark()]);
   if(sig !== MAP.sig){
-    MAP.sig = sig; MAP.layer.clearLayers();
-    if(route.length > 1) L.polyline(route, { className:'lroute', weight:2, dashArray:'5 6', interactive:false }).addTo(MAP.layer);
-    marks.forEach(m => {
-      const size = m.small ? 14 : 28;
-      const icon = L.divIcon({ className:'lpin-wrap', html:`<span class="lpin ${m.cls} ${m.small ? 'small' : ''} ${focus === m.id || S.mapPopup === m.id ? 'focus' : ''}">${m.txt}</span>`, iconSize:[size, size], iconAnchor:[size / 2, size / 2] });
-      L.marker([m.lat, m.lon], { icon, title:m.label, alt:m.label, keyboard:true, riseOnHover:true, zIndexOffset: m.hotel ? 0 : 100 })
-        .on('click', () => { if(S.picking) return; S.mapPopup = m.id; render(); }).addTo(MAP.layer);
-    });
+    MAP.sig = sig; MAP.clear();
+    if(route.length > 1) MAP.line(route);
+    marks.forEach(m => MAP.pin(m.lat, m.lon, m));
   }
+  const viewSig = JSON.stringify([filter, focus, filter === 'all' ? t.id : (t.days[filter] || {}).id, all.length]);
   if(viewSig !== MAP.view){
     MAP.view = viewSig;
-    const f = focus && marks.find(m => m.id === focus);
-    if(f) MAP.map.setView([f.lat, f.lon], 16);
-    else if(marks.length === 1) MAP.map.setView([marks[0].lat, marks[0].lon], 14);
-    else if(marks.length) MAP.map.fitBounds(L.latLngBounds(marks.map(m => [m.lat, m.lon])), { padding:[28, 28], maxZoom:15 });
+    const f = focus && findPlace(focus);
+    if(f && f.p.lat != null) MAP.setView(f.p.lat, f.p.lon, 16);
+    else if(all.length === 1) MAP.setView(all[0][0], all[0][1], 14);
+    else if(all.length) MAP.fit(all, 15);
     else {
-      const d = filter === 'all' ? null : t.days[filter]; const g = d && cityName(d.city) ? cityGeo(cityName(d.city)) : null;
+      const d = filter === 'all' ? null : t.days[filter]; const gc = d && cityName(d.city) ? cityGeo(cityName(d.city)) : null;
       const anyPin = []; t.days.forEach(dd => dd.places.forEach(p => { if(p.lat != null) anyPin.push([p.lat, p.lon]); }));
-      if(g) MAP.map.setView([g.lat, g.lon], 12);
-      else if(anyPin.length) MAP.map.fitBounds(L.latLngBounds(anyPin), { padding:[28, 28], maxZoom:13 });
-      else MAP.map.setView([HOME.lat, HOME.lon], 3);
+      if(gc) MAP.setView(gc.lat, gc.lon, 12); else if(anyPin.length) MAP.fit(anyPin, 13); else MAP.setView(HOME.lat, HOME.lon, 3);
     }
   }
 }
@@ -1996,7 +2252,7 @@ document.addEventListener('click', e => {
       saveSync(); S.addErr = null; S.dialog = null; announce('Token saved on this device. Syncing now'); render(); syncNow(); return;
     }
     case 'askdisconnect': confirmBox('Disconnect sync on this device?', 'The token is removed from this device. Your trips stay here and in the GitHub repo.', 'Disconnect', () => { sync.token = ''; sync.status = ''; sync.error = ''; S.syncState = ''; saveSync(); announce('Sync turned off on this device'); render(); }); return;
-    case 'savekey': library.googleApiKey = document.getElementById('gk').value.trim(); library.cartoApiKey = (document.getElementById('ck')?.value || '').trim(); googleMapsLoadingPromise = null; S.dialog = null; settingsChanged(); announce('Key saved'); break;
+    case 'savekey': library.googleApiKey = document.getElementById('gk').value.trim(); googleBroken = false; library.cartoApiKey = (document.getElementById('ck')?.value || '').trim(); googleMapsLoadingPromise = null; S.dialog = null; settingsChanged(); announce('Key saved'); break;
     case 'askdelkey': confirmBox('Remove the Google key?', 'Search falls back to the free service.' + (sync.token ? ' It is removed from every device.' : ''), 'Remove the key', () => { library.googleApiKey = ''; settingsChanged(); render(); }); return;
     case 'copyscript': navigator.clipboard?.writeText(HELPER_SCRIPT).then(() => toast('Script copied'), () => { const ta = document.getElementById('hscript'); ta.select(); toast('Select all and copy'); }); return;
     case 'savehelper': {
@@ -2010,14 +2266,17 @@ document.addEventListener('click', e => {
     }
     case 'delhelper': library.helperUrl = ''; settingsChanged(); break;
     case 'theme': dev.theme = el.dataset.v; saveDev(); break;
-    case 'accent': dev.accent = el.dataset.v; if(!isDark()) dev.theme = 'dark'; saveDev(); break;
+    case 'accent': dev.accent = el.dataset.v; dev.accentPicked = true; if(!isDark()) dev.theme = 'dark'; saveDev(); break;
     case 'showkey': S.showKey = !S.showKey; break;
     case 'sz': dev.scale = Math.max(.8, Math.min(1.5, +(dev.scale + .1 * el.dataset.d).toFixed(1))); saveDev(); break;
     case 'print': window.print(); return;
     case 'dialog': S.dialog = el.dataset.d; S.addErr = null; if(el.dataset.d === 'add'){ resetAdd(); } break;
     case 'close': case 'closebg': S.dialog = null; S.addErr = null; break;
     case 'confirmyes': { const fn = S.confirm.fn; S.dialog = null; fn(); } break;
-    case 'hl': S.hlCity = S.hlCity === el.dataset.c ? null : el.dataset.c; break;
+    case 'hl': S.hlCity = S.hlCity === el.dataset.c ? null : el.dataset.c; paintWorld(); return;
+    case 'wzoom': zoomWorld(el.dataset.d === '1' ? 2 : 0.5); return;
+    case 'wreset': WV = null; paintWorld(); return;
+    case 'wfit': { const [x0, y0, x1, y1] = el.dataset.b.split(',').map(Number); const w = Math.max((x1 - x0) * 2.2, (y1 - y0) * 2.2 * 360 / 124, 360 / 28); setWorldView((x0 + x1) / 2 - w / 2, (y0 + y1) / 2 - w * 124 / 360 / 2, w); } return;
     case 'opentrip': openTrip(el.dataset.id); break;
     case 'createtrip': {
       const n = S.newTrip; if(!n.name.trim()){ S.addErr = 'Give the trip a name first.'; break; }
@@ -2046,6 +2305,7 @@ document.addEventListener('click', e => {
     case 'doneday': S.editDay = false; break;
     case 'stepkind': t.days[S.day].logistics[+el.dataset.k].kind = el.dataset.v; changed(); break;
     case 'mapm': S.mapMode = el.dataset.m; S.mapFocus = null; S.mapPopup = null; break;
+    case 'mapday': S.day = +el.dataset.i; S.mapMode = 'day'; S.mapFocus = null; S.mapPopup = null; S.editItem = null; S.editTime = null; S.scrollDay = true; break;
     case 'closepop': S.mapPopup = null; S.mapFocus = null; break;
     case 'unfocus': S.mapFocus = null; break;
     case 'showpin': S.mapFocus = el.dataset.id; S.mapPopup = el.dataset.id; if(matchMedia('(max-width: 64rem)').matches) setTimeout(() => document.querySelector('.mapcol')?.scrollIntoView({ behavior:'smooth', block:'start' }), 50); break;
@@ -2248,7 +2508,7 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('online', () => { if(sync.token) syncNow(); });
 window.addEventListener('offline', () => { if(sync.token){ S.syncState = 'offline'; paintSync(); } });
-window.addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz = setTimeout(() => { if(MAP && MAP.el.isConnected) MAP.map.invalidateSize({ pan:false }); }, 150); });
+window.addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz = setTimeout(() => { if(MAP && MAP.el.isConnected) MAP.resize(); }, 150); });
 setInterval(() => { if(document.visibilityState === 'visible' && !S.dialog && !document.activeElement.matches('input, textarea, select')) paintSync(); }, 60000);
 if(sync.token) setTimeout(syncNow, 600);
 if('serviceWorker' in navigator && (location.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(location.hostname))) navigator.serviceWorker.register('sw.js').catch(() => {});
