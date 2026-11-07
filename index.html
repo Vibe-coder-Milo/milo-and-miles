@@ -703,6 +703,9 @@ a.btn { text-decoration: none; }
 .fp-bar { height: 6px; margin-block: var(--space-xs); border-radius: 3px; background: var(--color-paper-3); overflow: hidden; }
 .fp-bar span { display: block; height: 100%; border-radius: 3px; background: var(--color-visited); }
 @media (max-width: 40rem) { .fp-card { width: 100%; } }
+.fp-more { display: flex; gap: var(--space-lg); margin: var(--space-2xs) 0 0; }
+.fp-more dt { font-size: var(--text-sm); color: var(--color-muted); }
+.fp-more dd { margin: 0; font-size: var(--text-lg); font-weight: 600; color: var(--color-ink); font-variant-numeric: tabular-nums; }
 .fp-map { position: relative; aspect-ratio: 2 / 1; border-radius: 8px; overflow: hidden; background: var(--color-map-sea); touch-action: pan-y; -webkit-user-select: none; user-select: none; cursor: grab; }
 .fp-map:active { cursor: grabbing; }
 @media (max-width: 40rem) { .fp-map { aspect-ratio: 4 / 3.6; } }
@@ -751,61 +754,65 @@ body.noscroll { overflow: hidden; }
 :root { --color-now-ink: var(--color-accent-ink); }
 .tab .today { color: var(--color-now-ink); }
 
-/* ===== dark colour: Onyx, indigo & mint (from your palette: #101010, #6321FB, #88FFC0) =====
-   Onyx for the page and dark details, indigo for every panel, mint for buttons, stop numbers,
-   selected options, today and the places you've been. */
+/* ===== dark colour: Onyx & indigo, calm version =====
+   Your palette (onyx, electric indigo, tropical mint) used in proportion so it is easy on the eyes:
+   layered charcoal surfaces with a faint indigo tint, soft off-white text instead of pure white,
+   indigo lifted to a calm tone for actions, selection and places you've been, and mint kept for
+   what is happening now (today, next up, coming up). No large saturated surfaces. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"])[data-accent="onyx"] { --color-page: #101010; --color-bar: #101010;
-    --color-section: #6321fb; --section-edge: #7440ff; --section-shadow: none;
-    --color-card: #6321fb; --color-card-edge: #8a5cff;
-    --color-paper: #2c0c8a; --color-paper-2: #4a17c9; --color-paper-3: #3a12a6;
-    --color-ink: #ffffff; --color-ink-2: #f3efff; --color-muted: #e4dcff; --color-pencil: #e4dcff;
-    --color-rule: #8458ff; --color-edge: #c2adff;
-    --color-accent: #88ffc0; --color-accent-strong: #b0ffd6; --color-accent-ink: #101010; --color-accent-wash: #3a12a6;
-    --color-now: #88ffc0; --color-now-ink: #101010; --color-success: #88ffc0; --color-focus: #88ffc0;
-    --color-visited: #88ffc0; --color-upcoming: #ffffff;
-    --color-mark-2: #101010; --color-mark-2-ink: #88ffc0;
-    --color-error: #ffd2d2; --color-error-wash: #3d0d2a; --color-warn: #ffe08a; --color-warn-wash: #2e1f00;
-    --color-map-sea: #101010; --color-map-land: #2f0f94; --color-map-edge: #7a4dff; --color-map-arc: #88ffc0;
-    --color-overlay: rgb(0 0 0 / 0.72); --shadow-card: 0 12px 32px -12px rgb(0 0 0 / 0.6);
-    --nextup-bg: #101010; --nextup-fg: #ffffff; --nextup-sub: #e4dcff; --nextup-edge: #88ffc0;
-    --color-drop: #2c0c8a; --color-home: #ffffff; }
-  :root:not([data-theme="light"])[data-accent="onyx"] .seg button[aria-pressed="true"], :root:not([data-theme="light"])[data-accent="onyx"] .chip[aria-pressed="true"] { background: #88ffc0; color: #101010; border-color: #88ffc0; }
-  :root:not([data-theme="light"])[data-accent="onyx"] .seg { background: #4a17c9; }
-  :root:not([data-theme="light"])[data-accent="onyx"] .chip { background: transparent; border-color: #c2adff; }
-  :root:not([data-theme="light"])[data-accent="onyx"] .todayband { background: #6321fb; border-color: #6321fb; }
-  :root:not([data-theme="light"])[data-accent="onyx"] .nextup { border: 2px solid #88ffc0; }
-  :root:not([data-theme="light"])[data-accent="onyx"] .fp-card { background: #101010; border-color: #101010; }
-  :root:not([data-theme="light"])[data-accent="onyx"] .lpin.hotel { box-shadow: 0 0 0 2px #88ffc0; }
-  :root:not([data-theme="light"])[data-accent="onyx"] .fp-lab.v, :root:not([data-theme="light"])[data-accent="onyx"] .fp-lab.u { color: #101010; }
-  :root:not([data-theme="light"])[data-accent="onyx"] .tab .today { background: #88ffc0; color: #101010; }
-  :root:not([data-theme="light"])[data-accent="onyx"] .bars .fill { background: #88ffc0; }
+  :root:not([data-theme="light"])[data-accent="onyx"] { --color-page: oklch(14.5% 0.006 285); --color-bar: oklch(16% 0.007 285);
+    --color-section: oklch(18.5% 0.008 285); --section-edge: oklch(25% 0.011 285); --section-shadow: none;
+    --color-card: oklch(20.5% 0.009 285); --color-card-edge: oklch(28% 0.012 285);
+    --color-paper: oklch(16.5% 0.007 285); --color-paper-2: oklch(22.5% 0.01 285); --color-paper-3: oklch(27% 0.012 285);
+    --color-ink: oklch(94% 0.005 285); --color-ink-2: oklch(86% 0.008 285); --color-muted: oklch(72% 0.012 285); --color-pencil: oklch(72% 0.012 285);
+    --color-rule: oklch(27% 0.01 285); --color-edge: oklch(48% 0.014 285);
+    --color-accent: oklch(72% 0.13 283); --color-accent-strong: oklch(79% 0.11 283); --color-accent-ink: oklch(17% 0.03 283); --color-accent-wash: oklch(26% 0.045 283);
+    --color-now: oklch(84% 0.09 165); --color-now-ink: oklch(19% 0.03 165); --color-success: oklch(84% 0.09 165); --color-focus: oklch(80% 0.1 283);
+    --color-visited: oklch(66% 0.13 283); --color-upcoming: oklch(84% 0.09 165);
+    --color-mark-2: oklch(84% 0.09 165); --color-mark-2-ink: oklch(19% 0.03 165);
+    --color-error: oklch(76% 0.12 25); --color-error-wash: oklch(25% 0.04 25); --color-warn: oklch(84% 0.1 80); --color-warn-wash: oklch(25% 0.035 80);
+    --color-map-sea: oklch(16.5% 0.01 280); --color-map-land: oklch(25% 0.012 285); --color-map-edge: oklch(34% 0.015 285); --color-map-arc: oklch(72% 0.13 283 / 0.8);
+    --color-overlay: oklch(8% 0.01 285 / 0.72); --shadow-card: 0 0 0 1px oklch(30% 0.012 285), 0 12px 32px -12px oklch(5% 0 0 / 0.6);
+    --nextup-bg: oklch(20.5% 0.02 283); --nextup-fg: oklch(94% 0.005 285); --nextup-sub: oklch(80% 0.01 285); --nextup-edge: oklch(84% 0.09 165);
+    --color-drop: oklch(26% 0.045 283); --color-home: oklch(86% 0.008 285);
+    --badge-bg: oklch(29% 0.06 283); --badge-ink: oklch(86% 0.07 283); --badge-hotel-bg: oklch(28% 0.045 165); --badge-hotel-ink: oklch(86% 0.08 165); }
+  :root:not([data-theme="light"])[data-accent="onyx"] .badge.c-attraction, :root:not([data-theme="light"])[data-accent="onyx"] .badge.c-food, :root:not([data-theme="light"])[data-accent="onyx"] .badge.c-transport, :root:not([data-theme="light"])[data-accent="onyx"] .badge.c-activity, :root:not([data-theme="light"])[data-accent="onyx"] .badge.c-air { background: var(--badge-bg); border-color: var(--badge-bg); color: var(--badge-ink); }
+  :root:not([data-theme="light"])[data-accent="onyx"] .badge.c-hotel { background: var(--badge-hotel-bg); border-color: var(--badge-hotel-bg); color: var(--badge-hotel-ink); }
+  :root:not([data-theme="light"])[data-accent="onyx"] .seg button[aria-pressed="true"] { background: oklch(31% 0.02 283); color: var(--color-ink); box-shadow: inset 0 0 0 1px oklch(40% 0.03 283); }
+  :root:not([data-theme="light"])[data-accent="onyx"] .nextup { border: 1px solid var(--nextup-edge); }
+  :root:not([data-theme="light"])[data-accent="onyx"] .fp-card { background: var(--color-card); }
+  :root:not([data-theme="light"])[data-accent="onyx"] .fp-lab.v { color: var(--color-accent-ink); }
+  :root:not([data-theme="light"])[data-accent="onyx"] .fp-lab.u { color: var(--color-now-ink); }
+  :root:not([data-theme="light"])[data-accent="onyx"] .tab .today { background: var(--color-now); color: var(--color-now-ink); }
+  :root:not([data-theme="light"])[data-accent="onyx"] .btn:not(.btn--primary):not(.btn--danger), :root:not([data-theme="light"])[data-accent="onyx"] .input, :root:not([data-theme="light"])[data-accent="onyx"] .item-tools select { border-color: oklch(42% 0.014 285); }
+  :root:not([data-theme="light"])[data-accent="onyx"] .btn--danger { border-color: oklch(42% 0.014 285); }
 }
-:root[data-theme="dark"][data-accent="onyx"] { --color-page: #101010; --color-bar: #101010;
-    --color-section: #6321fb; --section-edge: #7440ff; --section-shadow: none;
-    --color-card: #6321fb; --color-card-edge: #8a5cff;
-    --color-paper: #2c0c8a; --color-paper-2: #4a17c9; --color-paper-3: #3a12a6;
-    --color-ink: #ffffff; --color-ink-2: #f3efff; --color-muted: #e4dcff; --color-pencil: #e4dcff;
-    --color-rule: #8458ff; --color-edge: #c2adff;
-    --color-accent: #88ffc0; --color-accent-strong: #b0ffd6; --color-accent-ink: #101010; --color-accent-wash: #3a12a6;
-    --color-now: #88ffc0; --color-now-ink: #101010; --color-success: #88ffc0; --color-focus: #88ffc0;
-    --color-visited: #88ffc0; --color-upcoming: #ffffff;
-    --color-mark-2: #101010; --color-mark-2-ink: #88ffc0;
-    --color-error: #ffd2d2; --color-error-wash: #3d0d2a; --color-warn: #ffe08a; --color-warn-wash: #2e1f00;
-    --color-map-sea: #101010; --color-map-land: #2f0f94; --color-map-edge: #7a4dff; --color-map-arc: #88ffc0;
-    --color-overlay: rgb(0 0 0 / 0.72); --shadow-card: 0 12px 32px -12px rgb(0 0 0 / 0.6);
-    --nextup-bg: #101010; --nextup-fg: #ffffff; --nextup-sub: #e4dcff; --nextup-edge: #88ffc0;
-    --color-drop: #2c0c8a; --color-home: #ffffff; }
-:root[data-theme="dark"][data-accent="onyx"] .seg button[aria-pressed="true"], :root[data-theme="dark"][data-accent="onyx"] .chip[aria-pressed="true"] { background: #88ffc0; color: #101010; border-color: #88ffc0; }
-:root[data-theme="dark"][data-accent="onyx"] .seg { background: #4a17c9; }
-:root[data-theme="dark"][data-accent="onyx"] .chip { background: transparent; border-color: #c2adff; }
-:root[data-theme="dark"][data-accent="onyx"] .todayband { background: #6321fb; border-color: #6321fb; }
-:root[data-theme="dark"][data-accent="onyx"] .nextup { border: 2px solid #88ffc0; }
-:root[data-theme="dark"][data-accent="onyx"] .fp-card { background: #101010; border-color: #101010; }
-:root[data-theme="dark"][data-accent="onyx"] .lpin.hotel { box-shadow: 0 0 0 2px #88ffc0; }
-:root[data-theme="dark"][data-accent="onyx"] .fp-lab.v, :root[data-theme="dark"][data-accent="onyx"] .fp-lab.u { color: #101010; }
-:root[data-theme="dark"][data-accent="onyx"] .tab .today { background: #88ffc0; color: #101010; }
-:root[data-theme="dark"][data-accent="onyx"] .bars .fill { background: #88ffc0; }
+:root[data-theme="dark"][data-accent="onyx"] { --color-page: oklch(14.5% 0.006 285); --color-bar: oklch(16% 0.007 285);
+    --color-section: oklch(18.5% 0.008 285); --section-edge: oklch(25% 0.011 285); --section-shadow: none;
+    --color-card: oklch(20.5% 0.009 285); --color-card-edge: oklch(28% 0.012 285);
+    --color-paper: oklch(16.5% 0.007 285); --color-paper-2: oklch(22.5% 0.01 285); --color-paper-3: oklch(27% 0.012 285);
+    --color-ink: oklch(94% 0.005 285); --color-ink-2: oklch(86% 0.008 285); --color-muted: oklch(72% 0.012 285); --color-pencil: oklch(72% 0.012 285);
+    --color-rule: oklch(27% 0.01 285); --color-edge: oklch(48% 0.014 285);
+    --color-accent: oklch(72% 0.13 283); --color-accent-strong: oklch(79% 0.11 283); --color-accent-ink: oklch(17% 0.03 283); --color-accent-wash: oklch(26% 0.045 283);
+    --color-now: oklch(84% 0.09 165); --color-now-ink: oklch(19% 0.03 165); --color-success: oklch(84% 0.09 165); --color-focus: oklch(80% 0.1 283);
+    --color-visited: oklch(66% 0.13 283); --color-upcoming: oklch(84% 0.09 165);
+    --color-mark-2: oklch(84% 0.09 165); --color-mark-2-ink: oklch(19% 0.03 165);
+    --color-error: oklch(76% 0.12 25); --color-error-wash: oklch(25% 0.04 25); --color-warn: oklch(84% 0.1 80); --color-warn-wash: oklch(25% 0.035 80);
+    --color-map-sea: oklch(16.5% 0.01 280); --color-map-land: oklch(25% 0.012 285); --color-map-edge: oklch(34% 0.015 285); --color-map-arc: oklch(72% 0.13 283 / 0.8);
+    --color-overlay: oklch(8% 0.01 285 / 0.72); --shadow-card: 0 0 0 1px oklch(30% 0.012 285), 0 12px 32px -12px oklch(5% 0 0 / 0.6);
+    --nextup-bg: oklch(20.5% 0.02 283); --nextup-fg: oklch(94% 0.005 285); --nextup-sub: oklch(80% 0.01 285); --nextup-edge: oklch(84% 0.09 165);
+    --color-drop: oklch(26% 0.045 283); --color-home: oklch(86% 0.008 285);
+    --badge-bg: oklch(29% 0.06 283); --badge-ink: oklch(86% 0.07 283); --badge-hotel-bg: oklch(28% 0.045 165); --badge-hotel-ink: oklch(86% 0.08 165); }
+:root[data-theme="dark"][data-accent="onyx"] .badge.c-attraction, :root[data-theme="dark"][data-accent="onyx"] .badge.c-food, :root[data-theme="dark"][data-accent="onyx"] .badge.c-transport, :root[data-theme="dark"][data-accent="onyx"] .badge.c-activity, :root[data-theme="dark"][data-accent="onyx"] .badge.c-air { background: var(--badge-bg); border-color: var(--badge-bg); color: var(--badge-ink); }
+:root[data-theme="dark"][data-accent="onyx"] .badge.c-hotel { background: var(--badge-hotel-bg); border-color: var(--badge-hotel-bg); color: var(--badge-hotel-ink); }
+:root[data-theme="dark"][data-accent="onyx"] .seg button[aria-pressed="true"] { background: oklch(31% 0.02 283); color: var(--color-ink); box-shadow: inset 0 0 0 1px oklch(40% 0.03 283); }
+:root[data-theme="dark"][data-accent="onyx"] .nextup { border: 1px solid var(--nextup-edge); }
+:root[data-theme="dark"][data-accent="onyx"] .fp-card { background: var(--color-card); }
+:root[data-theme="dark"][data-accent="onyx"] .fp-lab.v { color: var(--color-accent-ink); }
+:root[data-theme="dark"][data-accent="onyx"] .fp-lab.u { color: var(--color-now-ink); }
+:root[data-theme="dark"][data-accent="onyx"] .tab .today { background: var(--color-now); color: var(--color-now-ink); }
+:root[data-theme="dark"][data-accent="onyx"] .btn:not(.btn--primary):not(.btn--danger), :root[data-theme="dark"][data-accent="onyx"] .input, :root[data-theme="dark"][data-accent="onyx"] .item-tools select { border-color: oklch(42% 0.014 285); }
+:root[data-theme="dark"][data-accent="onyx"] .btn--danger { border-color: oklch(42% 0.014 285); }
 
 /* OpenStreetMap tiles have no dark style: darken them to match the dark theme */
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .osm-tiles { filter: grayscale(0.9) invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); } }
@@ -1775,7 +1782,7 @@ function footHTML(){
       <div class="fp-card">
         <div class="fp-figs"><div><span class="sub">Countries lit up</span><p class="fp-num"><b>${fp.countries}</b><span>/ 195</span></p></div><div><span class="sub">Regions lit up</span><p class="fp-num"><b>${fp.regions}</b></p></div></div>
         <div class="fp-bar" role="img" aria-label="${fp.countries} of 195 countries"><span style="width:${pct}%"></span></div>
-        <p class="sub">${fp.cities} ${fp.cities === 1 ? 'city' : 'cities'} · ${fp.days} ${fp.days === 1 ? 'day' : 'days'} away · ${fp.trips} ${fp.trips === 1 ? 'trip' : 'trips'}</p></div>
+        <dl class="fp-more"><div><dt>Cities</dt><dd>${fp.cities}</dd></div><div><dt>Days away</dt><dd>${fp.days}</dd></div><div><dt>Trips</dt><dd>${fp.trips}</dd></div></dl></div>
       <ul class="legend" aria-label="Map key"><li><span class="key"></span>Visited</li><li><span class="key up"></span>Coming up</li></ul>
     </div>
     <div class="fp-map" id="fpmap" role="img" aria-label="World map with the places you've been lit up. Pinch, double-tap or use the buttons to zoom.">
@@ -2031,7 +2038,7 @@ function scrSettings(){
       <p class="state ${library.helperUrl ? 'ok' : 'warn'}">${I(library.helperUrl ? 'check' : 'alert','sm')}${library.helperUrl ? 'Connected' : 'Not set up'}</p>
       <div class="chips"><button type="button" class="btn" data-act="dialog" data-d="helper">${library.helperUrl ? 'Change it' : 'Set it up'}</button>${library.helperUrl ? '<button type="button" class="btn btn--quiet" data-act="delhelper">Disconnect</button>' : ''}</div></section>
     <section class="set box" aria-labelledby="h-look"><h2 id="h-look">Appearance</h2><p>Automatic follows this device's light or dark setting.</p>
-      <div class="seg" role="group" aria-label="Appearance"><button type="button" data-act="theme" data-v="auto" aria-pressed="${dev.theme === 'auto'}">Automatic</button><button type="button" data-act="theme" data-v="light" aria-pressed="${dev.theme === 'light'}">Light</button><button type="button" data-act="theme" data-v="dark" aria-pressed="${dev.theme === 'dark'}">Dark</button></div><h3 style="margin-top:var(--space-sm)">Colour in dark mode</h3><div class="seg accentpick" role="group" aria-label="Colour in dark mode">${[['onyx','Onyx, indigo & mint','linear-gradient(135deg, #101010 33%, #6321fb 33% 66%, #88ffc0 66%)'],['orange','Orange','oklch(76% 0.15 58)'],['pink','Bubblegum','oklch(79% 0.15 350)'],['lime','Signal lime','oklch(90% 0.2 126)'],['dawn','First light','oklch(86% 0.075 42)']].map(([v, l, c]) => `<button type="button" data-act="accent" data-v="${v}" aria-pressed="${dev.accent === v}"><span class="swatch" style="background:${c}"></span>${l}</button>`).join('')}</div></section>
+      <div class="seg" role="group" aria-label="Appearance"><button type="button" data-act="theme" data-v="auto" aria-pressed="${dev.theme === 'auto'}">Automatic</button><button type="button" data-act="theme" data-v="light" aria-pressed="${dev.theme === 'light'}">Light</button><button type="button" data-act="theme" data-v="dark" aria-pressed="${dev.theme === 'dark'}">Dark</button></div><h3 style="margin-top:var(--space-sm)">Colour in dark mode</h3><div class="seg accentpick" role="group" aria-label="Colour in dark mode">${[['onyx','Onyx & indigo','linear-gradient(135deg, oklch(20% 0.01 285) 40%, oklch(72% 0.13 283) 40% 75%, oklch(84% 0.09 165) 75%)'],['orange','Orange','oklch(76% 0.15 58)'],['pink','Bubblegum','oklch(79% 0.15 350)'],['lime','Signal lime','oklch(90% 0.2 126)'],['dawn','First light','oklch(86% 0.075 42)']].map(([v, l, c]) => `<button type="button" data-act="accent" data-v="${v}" aria-pressed="${dev.accent === v}"><span class="swatch" style="background:${c}"></span>${l}</button>`).join('')}</div></section>
     <section class="set box" aria-labelledby="h-size"><h2 id="h-size">Text size on this device</h2><p>The iPad and the computer each keep their own size.</p>
       <div class="chips" style="align-items:center"><button type="button" class="btn" data-act="sz" data-d="-1" aria-label="Smaller text">Smaller</button><span class="num" style="min-width:4rem;text-align:center">${Math.round(dev.scale * 100)}%</span><button type="button" class="btn" data-act="sz" data-d="1" aria-label="Larger text">Larger</button></div></section>
     <section class="set box" aria-labelledby="h-bk"><h2 id="h-bk">Backups</h2><p>${sync.token ? 'Sync already keeps every version. ' : ''}A downloaded backup is an extra copy you keep yourself, for example in Google Drive. Keys and tokens are never in it.</p>
