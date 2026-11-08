@@ -311,7 +311,7 @@ function addPlace(noPin = false){
     if(noPin){
       const name = S.addMode === 'search' ? S.q.trim() : ((S.linkRes && S.linkRes.name) || parseMaps(S.link).name || '').trim();
       if(!name){ S.addErr = 'Type the name of the place first.'; render(); return; }
-      found = { name, addr:'', lat:null, lon:null };
+      found = { name, addr:'', lat:null, lon:null, gmap:S.addMode === 'link' ? linkIn(S.link) : '' };
     } else if(S.addMode === 'search'){
       if(S.picked && S.picked.pending){ S.addErr = 'Still confirming the location. Try again in a moment.'; render(); return; }
       if(!S.picked){ S.addErr = S.q.trim() ? 'Pick a result from the list so the place lands on the map, or add it without a location and drop a pin later.' : 'Search for the place first.'; render(); return; }
@@ -319,9 +319,11 @@ function addPlace(noPin = false){
     } else {
       const r = S.linkRes;
       if(!r || r.kind !== 'coords'){ S.addErr = r && (r.kind === 'notfound' || r.kind === 'nohelper' || r.kind === 'helperfail') ? 'This link has no location the app can read. You can add it without a location and drop a pin later.' : 'Paste a Google Maps link that shows a location first.'; render(); return; }
-      found = { name:r.name, addr:r.addr || '', lat:r.lat, lon:r.lon };
+      found = { name:r.name, addr:r.addr || '', lat:r.lat, lon:r.lon, gmap:linkIn(S.link) };
     }
     const base = { name:found.name, address:found.addr || '', lat:found.lat, lon:found.lon, note:S.addNote };
+    if(cleanGmap(found.gmap)) base.gmap = found.gmap;
+    if(cleanPlaceId(found.placeId)) base.placeId = found.placeId;
     if(t === 'hotel'){
       const a = S.hFrom ?? di, b = S.hTo ?? di; const lo = Math.min(a, b), hi = Math.max(a, b);
       for(let j = lo; j <= hi; j++){ const ps = trip.days[j].places; ps.splice(ps.filter(p => p.type === 'flight').length, 0, Object.assign({ id:uid(), type:'hotel' }, base)); }
@@ -534,7 +536,7 @@ document.addEventListener('click', e => {
       if(r.lat != null){ S.picked = { name:r.label, addr:r.sub, lat:r.lat, lon:r.lon }; S.q = r.label; }
       else {
         S.picked = { name:r.label, addr:r.sub, pending:true }; S.q = r.label;
-        resolveGooglePlace(r.googlePrediction).then(loc => { if(!S.picked || S.picked.name !== r.label) return; if(loc){ S.picked = { name:r.label, addr:loc.addr || r.sub, lat:loc.lat, lon:loc.lon }; } else { S.picked = null; S.results = []; } paintResults(); });
+        resolveGooglePlace(r.googlePrediction).then(loc => { if(!S.picked || S.picked.name !== r.label) return; if(loc){ S.picked = { name:r.label, addr:loc.addr || r.sub, lat:loc.lat, lon:loc.lon, placeId:loc.placeId }; } else { S.picked = null; S.results = []; } paintResults(); });
       }
       const q = document.getElementById('aq'); if(q) q.value = S.q; paintResults(); return;
     }

@@ -36,6 +36,21 @@ function uid(){ return Date.now().toString(36) + Math.random().toString(36).slic
 // Ids are made by uid(): letters and digits. Anything else in a file or in synced data gets a fresh one.
 const SAFE_ID = /^[A-Za-z0-9_-]{1,40}$/;
 const cleanId = (v, seen) => { let id = typeof v === 'string' && SAFE_ID.test(v) && !(seen && seen.has(v)) ? v : uid(); if(seen) seen.add(id); return id; };
+// A Google Maps link kept with a place (the one it was added from), and Google's id for a place.
+const GMAP_LINK = /^https:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/kgs|(www\.)?google\.[a-z.]{2,12}\/maps|maps\.google\.[a-z.]{2,12})\/[^\s"'<>]*$/;
+const cleanGmap = v => typeof v === 'string' && v.length <= 2000 && GMAP_LINK.test(v) ? v : '';
+const cleanPlaceId = v => typeof v === 'string' && /^[A-Za-z0-9_-]{10,300}$/.test(v) ? v : '';
+// Opens the place itself in Google Maps: the link it came from, else Google's id for it, else a search for
+// its name around its pin. A bare position only shows a dropped pin, not the place.
+function gmapsHref(p){
+  if(cleanGmap(p.gmap)) return p.gmap;
+  const q = [p.name, p.address].filter(Boolean).join(', ');
+  if(cleanPlaceId(p.placeId)) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q || p.name || '')}&query_place_id=${p.placeId}`;
+  if(p.name && p.lat != null) return `https://www.google.com/maps/search/${encodeURIComponent(q)}/@${(+p.lat).toFixed(6)},${(+p.lon).toFixed(6)},17z`;
+  return `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}`;
+}
+// The Google Maps link in pasted text, made https.
+const linkIn = text => { const m = String(text || '').match(/https?:\/\/\S+/); return m ? cleanGmap(m[0].replace(/^http:/, 'https:')) : ''; };
 const num0 = v => { const n = Number(v); return Number.isFinite(n) ? n : null; };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const I = (name, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -142,6 +157,8 @@ function migrateState(t){
       if(typeof p.name !== 'string') p.name = String(p.name || '');
       if(typeof p.note !== 'string') p.note = String(p.note || '');
       if(p.address != null && typeof p.address !== 'string') p.address = String(p.address);
+      if(p.gmap !== undefined && !(p.gmap = cleanGmap(p.gmap))) delete p.gmap;
+      if(p.placeId !== undefined && !(p.placeId = cleanPlaceId(p.placeId))) delete p.placeId;
       const okLat = typeof p.lat === 'number' && Math.abs(p.lat) <= 90, okLon = typeof p.lon === 'number' && Math.abs(p.lon) <= 180;
       if(!okLat || !okLon){
         p.lat = null; p.lon = null;
@@ -360,7 +377,8 @@ async function resolveGooglePlace(pp){
     // Basic fields only: location and formattedAddress stay in the free Essentials tier.
     await place.fetchFields({ fields:['location','formattedAddress'] });
     trackApiCall('placeDetails'); googleSessionToken = null;
-    return place.location ? { lat: place.location.lat(), lon: place.location.lng(), addr: place.formattedAddress || '' } : null;
+    // The place id costs nothing extra: it is part of every answer.
+    return place.location ? { lat: place.location.lat(), lon: place.location.lng(), addr: place.formattedAddress || '', placeId: pp.placeId || place.id || '' } : null;
   }catch(e){ console.error('Could not confirm the Google place', e); return null; }
 }
 async function searchPlaces(query, cityHint){

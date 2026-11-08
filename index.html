@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-HhuyKw43gxL9LvqLhsNin3uMDBHq4R82f3wF0SmBItE=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-C0Cnnq+IKmejpOYU3GQwxqeSXyS+SJLC5NGbVCs03V8=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Milo &amp; Miles</title>
 <meta name="description" content="Plan each trip day by day: places, hotels, flights, a map and spending.">
@@ -972,6 +972,21 @@ function uid(){ return Date.now().toString(36) + Math.random().toString(36).slic
 // Ids are made by uid(): letters and digits. Anything else in a file or in synced data gets a fresh one.
 const SAFE_ID = /^[A-Za-z0-9_-]{1,40}$/;
 const cleanId = (v, seen) => { let id = typeof v === 'string' && SAFE_ID.test(v) && !(seen && seen.has(v)) ? v : uid(); if(seen) seen.add(id); return id; };
+// A Google Maps link kept with a place (the one it was added from), and Google's id for a place.
+const GMAP_LINK = /^https:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/kgs|(www\.)?google\.[a-z.]{2,12}\/maps|maps\.google\.[a-z.]{2,12})\/[^\s"'<>]*$/;
+const cleanGmap = v => typeof v === 'string' && v.length <= 2000 && GMAP_LINK.test(v) ? v : '';
+const cleanPlaceId = v => typeof v === 'string' && /^[A-Za-z0-9_-]{10,300}$/.test(v) ? v : '';
+// Opens the place itself in Google Maps: the link it came from, else Google's id for it, else a search for
+// its name around its pin. A bare position only shows a dropped pin, not the place.
+function gmapsHref(p){
+  if(cleanGmap(p.gmap)) return p.gmap;
+  const q = [p.name, p.address].filter(Boolean).join(', ');
+  if(cleanPlaceId(p.placeId)) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q || p.name || '')}&query_place_id=${p.placeId}`;
+  if(p.name && p.lat != null) return `https://www.google.com/maps/search/${encodeURIComponent(q)}/@${(+p.lat).toFixed(6)},${(+p.lon).toFixed(6)},17z`;
+  return `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}`;
+}
+// The Google Maps link in pasted text, made https.
+const linkIn = text => { const m = String(text || '').match(/https?:\/\/\S+/); return m ? cleanGmap(m[0].replace(/^http:/, 'https:')) : ''; };
 const num0 = v => { const n = Number(v); return Number.isFinite(n) ? n : null; };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const I = (name, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -1078,6 +1093,8 @@ function migrateState(t){
       if(typeof p.name !== 'string') p.name = String(p.name || '');
       if(typeof p.note !== 'string') p.note = String(p.note || '');
       if(p.address != null && typeof p.address !== 'string') p.address = String(p.address);
+      if(p.gmap !== undefined && !(p.gmap = cleanGmap(p.gmap))) delete p.gmap;
+      if(p.placeId !== undefined && !(p.placeId = cleanPlaceId(p.placeId))) delete p.placeId;
       const okLat = typeof p.lat === 'number' && Math.abs(p.lat) <= 90, okLon = typeof p.lon === 'number' && Math.abs(p.lon) <= 180;
       if(!okLat || !okLon){
         p.lat = null; p.lon = null;
@@ -1296,7 +1313,8 @@ async function resolveGooglePlace(pp){
     // Basic fields only: location and formattedAddress stay in the free Essentials tier.
     await place.fetchFields({ fields:['location','formattedAddress'] });
     trackApiCall('placeDetails'); googleSessionToken = null;
-    return place.location ? { lat: place.location.lat(), lon: place.location.lng(), addr: place.formattedAddress || '' } : null;
+    // The place id costs nothing extra: it is part of every answer.
+    return place.location ? { lat: place.location.lat(), lon: place.location.lng(), addr: place.formattedAddress || '', placeId: pp.placeId || place.id || '' } : null;
   }catch(e){ console.error('Could not confirm the Google place', e); return null; }
 }
 async function searchPlaces(query, cityHint){
@@ -2060,7 +2078,7 @@ function tripMapPanel(where){
   const groups = t.days.map((d, j) => { const o = d.places.filter(p => p.type !== 'flight' && p.lat != null); return o.length ? `<optgroup label="${esc(dayLabel(d, j).replace(/, \d+ \w+,/, ','))}">${o.map(p => `<option value="${esc(p.id)}" ${S.mapFocus === p.id ? 'selected' : ''}>${p.type === 'hotel' ? esc(p.name) + ' (hotel)' : nums[p.id] + '. ' + esc(p.name)}</option>`).join('')}</optgroup>` : ''; }).join('');
   const unplaced = ov ? [] : t.days[i].places.filter(p => p.lat == null && p.type !== 'flight');
   let popup = '';
-  if(S.mapPopup){ const f = findPlace(S.mapPopup); if(f){ const p = f.p; const di = t.days.indexOf(f.d); popup = `<div class="popup"><div class="top"><b>${p.type === 'hotel' ? '' : (nums[p.id] || '') + '. '}${esc(p.name)}</b><button type="button" class="iconbtn" data-act="closepop" aria-label="Close details">${I('x','sm')}</button></div><span class="sub">${p.type === 'hotel' ? 'Hotel, ' + dayList(hotelDays(t, p.name)) : 'Day ' + (di + 1) + (f.d.city ? ', ' + esc(f.d.city) : '') + (p.time ? ', ' + p.time : '')}</span>${ov || di !== S.day ? `<div><button type="button" class="link" data-act="day" data-i="${esc(di)}">Open Day ${di + 1}</button></div>` : ''}${p.address ? `<span class="sub">${esc(p.address)}</span>` : ''}${p.note ? `<p>${esc(p.note)}</p>` : ''}<div class="chips"><a class="link" href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}" target="_blank" rel="noopener">Open in Google Maps</a></div></div>`; } }
+  if(S.mapPopup){ const f = findPlace(S.mapPopup); if(f){ const p = f.p; const di = t.days.indexOf(f.d); popup = `<div class="popup"><div class="top"><b>${p.type === 'hotel' ? '' : (nums[p.id] || '') + '. '}${esc(p.name)}</b><button type="button" class="iconbtn" data-act="closepop" aria-label="Close details">${I('x','sm')}</button></div><span class="sub">${p.type === 'hotel' ? 'Hotel, ' + dayList(hotelDays(t, p.name)) : 'Day ' + (di + 1) + (f.d.city ? ', ' + esc(f.d.city) : '') + (p.time ? ', ' + p.time : '')}</span>${ov || di !== S.day ? `<div><button type="button" class="link" data-act="day" data-i="${esc(di)}">Open Day ${di + 1}</button></div>` : ''}${p.address ? `<span class="sub">${esc(p.address)}</span>` : ''}${p.note ? `<p>${esc(p.note)}</p>` : ''}<div class="chips"><a class="link" href="${esc(gmapsHref(p))}" target="_blank" rel="noopener">Open in Google Maps</a></div></div>`; } }
   const picking = S.picking ? findPlace(S.picking) : null;
   S.lastMap = { filter, focus:S.mapFocus, picking:!!picking, curDay:i };
   const full = S.mapFull;
@@ -2766,7 +2784,7 @@ function addPlace(noPin = false){
     if(noPin){
       const name = S.addMode === 'search' ? S.q.trim() : ((S.linkRes && S.linkRes.name) || parseMaps(S.link).name || '').trim();
       if(!name){ S.addErr = 'Type the name of the place first.'; render(); return; }
-      found = { name, addr:'', lat:null, lon:null };
+      found = { name, addr:'', lat:null, lon:null, gmap:S.addMode === 'link' ? linkIn(S.link) : '' };
     } else if(S.addMode === 'search'){
       if(S.picked && S.picked.pending){ S.addErr = 'Still confirming the location. Try again in a moment.'; render(); return; }
       if(!S.picked){ S.addErr = S.q.trim() ? 'Pick a result from the list so the place lands on the map, or add it without a location and drop a pin later.' : 'Search for the place first.'; render(); return; }
@@ -2774,9 +2792,11 @@ function addPlace(noPin = false){
     } else {
       const r = S.linkRes;
       if(!r || r.kind !== 'coords'){ S.addErr = r && (r.kind === 'notfound' || r.kind === 'nohelper' || r.kind === 'helperfail') ? 'This link has no location the app can read. You can add it without a location and drop a pin later.' : 'Paste a Google Maps link that shows a location first.'; render(); return; }
-      found = { name:r.name, addr:r.addr || '', lat:r.lat, lon:r.lon };
+      found = { name:r.name, addr:r.addr || '', lat:r.lat, lon:r.lon, gmap:linkIn(S.link) };
     }
     const base = { name:found.name, address:found.addr || '', lat:found.lat, lon:found.lon, note:S.addNote };
+    if(cleanGmap(found.gmap)) base.gmap = found.gmap;
+    if(cleanPlaceId(found.placeId)) base.placeId = found.placeId;
     if(t === 'hotel'){
       const a = S.hFrom ?? di, b = S.hTo ?? di; const lo = Math.min(a, b), hi = Math.max(a, b);
       for(let j = lo; j <= hi; j++){ const ps = trip.days[j].places; ps.splice(ps.filter(p => p.type === 'flight').length, 0, Object.assign({ id:uid(), type:'hotel' }, base)); }
@@ -2989,7 +3009,7 @@ document.addEventListener('click', e => {
       if(r.lat != null){ S.picked = { name:r.label, addr:r.sub, lat:r.lat, lon:r.lon }; S.q = r.label; }
       else {
         S.picked = { name:r.label, addr:r.sub, pending:true }; S.q = r.label;
-        resolveGooglePlace(r.googlePrediction).then(loc => { if(!S.picked || S.picked.name !== r.label) return; if(loc){ S.picked = { name:r.label, addr:loc.addr || r.sub, lat:loc.lat, lon:loc.lon }; } else { S.picked = null; S.results = []; } paintResults(); });
+        resolveGooglePlace(r.googlePrediction).then(loc => { if(!S.picked || S.picked.name !== r.label) return; if(loc){ S.picked = { name:r.label, addr:loc.addr || r.sub, lat:loc.lat, lon:loc.lon, placeId:loc.placeId }; } else { S.picked = null; S.results = []; } paintResults(); });
       }
       const q = document.getElementById('aq'); if(q) q.value = S.q; paintResults(); return;
     }
