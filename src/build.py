@@ -5,6 +5,7 @@ Run: python3 src/build.py   (from the repo root or from src/)
 - extra.css: the app's own styles, added after the mockup's.
   A block between /*@dark*/ and /*@end*/ is written once with ":dark" as the selector; the build
   writes it out twice: for "Automatic" when the device is in dark mode, and for "Dark" picked in Settings.
+  /*@light*/ ... /*@end*/ with ":light" works the same way for light mode.
 - app.js, app2.js, app3.js: the app, in that order.
 - helper.gs: the short-link reader script shown in Settings. world2.json: the footprint map.
 """
@@ -20,6 +21,13 @@ def expand_dark(css):
                 + block.replace(':dark', PICKED))
     out = re.sub(r'/\*@dark\*/\n(.*?)\n/\*@end\*/', both, css, flags=re.S)
     assert ':dark' not in out.replace(':dark-', ''), 'a :dark selector outside a /*@dark*/ block'
+    # The same for light mode: "Automatic" on a light device, and "Light" picked in Settings.
+    def light(m):
+        block = m.group(1).strip('\n')
+        return ('@media not all and (prefers-color-scheme: dark) {\n' + block.replace(':light', ':root:not([data-theme="dark"])') + '\n}\n'
+                + block.replace(':light', ':root[data-theme="light"]'))
+    out = re.sub(r'/\*@light\*/\n(.*?)\n/\*@end\*/', light, out, flags=re.S)
+    assert ':light' not in out, 'a :light selector outside a /*@light*/ block'
     return out
 
 tpl = read('template.html')

@@ -398,16 +398,21 @@ function tripCities(t){ if(t.kind === 'maponly') return t.cities.filter(Boolean)
 const cityQueue = new Set(); let cityBusy = false;
 async function lookupCity(name){
   try{
-    const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(name)}&limit=1&lang=en&osm_tag=place`);
-    const j = await r.json(); const f = j && j.features && j.features[0];
-    if(!f) return { miss:true, at:Date.now() };
+    const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(name)}&limit=6&lang=en&osm_tag=place`);
+    if(!r.ok) return null; // busy or down: try again later, don't remember a miss
+    const j = await r.json(); const fs = (j && j.features) || [];
+    // A city or town beats a village or hamlet of the same name (many Chinese place names repeat).
+    const rank = f => ({ city:0, town:1, municipality:1, borough:2, county:3, village:4, suburb:5, quarter:5, neighbourhood:6, hamlet:7 })[(f.properties || {}).osm_value] ?? 6;
+    const f = fs.slice().sort((a, b) => rank(a) - rank(b))[0];
+    if(!f) return { miss:true, at:Date.now(), v:2 };
     const pr = f.properties || {};
-    return { lat:f.geometry.coordinates[1], lon:f.geometry.coordinates[0], country:pr.country || '', cc:(pr.countrycode || '').toUpperCase(), state:pr.state || '', name:pr.name || name };
+    return { lat:f.geometry.coordinates[1], lon:f.geometry.coordinates[0], country:pr.country || '', cc:(pr.countrycode || '').toUpperCase(), state:pr.state || '', name:pr.name || name, v:2 };
   }catch(e){ return null; }
 }
 function cityGeo(name){
   const k = name.toLowerCase(); const c = library.cityCache[k];
-  if(c && !c.miss){ if(c.cc === undefined && !cityQueue.has(k)){ c.cc = ''; cityQueue.add(k); pumpCities(); } return c; } // older entries: look again for the country code
+  // Entries from before the lookup picked cities over villages are looked up once more.
+  if(c && !c.miss){ if(c.v !== 2 && !cityQueue.has(k)){ cityQueue.add(k); pumpCities(); } return c; }
   if(c && c.miss && Date.now() - c.at < 7 * 864e5) return null;
   if(!cityQueue.has(k)){ cityQueue.add(k); pumpCities(); }
   return null;
@@ -434,7 +439,10 @@ function cityPoint(name, t){
   if(!t || t.kind !== 'full') return null;
   const ps = []; t.days.forEach(d => { if(cityName(d.city).toLowerCase() === name.toLowerCase()) d.places.forEach(p => { if(p.lat != null) ps.push(p); }); });
   if(!ps.length) return null;
-  return { lat: ps.reduce((a, p) => a + p.lat, 0) / ps.length, lon: ps.reduce((a, p) => a + p.lon, 0) / ps.length, country:'' };
+  // Until the city itself is found: the hotel if there is one, else the first place. An average of the
+  // places could land between two cities, in a region you never went to.
+  const p = ps.find(x => x.type === 'hotel') || ps[0];
+  return { lat:p.lat, lon:p.lon, country:'' };
 }
 
 /* ===== what has been travelled so far ===== */
@@ -494,7 +502,8 @@ function cityUnit(name, pt){
   let u = unitAt(pt.lat, pt.lon) || unitAt(pt.lat, pt.lon, 8);
   // If the search says the city is in a different country, trust it and pick that country's nearest region.
   const g = library.cityCache[name.toLowerCase()];
-  if(g && g.cc && (!u || u.cc !== g.cc)){ const own = WM.units.filter(x => x.cc === g.cc); if(own.length === 1) u = own[0]; else if(own.length) u = unitAt(pt.lat, pt.lon, 60, own) || u; }
+  // (Hong Kong and Macau count as China, so their own areas stay when the search says CN.)
+  if(g && g.cc && (!u || (COUNTS_AS[u.cc] || u.cc) !== (COUNTS_AS[g.cc] || g.cc))){ const own = WM.units.filter(x => x.cc === g.cc); if(own.length === 1) u = own[0]; else if(own.length) u = unitAt(pt.lat, pt.lon, 60, own) || u; }
   const k = u ? u.k : null; footCache.set(key, k); return k;
 }
 const COUNTS_AS = { HK:'CN', MO:'CN' }; // for the country count

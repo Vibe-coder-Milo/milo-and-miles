@@ -6,7 +6,7 @@
 - Never break old saves or backups. Any change to a saved trip's shape goes through `migrateState()`, and to the library as a whole through `migrateLibrary()`. Storage keys keep their `trip-tracker-*` names on purpose.
 - Keep Google costs at zero: Place Details asks only for `location` and `formattedAddress`. Never add `editorialSummary`, ratings or hours.
 - No keys or tokens in this repo. The keys listed in `SHARED_KEYS` sync through the private `Trip-Tracker-data` repo; the GitHub token stays on each device and never goes into a sync, an export or a backup.
-- Dark mode has one colour scheme (onyx, midnight indigo, tropical mint). In `src/extra.css`, write each dark rule once inside a `/*@dark*/ … /*@end*/` block using `:dark` as the selector; the build writes it out for both "Automatic" and "Dark".
+- Dark mode is onyx, midnight indigo and tropical mint; light mode uses Signal lime (bright lime fills with near-black text, a deep olive for text and thin lines). In `src/extra.css`, write each dark rule once inside a `/*@dark*/ … /*@end*/` block using `:dark` as the selector, and each light-only rule in `/*@light*/ … /*@end*/` with `:light`; the build writes each out for both "Automatic" and the theme picked in Settings.
 - Security, because trips arrive from backup files and from sync:
   - `migrateState()` / `migrateLibrary()` check every field's kind (ids, currencies, dates, times, numbers, shared keys). Keep doing that for any new field.
   - Every value put into HTML goes through `esc()`, ids and numbers included. Never use inline `on…=` handlers or `javascript:` links: the Content Security Policy blocks them.

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-OZImKDagltkLZRMTd4D/JT+mvy+ES98UjpNdiV7b7y0=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-tyGLguSlmYoXqj1yUmHle+qxgZe4aQHY6hYjSIIIUqY=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Milo &amp; Miles</title>
 <meta name="description" content="Plan each trip day by day: places, hotels, flights, a map and spending.">
@@ -820,6 +820,79 @@ body.noscroll { overflow: hidden; }
 .topguard { position: fixed; top: 0; left: 0; right: 0; height: calc(env(safe-area-inset-top, 0px) + 3px); background: var(--color-bar); pointer-events: none; z-index: calc(var(--z-sticky-nav) + 1); }
 body:has(.gate) .topguard { background: var(--color-page); }
 @media print { .topguard { display: none; } }
+
+/* ===== Where you stay: no time or drag columns, so the hotel starts at the left edge ===== */
+.stays .item, .stays .item.timed { grid-template-columns: var(--row-badge) minmax(0, 1fr) calc(var(--control-h) * 2 + 4px); }
+.stays .item:not(.timed) > :first-child { grid-column: auto; }
+.stays .item > :empty:not(.badge):not(.item-main):not(.item-acts) { display: none; } /* the drag-handle spacer the plan rows need */
+@media (min-width: 40.01rem) { .stays .item:has(.item-edit) > .item-main { grid-column: 2 / -1; } }
+@media (max-width: 40rem) {
+  .stays .item, .stays .item.timed { grid-template-columns: var(--row-badge) minmax(0, 1fr); }
+  .stays .item .item-acts, .stays .item.timed .item-acts { grid-column: 2; }
+  .stays .item:has(.item-edit) > .item-main { grid-column: 1 / -1; }
+}
+
+/* ===== date and time boxes on iPad and iPhone =====
+   Safari draws these its own way: wider than the box it sits in, with the date centred, so on the Budget
+   form it ran into the panel's edge. Plain boxes that fit their column, text on the left. */
+input.input[type="date"], input.input[type="time"] { -webkit-appearance: none; appearance: none; display: block; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; line-height: 1.4; }
+input.input[type="date"]::-webkit-date-and-time-value, input.input[type="time"]::-webkit-date-and-time-value { text-align: left; margin: 0; min-height: 1.4em; }
+.grid2 > *, .grid3 > * { min-width: 0; }
+
+/* ===== Home map, full screen ===== */
+.fp-stage { display: flex; flex-direction: column; gap: var(--space-md); }
+.fp-stage.fpfull { position: fixed; inset: 0; z-index: var(--z-modal); gap: var(--space-sm); background: var(--color-section, var(--color-card)); padding: calc(env(safe-area-inset-top, 0px) + var(--space-sm)) max(var(--space-md), env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + var(--space-sm)) max(var(--space-md), env(safe-area-inset-left, 0px)); }
+.fpfull .fp-map { flex: 1 1 auto; aspect-ratio: auto; min-height: 0; }
+.fpfull .fp-legend { margin-bottom: 0; }
+.fp-fullbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }
+.fp-fullbar h2 { font-size: var(--text-xl); }
+.fpfull .hcap { max-height: 30vh; overflow: auto; }
+
+/* ===== light colour: Signal lime =====
+   A bright lime fills the main buttons, today, map pins and the places you've been, always with near-black
+   text on it. A deeper olive of the same green is used for thin lines and numbers so they stay readable on
+   white. Coming up stays orange. Dark mode keeps tropical mint. */
+@media not all and (prefers-color-scheme: dark) {
+:root:not([data-theme="dark"]) { --color-accent: oklch(48% 0.13 130); --color-accent-strong: oklch(42% 0.12 130); --color-accent-ink: #ffffff; --color-accent-wash: oklch(96.5% 0.05 125);
+  --color-now: #c6f432; --color-now-ink: #101010; --color-visited: #c6f432; --color-upcoming: oklch(62% 0.16 45); --color-drop: oklch(96.5% 0.05 125); }
+:root:not([data-theme="dark"]) .btn--primary { background: #c6f432; border-color: #c6f432; color: #101010; font-weight: 600; }
+:root:not([data-theme="dark"]) .btn--primary .ic { color: #101010; }
+@media (hover: hover) { :root:not([data-theme="dark"]) .btn--primary:hover:not(:disabled) { background: #d4f75e; border-color: #d4f75e; color: #101010; } }
+:root:not([data-theme="dark"]) .badge.c-attraction, :root:not([data-theme="dark"]) .badge.c-food, :root:not([data-theme="dark"]) .badge.c-transport, :root:not([data-theme="dark"]) .badge.c-activity, :root:not([data-theme="dark"]) .badge.c-air, :root:not([data-theme="dark"]) .badge.c-misc, :root:not([data-theme="dark"]) .pchip .n.c-attraction, :root:not([data-theme="dark"]) .pchip .n.c-food { background: #c6f432; border-color: oklch(48% 0.13 130 / 0.35); color: #101010; }
+:root:not([data-theme="dark"]) .lpin:not(.hotel) { background: #c6f432; color: #101010; }
+:root:not([data-theme="dark"]) .tab .today { background: #c6f432; color: #101010; }
+:root:not([data-theme="dark"]) .fp-u.v { stroke: oklch(48% 0.13 130); }
+:root:not([data-theme="dark"]) .fp-lab.v { background: #c6f432; color: #101010; }
+:root:not([data-theme="dark"]) .fp-stat.main .fp-num b { color: oklch(48% 0.13 130); }
+:root:not([data-theme="dark"]) .fp-bar span { background: oklch(48% 0.13 130); }
+:root:not([data-theme="dark"]) .key { background: #c6f432; box-shadow: inset 0 0 0 1px oklch(48% 0.13 130); }
+:root:not([data-theme="dark"]) .badge.cur { background: #c6f432; border-color: #c6f432; color: #101010; }
+:root:not([data-theme="dark"]) .nextup { border: 2px solid #c6f432; }
+:root:not([data-theme="dark"]) .todayband { border-color: oklch(48% 0.13 130); }
+/* the trip heading (name, dates, days, spending, and the day tabs) sits on a white panel like the rest */
+:root:not([data-theme="dark"]) .headpanel { display: flex; flex-direction: column; gap: var(--space-lg); background: var(--color-card); border: 1px solid var(--color-rule); border-radius: 14px; box-shadow: var(--shadow-card, none); padding: var(--space-lg); }
+:root:not([data-theme="dark"]) .headpanel .daystrip { margin-bottom: calc(var(--space-lg) * -1); }
+}
+:root[data-theme="light"] { --color-accent: oklch(48% 0.13 130); --color-accent-strong: oklch(42% 0.12 130); --color-accent-ink: #ffffff; --color-accent-wash: oklch(96.5% 0.05 125);
+  --color-now: #c6f432; --color-now-ink: #101010; --color-visited: #c6f432; --color-upcoming: oklch(62% 0.16 45); --color-drop: oklch(96.5% 0.05 125); }
+:root[data-theme="light"] .btn--primary { background: #c6f432; border-color: #c6f432; color: #101010; font-weight: 600; }
+:root[data-theme="light"] .btn--primary .ic { color: #101010; }
+@media (hover: hover) { :root[data-theme="light"] .btn--primary:hover:not(:disabled) { background: #d4f75e; border-color: #d4f75e; color: #101010; } }
+:root[data-theme="light"] .badge.c-attraction, :root[data-theme="light"] .badge.c-food, :root[data-theme="light"] .badge.c-transport, :root[data-theme="light"] .badge.c-activity, :root[data-theme="light"] .badge.c-air, :root[data-theme="light"] .badge.c-misc, :root[data-theme="light"] .pchip .n.c-attraction, :root[data-theme="light"] .pchip .n.c-food { background: #c6f432; border-color: oklch(48% 0.13 130 / 0.35); color: #101010; }
+:root[data-theme="light"] .lpin:not(.hotel) { background: #c6f432; color: #101010; }
+:root[data-theme="light"] .tab .today { background: #c6f432; color: #101010; }
+:root[data-theme="light"] .fp-u.v { stroke: oklch(48% 0.13 130); }
+:root[data-theme="light"] .fp-lab.v { background: #c6f432; color: #101010; }
+:root[data-theme="light"] .fp-stat.main .fp-num b { color: oklch(48% 0.13 130); }
+:root[data-theme="light"] .fp-bar span { background: oklch(48% 0.13 130); }
+:root[data-theme="light"] .key { background: #c6f432; box-shadow: inset 0 0 0 1px oklch(48% 0.13 130); }
+:root[data-theme="light"] .badge.cur { background: #c6f432; border-color: #c6f432; color: #101010; }
+:root[data-theme="light"] .nextup { border: 2px solid #c6f432; }
+:root[data-theme="light"] .todayband { border-color: oklch(48% 0.13 130); }
+/* the trip heading (name, dates, days, spending, and the day tabs) sits on a white panel like the rest */
+:root[data-theme="light"] .headpanel { display: flex; flex-direction: column; gap: var(--space-lg); background: var(--color-card); border: 1px solid var(--color-rule); border-radius: 14px; box-shadow: var(--shadow-card, none); padding: var(--space-lg); }
+:root[data-theme="light"] .headpanel .daystrip { margin-bottom: calc(var(--space-lg) * -1); }
+.headpanel { display: flex; flex-direction: column; gap: var(--space-xl); min-width: 0; }
 </style>
 </head>
 <body>
@@ -1261,16 +1334,21 @@ function tripCities(t){ if(t.kind === 'maponly') return t.cities.filter(Boolean)
 const cityQueue = new Set(); let cityBusy = false;
 async function lookupCity(name){
   try{
-    const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(name)}&limit=1&lang=en&osm_tag=place`);
-    const j = await r.json(); const f = j && j.features && j.features[0];
-    if(!f) return { miss:true, at:Date.now() };
+    const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(name)}&limit=6&lang=en&osm_tag=place`);
+    if(!r.ok) return null; // busy or down: try again later, don't remember a miss
+    const j = await r.json(); const fs = (j && j.features) || [];
+    // A city or town beats a village or hamlet of the same name (many Chinese place names repeat).
+    const rank = f => ({ city:0, town:1, municipality:1, borough:2, county:3, village:4, suburb:5, quarter:5, neighbourhood:6, hamlet:7 })[(f.properties || {}).osm_value] ?? 6;
+    const f = fs.slice().sort((a, b) => rank(a) - rank(b))[0];
+    if(!f) return { miss:true, at:Date.now(), v:2 };
     const pr = f.properties || {};
-    return { lat:f.geometry.coordinates[1], lon:f.geometry.coordinates[0], country:pr.country || '', cc:(pr.countrycode || '').toUpperCase(), state:pr.state || '', name:pr.name || name };
+    return { lat:f.geometry.coordinates[1], lon:f.geometry.coordinates[0], country:pr.country || '', cc:(pr.countrycode || '').toUpperCase(), state:pr.state || '', name:pr.name || name, v:2 };
   }catch(e){ return null; }
 }
 function cityGeo(name){
   const k = name.toLowerCase(); const c = library.cityCache[k];
-  if(c && !c.miss){ if(c.cc === undefined && !cityQueue.has(k)){ c.cc = ''; cityQueue.add(k); pumpCities(); } return c; } // older entries: look again for the country code
+  // Entries from before the lookup picked cities over villages are looked up once more.
+  if(c && !c.miss){ if(c.v !== 2 && !cityQueue.has(k)){ cityQueue.add(k); pumpCities(); } return c; }
   if(c && c.miss && Date.now() - c.at < 7 * 864e5) return null;
   if(!cityQueue.has(k)){ cityQueue.add(k); pumpCities(); }
   return null;
@@ -1297,7 +1375,10 @@ function cityPoint(name, t){
   if(!t || t.kind !== 'full') return null;
   const ps = []; t.days.forEach(d => { if(cityName(d.city).toLowerCase() === name.toLowerCase()) d.places.forEach(p => { if(p.lat != null) ps.push(p); }); });
   if(!ps.length) return null;
-  return { lat: ps.reduce((a, p) => a + p.lat, 0) / ps.length, lon: ps.reduce((a, p) => a + p.lon, 0) / ps.length, country:'' };
+  // Until the city itself is found: the hotel if there is one, else the first place. An average of the
+  // places could land between two cities, in a region you never went to.
+  const p = ps.find(x => x.type === 'hotel') || ps[0];
+  return { lat:p.lat, lon:p.lon, country:'' };
 }
 
 /* ===== what has been travelled so far ===== */
@@ -1357,7 +1438,8 @@ function cityUnit(name, pt){
   let u = unitAt(pt.lat, pt.lon) || unitAt(pt.lat, pt.lon, 8);
   // If the search says the city is in a different country, trust it and pick that country's nearest region.
   const g = library.cityCache[name.toLowerCase()];
-  if(g && g.cc && (!u || u.cc !== g.cc)){ const own = WM.units.filter(x => x.cc === g.cc); if(own.length === 1) u = own[0]; else if(own.length) u = unitAt(pt.lat, pt.lon, 60, own) || u; }
+  // (Hong Kong and Macau count as China, so their own areas stay when the search says CN.)
+  if(g && g.cc && (!u || (COUNTS_AS[u.cc] || u.cc) !== (COUNTS_AS[g.cc] || g.cc))){ const own = WM.units.filter(x => x.cc === g.cc); if(own.length === 1) u = own[0]; else if(own.length) u = unitAt(pt.lat, pt.lon, 60, own) || u; }
   const k = u ? u.k : null; footCache.set(key, k); return k;
 }
 const COUNTS_AS = { HK:'CN', MO:'CN' }; // for the country count
@@ -1836,10 +1918,11 @@ function syncBanner(){
   if(sync.status === 'error') return `<div class="banner bad"><span>Sync problem: ${esc(sync.error)}</span><button type="button" class="btn" data-act="nav" data-to="settings">Open Settings</button></div>`;
   return '';
 }
-function pageHead(showSpent = false){
+// The trip's heading: name, dates, days (and spending). `extra` goes in the same panel, such as the day tabs.
+function pageHead(showSpent = false, extra = ''){
   const t = T(); const tt = totals(t);
-  return `<header class="pagehead"><div><label class="visually-hidden" for="tripName">Trip name</label><input id="tripName" class="titleinput" data-in="tripname" value="${esc(t.tripName)}" placeholder="Name this trip"></div>
-    <dl class="meta"><div><dt>Dates</dt><dd>${range(tripStart(t), tripEnd(t))}</dd></div><div><dt>Days</dt><dd>${t.kind === 'full' ? t.days.length : tripLen(t)}</dd></div>${showSpent ? `<div><dt>Spent</dt><dd>${fmt(t.baseCurrency, tt.all)}</dd></div>` : ''}</dl></header>`;
+  return `<div class="headpanel"><header class="pagehead"><div><label class="visually-hidden" for="tripName">Trip name</label><input id="tripName" class="titleinput" data-in="tripname" value="${esc(t.tripName)}" placeholder="Name this trip"></div>
+    <dl class="meta"><div><dt>Dates</dt><dd>${range(tripStart(t), tripEnd(t))}</dd></div><div><dt>Days</dt><dd>${t.kind === 'full' ? t.days.length : tripLen(t)}</dd></div>${showSpent ? `<div><dt>Spent</dt><dd>${fmt(t.baseCurrency, tt.all)}</dd></div>` : ''}</dl></header>${extra}</div>`;
 }
 const tripLabel = t => t.tripName || 'Untitled trip';
 
@@ -2005,12 +2088,15 @@ function footHTML(){
       <div class="fp-stat"><span class="sub">Days<span class="wide"> away</span></span><p class="fp-num"><b>${fp.days}</b></p></div>
       <div class="fp-stat"><span class="sub">Trips</span><p class="fp-num"><b>${fp.trips}</b></p></div>
     </div>
+    <div class="fp-stage ${S.fpFull ? 'fpfull' : ''}" ${S.fpFull ? 'role="dialog" aria-modal="true" aria-labelledby="fpfull-h"' : ''}>
+    ${S.fpFull ? `<div class="fp-fullbar"><h2 id="fpfull-h">Where you've been</h2><button type="button" class="btn" data-act="fpfull">${I('x','sm')}Close</button></div>` : ''}
     <ul class="legend fp-legend" aria-label="Map key"><li><span class="key"></span>Visited</li><li><span class="key up"></span>Coming up</li></ul>
     <div class="fp-map" id="fpmap" role="img" aria-label="World map with the places you've been lit up. Pinch, double-tap or use the buttons to zoom.">
-      <div class="fp-svgslot"></div><div id="fplabs" aria-hidden="true"></div>
+      <div class="fp-svgslot"></div><div id="fplabs" aria-hidden="true"></div>${S.fpFull ? '' : `<button type="button" class="iconbtn mapfullbtn" data-act="fpfull" aria-label="Show the map full screen">${I('expand')}</button>`}
       <div class="wm-zoom"><button type="button" class="iconbtn" data-act="fpzoom" data-d="1" aria-label="Zoom in">${I('plus')}</button><button type="button" class="iconbtn" data-act="fpzoom" data-d="-1" aria-label="Zoom out">${I('minus')}</button><button type="button" class="btn btn--quiet wm-reset" data-act="fpfit">Fit my places</button><button type="button" class="btn btn--quiet wm-reset" data-act="fpworld">Whole world</button></div>
     </div>
-    <p class="sub">Tap a lit region to see your trips there.</p>${cap}`;
+    <p class="sub">Tap a lit region to see your trips there.</p>${cap}
+    </div>`;
 }
 function mountFoot(){
   const slot = document.querySelector('#fpmap .fp-svgslot'); if(!slot) return;
@@ -2043,6 +2129,8 @@ function fitFoot(){
   setFoot((x0 + x1) / 2 - w / 2, (y0 + y1) / 2 - h / 2, w);
 }
 function worldFoot(){ setFoot(0, 0, WM.vb[2]); }
+// Keeps the same middle and width when the map's shape changes (full screen, a turned iPad).
+function refitFoot(){ const v = FPV; if(!v) return; const a = fpAspect(); setFoot(v[0] + v[2] / 2 - v[2] / 2, v[1] + v[3] / 2 - v[2] / a / 2, v[2]); }
 function setFoot(x, y, w){
   const a = fpAspect(); w = Math.max(70, Math.min(WM.vb[2] * 1.05, w)); const h = w / a;
   x = Math.max(-w * 0.25, Math.min(WM.vb[2] - w * 0.75, x)); y = Math.max(-h * 0.25, Math.min(WM.vb[3] - h * 0.75, y));
@@ -2107,7 +2195,7 @@ document.addEventListener('wheel', e => { if(!e.target.closest || !e.target.clos
 document.addEventListener('dblclick', e => { if(!e.target.closest || !e.target.closest('#fpmap') || e.target.closest('.wm-zoom') || !FPV) return; const [ux, uy] = fpUnits(e.clientX, e.clientY); zoomFoot(2, ux, uy); });
 // A tap at the end of a drag is not a tap on a region.
 document.addEventListener('click', e => { if(FPP.moved > 8 && e.target.closest && e.target.closest('#fpmap')){ e.stopImmediatePropagation(); e.preventDefault(); FPP.moved = 0; } }, true);
-window.addEventListener('resize', () => { if(FPV && document.getElementById('fpmap')) setFoot(FPV[0], FPV[1], FPV[2]); });
+window.addEventListener('resize', () => { if(FPV && document.getElementById('fpmap')) refitFoot(); });
 function untilText(t, now){ const m = (+t.slice(0, 2) * 60 + +t.slice(3)) - (+now.slice(0, 2) * 60 + +now.slice(3)); if(m <= 0) return 'now'; const h = Math.floor(m / 60), mm = m % 60; return 'in ' + (h ? h + ' h' + (mm ? ' ' + mm + ' min' : '') : mm + ' min'); }
 function nextUp(i){
   const d = T().days[i]; const now = today().toTimeString().slice(0, 5);
@@ -2129,8 +2217,7 @@ function scrItinerary(){
       <div class="field"><label for="dnotes">Day note</label><textarea id="dnotes" class="input" rows="2" data-in="dnotes" placeholder="Anything to remember for the whole day">${esc(d.notes)}</textarea></div>
       <div class="dayactions"><button type="button" class="btn btn--quiet" data-act="moveday" data-i="${esc(i)}" data-d="-1" ${i === 0 ? 'disabled' : ''}>${I('left','sm')}Move day earlier</button><button type="button" class="btn btn--quiet" data-act="moveday" data-i="${esc(i)}" data-d="1" ${i === t.days.length - 1 ? 'disabled' : ''}>Move day later${I('right','sm')}</button><button type="button" class="btn btn--danger" data-act="askdelday">Delete Day ${i + 1}</button></div></section>`
     : '';
-  return `<div class="screen it-screen" style="gap:var(--space-xl)">${syncBanner()}${pageHead(true)}
-    <nav class="daystrip" aria-label="Days">${tabs}</nav>
+  return `<div class="screen it-screen" style="gap:var(--space-xl)">${syncBanner()}${pageHead(true, `<nav class="daystrip" aria-label="Days">${tabs}</nav>`)}
     <div class="it-grid">
       <div class="plan">
         <div class="dayhead"><div><h2 style="font-size:var(--text-display)">${esc(d.city) || 'Where to?'}</h2><p>Day ${i + 1}, ${dLong(d.date)}</p>${!S.editDay && d.notes ? `<p class="daynote">${esc(d.notes)}</p>` : ''}</div>
@@ -2140,7 +2227,7 @@ function scrItinerary(){
         <section class="box" aria-labelledby="h-plan"><div class="sechead"><h3 id="h-plan">${I('clock')}Plan for the day</h3></div>
           ${plan.length ? `<ul class="ruled">${rows}</ul>` : `<p class="empty">Nothing planned yet. Add a place, or a step such as a train or a check-in.</p>`}
           <p class="sub planhint">Timed stops sort by time. Drag the others into order.</p></section>
-        <section class="box" aria-labelledby="h-st"><div class="sechead"><h3 id="h-st">${I('bed')}Where you stay</h3></div>${hotels.length ? `<ul class="ruled">${hotels.map(({ p, pi }) => itemHTML(p, i, pi)).join('')}</ul>` : '<p class="empty">No hotel yet. Add one with the button above.</p>'}</section>
+        <section class="box" aria-labelledby="h-st"><div class="sechead"><h3 id="h-st">${I('bed')}Where you stay</h3></div>${hotels.length ? `<ul class="ruled stays">${hotels.map(({ p, pi }) => itemHTML(p, i, pi)).join('')}</ul>` : '<p class="empty">No hotel yet. Add one with the button above.</p>'}</section>
       </div>
       ${mapAside()}
     </div></div>`;
@@ -2647,7 +2734,7 @@ function render(){
   if(S.screen === 'itinerary' && T() && T().days.length){ mountMap(); setTimeout(autoLocate, 1500); }
   if(S.screen === 'overview' && T() && T().days.length) mountMap();
   if(S.screen === 'home') mountFoot();
-  document.body.classList.toggle('noscroll', !!S.mapFull);
+  document.body.classList.toggle('noscroll', !!S.mapFull || (!!S.fpFull && S.screen === 'home'));
   if(S.scrollDay){ S.scrollDay = false; const ds = document.querySelector('.daystrip'); if(ds && ds.getBoundingClientRect().top < 0) ds.scrollIntoView({ block:'start' }); }
   if(S.dialog){ const f = document.querySelector('.dialog input:not([readonly]), .dialog select, .dialog textarea:not([readonly]), .dialog button:not([data-act="close"])'); if(f && !document.querySelector('.dialog').contains(document.activeElement)) f.focus({ preventScroll:true }); }
 }
@@ -2775,7 +2862,7 @@ document.addEventListener('click', e => {
   const t = T();
   switch(a){
     case 'gotoday': { const h = findTodayTrip(); if(h){ openTrip(h.t.id, 'itinerary'); S.day = h.i; } } break;
-    case 'nav': S.screen = el.dataset.to; S.dialog = null; S.picking = null; S.mapFull = false; S.mapFocus = S.mapPopup = null; window.scrollTo(0, 0); break;
+    case 'nav': S.screen = el.dataset.to; S.dialog = null; S.picking = null; S.mapFull = false; S.fpFull = false; S.mapFocus = S.mapPopup = null; window.scrollTo(0, 0); break;
     case 'syncbtn': if(sync.token){ syncNow(); return; } S.screen = 'settings'; window.scrollTo(0, 0); break;
     case 'syncnow': syncNow(); return;
     case 'savetoken': {
@@ -2830,6 +2917,7 @@ document.addEventListener('click', e => {
     case 'fpzoom': FPP.user = true; zoomFoot(el.dataset.d === '1' ? 2 : 0.5); return;
     case 'fpfit': fitFoot(); return;
     case 'fpworld': worldFoot(); return;
+    case 'fpfull': S.fpFull = !S.fpFull; setTimeout(refitFoot, 0); break;
     case 'mapfull': S.mapFull = !S.mapFull; if(MAPS.trip) MAPS.trip.view = ''; break;
     case 'tripshow': S.tripShow = el.dataset.v === 'places' ? 'places' : null; S.daysPick = el.dataset.v === 'days'; S.placesZoom = null; if(MAPS.trip) MAPS.trip.view = ''; break;
     case 'opentrip': openTrip(el.dataset.id); break;
@@ -2984,7 +3072,7 @@ document.addEventListener('change', e => {
   }
 });
 document.addEventListener('keydown', e => {
-  if(e.key === 'Escape' && (S.dialog || S.picking || S.mapFull)){ if(S.dialog || S.picking){ S.dialog = null; S.picking = null; S.addErr = null; } else S.mapFull = false; render(); return; }
+  if(e.key === 'Escape' && (S.dialog || S.picking || S.mapFull || S.fpFull)){ if(S.dialog || S.picking){ S.dialog = null; S.picking = null; S.addErr = null; } else { S.mapFull = false; if(S.fpFull){ S.fpFull = false; setTimeout(refitFoot, 0); } } render(); return; }
   if(e.key === 'Enter' && e.target.id === 'upass'){ e.preventDefault(); gateUnlock(); return; }
   if(e.key === 'Enter' && (e.target.id === 'lp1' || e.target.id === 'lp2')){ e.preventDefault(); gateSetup(); return; }
   if(e.key === 'Enter' && /^cp[012]$/.test(e.target.id)){ e.preventDefault(); doChangePass(); return; }

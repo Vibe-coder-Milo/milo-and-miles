@@ -20,10 +20,11 @@ function syncBanner(){
   if(sync.status === 'error') return `<div class="banner bad"><span>Sync problem: ${esc(sync.error)}</span><button type="button" class="btn" data-act="nav" data-to="settings">Open Settings</button></div>`;
   return '';
 }
-function pageHead(showSpent = false){
+// The trip's heading: name, dates, days (and spending). `extra` goes in the same panel, such as the day tabs.
+function pageHead(showSpent = false, extra = ''){
   const t = T(); const tt = totals(t);
-  return `<header class="pagehead"><div><label class="visually-hidden" for="tripName">Trip name</label><input id="tripName" class="titleinput" data-in="tripname" value="${esc(t.tripName)}" placeholder="Name this trip"></div>
-    <dl class="meta"><div><dt>Dates</dt><dd>${range(tripStart(t), tripEnd(t))}</dd></div><div><dt>Days</dt><dd>${t.kind === 'full' ? t.days.length : tripLen(t)}</dd></div>${showSpent ? `<div><dt>Spent</dt><dd>${fmt(t.baseCurrency, tt.all)}</dd></div>` : ''}</dl></header>`;
+  return `<div class="headpanel"><header class="pagehead"><div><label class="visually-hidden" for="tripName">Trip name</label><input id="tripName" class="titleinput" data-in="tripname" value="${esc(t.tripName)}" placeholder="Name this trip"></div>
+    <dl class="meta"><div><dt>Dates</dt><dd>${range(tripStart(t), tripEnd(t))}</dd></div><div><dt>Days</dt><dd>${t.kind === 'full' ? t.days.length : tripLen(t)}</dd></div>${showSpent ? `<div><dt>Spent</dt><dd>${fmt(t.baseCurrency, tt.all)}</dd></div>` : ''}</dl></header>${extra}</div>`;
 }
 const tripLabel = t => t.tripName || 'Untitled trip';
 
@@ -189,12 +190,15 @@ function footHTML(){
       <div class="fp-stat"><span class="sub">Days<span class="wide"> away</span></span><p class="fp-num"><b>${fp.days}</b></p></div>
       <div class="fp-stat"><span class="sub">Trips</span><p class="fp-num"><b>${fp.trips}</b></p></div>
     </div>
+    <div class="fp-stage ${S.fpFull ? 'fpfull' : ''}" ${S.fpFull ? 'role="dialog" aria-modal="true" aria-labelledby="fpfull-h"' : ''}>
+    ${S.fpFull ? `<div class="fp-fullbar"><h2 id="fpfull-h">Where you've been</h2><button type="button" class="btn" data-act="fpfull">${I('x','sm')}Close</button></div>` : ''}
     <ul class="legend fp-legend" aria-label="Map key"><li><span class="key"></span>Visited</li><li><span class="key up"></span>Coming up</li></ul>
     <div class="fp-map" id="fpmap" role="img" aria-label="World map with the places you've been lit up. Pinch, double-tap or use the buttons to zoom.">
-      <div class="fp-svgslot"></div><div id="fplabs" aria-hidden="true"></div>
+      <div class="fp-svgslot"></div><div id="fplabs" aria-hidden="true"></div>${S.fpFull ? '' : `<button type="button" class="iconbtn mapfullbtn" data-act="fpfull" aria-label="Show the map full screen">${I('expand')}</button>`}
       <div class="wm-zoom"><button type="button" class="iconbtn" data-act="fpzoom" data-d="1" aria-label="Zoom in">${I('plus')}</button><button type="button" class="iconbtn" data-act="fpzoom" data-d="-1" aria-label="Zoom out">${I('minus')}</button><button type="button" class="btn btn--quiet wm-reset" data-act="fpfit">Fit my places</button><button type="button" class="btn btn--quiet wm-reset" data-act="fpworld">Whole world</button></div>
     </div>
-    <p class="sub">Tap a lit region to see your trips there.</p>${cap}`;
+    <p class="sub">Tap a lit region to see your trips there.</p>${cap}
+    </div>`;
 }
 function mountFoot(){
   const slot = document.querySelector('#fpmap .fp-svgslot'); if(!slot) return;
@@ -227,6 +231,8 @@ function fitFoot(){
   setFoot((x0 + x1) / 2 - w / 2, (y0 + y1) / 2 - h / 2, w);
 }
 function worldFoot(){ setFoot(0, 0, WM.vb[2]); }
+// Keeps the same middle and width when the map's shape changes (full screen, a turned iPad).
+function refitFoot(){ const v = FPV; if(!v) return; const a = fpAspect(); setFoot(v[0] + v[2] / 2 - v[2] / 2, v[1] + v[3] / 2 - v[2] / a / 2, v[2]); }
 function setFoot(x, y, w){
   const a = fpAspect(); w = Math.max(70, Math.min(WM.vb[2] * 1.05, w)); const h = w / a;
   x = Math.max(-w * 0.25, Math.min(WM.vb[2] - w * 0.75, x)); y = Math.max(-h * 0.25, Math.min(WM.vb[3] - h * 0.75, y));
@@ -291,7 +297,7 @@ document.addEventListener('wheel', e => { if(!e.target.closest || !e.target.clos
 document.addEventListener('dblclick', e => { if(!e.target.closest || !e.target.closest('#fpmap') || e.target.closest('.wm-zoom') || !FPV) return; const [ux, uy] = fpUnits(e.clientX, e.clientY); zoomFoot(2, ux, uy); });
 // A tap at the end of a drag is not a tap on a region.
 document.addEventListener('click', e => { if(FPP.moved > 8 && e.target.closest && e.target.closest('#fpmap')){ e.stopImmediatePropagation(); e.preventDefault(); FPP.moved = 0; } }, true);
-window.addEventListener('resize', () => { if(FPV && document.getElementById('fpmap')) setFoot(FPV[0], FPV[1], FPV[2]); });
+window.addEventListener('resize', () => { if(FPV && document.getElementById('fpmap')) refitFoot(); });
 function untilText(t, now){ const m = (+t.slice(0, 2) * 60 + +t.slice(3)) - (+now.slice(0, 2) * 60 + +now.slice(3)); if(m <= 0) return 'now'; const h = Math.floor(m / 60), mm = m % 60; return 'in ' + (h ? h + ' h' + (mm ? ' ' + mm + ' min' : '') : mm + ' min'); }
 function nextUp(i){
   const d = T().days[i]; const now = today().toTimeString().slice(0, 5);
@@ -313,8 +319,7 @@ function scrItinerary(){
       <div class="field"><label for="dnotes">Day note</label><textarea id="dnotes" class="input" rows="2" data-in="dnotes" placeholder="Anything to remember for the whole day">${esc(d.notes)}</textarea></div>
       <div class="dayactions"><button type="button" class="btn btn--quiet" data-act="moveday" data-i="${esc(i)}" data-d="-1" ${i === 0 ? 'disabled' : ''}>${I('left','sm')}Move day earlier</button><button type="button" class="btn btn--quiet" data-act="moveday" data-i="${esc(i)}" data-d="1" ${i === t.days.length - 1 ? 'disabled' : ''}>Move day later${I('right','sm')}</button><button type="button" class="btn btn--danger" data-act="askdelday">Delete Day ${i + 1}</button></div></section>`
     : '';
-  return `<div class="screen it-screen" style="gap:var(--space-xl)">${syncBanner()}${pageHead(true)}
-    <nav class="daystrip" aria-label="Days">${tabs}</nav>
+  return `<div class="screen it-screen" style="gap:var(--space-xl)">${syncBanner()}${pageHead(true, `<nav class="daystrip" aria-label="Days">${tabs}</nav>`)}
     <div class="it-grid">
       <div class="plan">
         <div class="dayhead"><div><h2 style="font-size:var(--text-display)">${esc(d.city) || 'Where to?'}</h2><p>Day ${i + 1}, ${dLong(d.date)}</p>${!S.editDay && d.notes ? `<p class="daynote">${esc(d.notes)}</p>` : ''}</div>
@@ -324,7 +329,7 @@ function scrItinerary(){
         <section class="box" aria-labelledby="h-plan"><div class="sechead"><h3 id="h-plan">${I('clock')}Plan for the day</h3></div>
           ${plan.length ? `<ul class="ruled">${rows}</ul>` : `<p class="empty">Nothing planned yet. Add a place, or a step such as a train or a check-in.</p>`}
           <p class="sub planhint">Timed stops sort by time. Drag the others into order.</p></section>
-        <section class="box" aria-labelledby="h-st"><div class="sechead"><h3 id="h-st">${I('bed')}Where you stay</h3></div>${hotels.length ? `<ul class="ruled">${hotels.map(({ p, pi }) => itemHTML(p, i, pi)).join('')}</ul>` : '<p class="empty">No hotel yet. Add one with the button above.</p>'}</section>
+        <section class="box" aria-labelledby="h-st"><div class="sechead"><h3 id="h-st">${I('bed')}Where you stay</h3></div>${hotels.length ? `<ul class="ruled stays">${hotels.map(({ p, pi }) => itemHTML(p, i, pi)).join('')}</ul>` : '<p class="empty">No hotel yet. Add one with the button above.</p>'}</section>
       </div>
       ${mapAside()}
     </div></div>`;

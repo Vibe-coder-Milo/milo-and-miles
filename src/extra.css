@@ -180,3 +180,57 @@ body.noscroll { overflow: hidden; }
 .topguard { position: fixed; top: 0; left: 0; right: 0; height: calc(env(safe-area-inset-top, 0px) + 3px); background: var(--color-bar); pointer-events: none; z-index: calc(var(--z-sticky-nav) + 1); }
 body:has(.gate) .topguard { background: var(--color-page); }
 @media print { .topguard { display: none; } }
+
+/* ===== Where you stay: no time or drag columns, so the hotel starts at the left edge ===== */
+.stays .item, .stays .item.timed { grid-template-columns: var(--row-badge) minmax(0, 1fr) calc(var(--control-h) * 2 + 4px); }
+.stays .item:not(.timed) > :first-child { grid-column: auto; }
+.stays .item > :empty:not(.badge):not(.item-main):not(.item-acts) { display: none; } /* the drag-handle spacer the plan rows need */
+@media (min-width: 40.01rem) { .stays .item:has(.item-edit) > .item-main { grid-column: 2 / -1; } }
+@media (max-width: 40rem) {
+  .stays .item, .stays .item.timed { grid-template-columns: var(--row-badge) minmax(0, 1fr); }
+  .stays .item .item-acts, .stays .item.timed .item-acts { grid-column: 2; }
+  .stays .item:has(.item-edit) > .item-main { grid-column: 1 / -1; }
+}
+
+/* ===== date and time boxes on iPad and iPhone =====
+   Safari draws these its own way: wider than the box it sits in, with the date centred, so on the Budget
+   form it ran into the panel's edge. Plain boxes that fit their column, text on the left. */
+input.input[type="date"], input.input[type="time"] { -webkit-appearance: none; appearance: none; display: block; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; line-height: 1.4; }
+input.input[type="date"]::-webkit-date-and-time-value, input.input[type="time"]::-webkit-date-and-time-value { text-align: left; margin: 0; min-height: 1.4em; }
+.grid2 > *, .grid3 > * { min-width: 0; }
+
+/* ===== Home map, full screen ===== */
+.fp-stage { display: flex; flex-direction: column; gap: var(--space-md); }
+.fp-stage.fpfull { position: fixed; inset: 0; z-index: var(--z-modal); gap: var(--space-sm); background: var(--color-section, var(--color-card)); padding: calc(env(safe-area-inset-top, 0px) + var(--space-sm)) max(var(--space-md), env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + var(--space-sm)) max(var(--space-md), env(safe-area-inset-left, 0px)); }
+.fpfull .fp-map { flex: 1 1 auto; aspect-ratio: auto; min-height: 0; }
+.fpfull .fp-legend { margin-bottom: 0; }
+.fp-fullbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }
+.fp-fullbar h2 { font-size: var(--text-xl); }
+.fpfull .hcap { max-height: 30vh; overflow: auto; }
+
+/* ===== light colour: Signal lime =====
+   A bright lime fills the main buttons, today, map pins and the places you've been, always with near-black
+   text on it. A deeper olive of the same green is used for thin lines and numbers so they stay readable on
+   white. Coming up stays orange. Dark mode keeps tropical mint. */
+/*@light*/
+:light { --color-accent: oklch(48% 0.13 130); --color-accent-strong: oklch(42% 0.12 130); --color-accent-ink: #ffffff; --color-accent-wash: oklch(96.5% 0.05 125);
+  --color-now: #c6f432; --color-now-ink: #101010; --color-visited: #c6f432; --color-upcoming: oklch(62% 0.16 45); --color-drop: oklch(96.5% 0.05 125); }
+:light .btn--primary { background: #c6f432; border-color: #c6f432; color: #101010; font-weight: 600; }
+:light .btn--primary .ic { color: #101010; }
+@media (hover: hover) { :light .btn--primary:hover:not(:disabled) { background: #d4f75e; border-color: #d4f75e; color: #101010; } }
+:light .badge.c-attraction, :light .badge.c-food, :light .badge.c-transport, :light .badge.c-activity, :light .badge.c-air, :light .badge.c-misc, :light .pchip .n.c-attraction, :light .pchip .n.c-food { background: #c6f432; border-color: oklch(48% 0.13 130 / 0.35); color: #101010; }
+:light .lpin:not(.hotel) { background: #c6f432; color: #101010; }
+:light .tab .today { background: #c6f432; color: #101010; }
+:light .fp-u.v { stroke: oklch(48% 0.13 130); }
+:light .fp-lab.v { background: #c6f432; color: #101010; }
+:light .fp-stat.main .fp-num b { color: oklch(48% 0.13 130); }
+:light .fp-bar span { background: oklch(48% 0.13 130); }
+:light .key { background: #c6f432; box-shadow: inset 0 0 0 1px oklch(48% 0.13 130); }
+:light .badge.cur { background: #c6f432; border-color: #c6f432; color: #101010; }
+:light .nextup { border: 2px solid #c6f432; }
+:light .todayband { border-color: oklch(48% 0.13 130); }
+/* the trip heading (name, dates, days, spending, and the day tabs) sits on a white panel like the rest */
+:light .headpanel { display: flex; flex-direction: column; gap: var(--space-lg); background: var(--color-card); border: 1px solid var(--color-rule); border-radius: 14px; box-shadow: var(--shadow-card, none); padding: var(--space-lg); }
+:light .headpanel .daystrip { margin-bottom: calc(var(--space-lg) * -1); }
+/*@end*/
+.headpanel { display: flex; flex-direction: column; gap: var(--space-xl); min-width: 0; }

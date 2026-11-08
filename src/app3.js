@@ -288,7 +288,7 @@ function render(){
   if(S.screen === 'itinerary' && T() && T().days.length){ mountMap(); setTimeout(autoLocate, 1500); }
   if(S.screen === 'overview' && T() && T().days.length) mountMap();
   if(S.screen === 'home') mountFoot();
-  document.body.classList.toggle('noscroll', !!S.mapFull);
+  document.body.classList.toggle('noscroll', !!S.mapFull || (!!S.fpFull && S.screen === 'home'));
   if(S.scrollDay){ S.scrollDay = false; const ds = document.querySelector('.daystrip'); if(ds && ds.getBoundingClientRect().top < 0) ds.scrollIntoView({ block:'start' }); }
   if(S.dialog){ const f = document.querySelector('.dialog input:not([readonly]), .dialog select, .dialog textarea:not([readonly]), .dialog button:not([data-act="close"])'); if(f && !document.querySelector('.dialog').contains(document.activeElement)) f.focus({ preventScroll:true }); }
 }
@@ -416,7 +416,7 @@ document.addEventListener('click', e => {
   const t = T();
   switch(a){
     case 'gotoday': { const h = findTodayTrip(); if(h){ openTrip(h.t.id, 'itinerary'); S.day = h.i; } } break;
-    case 'nav': S.screen = el.dataset.to; S.dialog = null; S.picking = null; S.mapFull = false; S.mapFocus = S.mapPopup = null; window.scrollTo(0, 0); break;
+    case 'nav': S.screen = el.dataset.to; S.dialog = null; S.picking = null; S.mapFull = false; S.fpFull = false; S.mapFocus = S.mapPopup = null; window.scrollTo(0, 0); break;
     case 'syncbtn': if(sync.token){ syncNow(); return; } S.screen = 'settings'; window.scrollTo(0, 0); break;
     case 'syncnow': syncNow(); return;
     case 'savetoken': {
@@ -471,6 +471,7 @@ document.addEventListener('click', e => {
     case 'fpzoom': FPP.user = true; zoomFoot(el.dataset.d === '1' ? 2 : 0.5); return;
     case 'fpfit': fitFoot(); return;
     case 'fpworld': worldFoot(); return;
+    case 'fpfull': S.fpFull = !S.fpFull; setTimeout(refitFoot, 0); break;
     case 'mapfull': S.mapFull = !S.mapFull; if(MAPS.trip) MAPS.trip.view = ''; break;
     case 'tripshow': S.tripShow = el.dataset.v === 'places' ? 'places' : null; S.daysPick = el.dataset.v === 'days'; S.placesZoom = null; if(MAPS.trip) MAPS.trip.view = ''; break;
     case 'opentrip': openTrip(el.dataset.id); break;
@@ -625,7 +626,7 @@ document.addEventListener('change', e => {
   }
 });
 document.addEventListener('keydown', e => {
-  if(e.key === 'Escape' && (S.dialog || S.picking || S.mapFull)){ if(S.dialog || S.picking){ S.dialog = null; S.picking = null; S.addErr = null; } else S.mapFull = false; render(); return; }
+  if(e.key === 'Escape' && (S.dialog || S.picking || S.mapFull || S.fpFull)){ if(S.dialog || S.picking){ S.dialog = null; S.picking = null; S.addErr = null; } else { S.mapFull = false; if(S.fpFull){ S.fpFull = false; setTimeout(refitFoot, 0); } } render(); return; }
   if(e.key === 'Enter' && e.target.id === 'upass'){ e.preventDefault(); gateUnlock(); return; }
   if(e.key === 'Enter' && (e.target.id === 'lp1' || e.target.id === 'lp2')){ e.preventDefault(); gateSetup(); return; }
   if(e.key === 'Enter' && /^cp[012]$/.test(e.target.id)){ e.preventDefault(); doChangePass(); return; }
