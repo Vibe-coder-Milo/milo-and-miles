@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-tyGLguSlmYoXqj1yUmHle+qxgZe4aQHY6hYjSIIIUqY=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-HhuyKw43gxL9LvqLhsNin3uMDBHq4R82f3wF0SmBItE=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Milo &amp; Miles</title>
 <meta name="description" content="Plan each trip day by day: places, hotels, flights, a map and spending.">
@@ -1738,7 +1738,16 @@ async function lockNow(){
 function lockReset(){ try{ [LS_VAULT, LS_KEY, LS_LEGACY].forEach(k => localStorage.removeItem(k)); }catch(e){} vault = null; vaultKey = null; sync.token = ''; sync.meta = {}; sync.deleted = {}; saveSync(); delete dev.lock; saveDev(); location.reload(); }
 function syncMeta(id){ return sync.meta[id] || (sync.meta[id] = { sha:'', dirty:true }); }
 let syncTimer = null, syncing = false, syncAgain = false;
-function syncSoon(ms = 60000){ if(!sync.token) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, ms); if(S.syncState !== 'saving'){ S.syncState = 'pending'; paintSync(); } }
+// Edits sync a few seconds after you stop, and never more than SYNC_MAX_WAIT after the first unsynced
+// edit, so a long planning session still reaches GitHub (and your other devices) every half minute.
+const SYNC_QUIET = 5000, SYNC_MAX_WAIT = 30000, SYNC_CHECK = 120000;
+let syncDue = 0;
+function syncSoon(ms = SYNC_QUIET){
+  if(!sync.token) return;
+  const now = Date.now(); if(!syncDue) syncDue = now + SYNC_MAX_WAIT;
+  clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, Math.max(0, Math.min(now + ms, syncDue) - now));
+  if(S.syncState !== 'saving'){ S.syncState = 'pending'; paintSync(); }
+}
 function b64encode(str){ const bytes = new TextEncoder().encode(str); let bin = ''; for(let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(bin); }
 function b64decode(b64){ const bin = atob(String(b64).replace(/\s/g, '')); const bytes = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); return new TextDecoder().decode(bytes); }
 async function gh(path, opts = {}){
@@ -1774,7 +1783,7 @@ async function syncSettings(){
   return changedLocal;
 }
 async function syncNow(){
-  clearTimeout(syncTimer);
+  clearTimeout(syncTimer); syncDue = 0;
   if(!sync.token) return;
   if(syncing){ syncAgain = true; return; }
   if(!navigator.onLine){ S.syncState = 'offline'; paintSync(); return; }
@@ -1866,7 +1875,7 @@ function syncInfo(){
   if(st === 'offline') return { ic:'cloud-off', short:'Offline', long:'Offline, saved on this device', s:'offline' };
   const dl = tokenDaysLeft();
   if(dl != null && dl <= 14) return { ic:'alert', short:'Token expiring', long:dl < 0 ? 'Sync token has expired' : `Sync token expires in ${dl} ${dl === 1 ? 'day' : 'days'}`, s:'expiring' };
-  if(st === 'pending') return { ic:'cloud-up', short:'Saved here', long:'Saved here, syncs in a minute', s:'saving' };
+  if(st === 'pending') return { ic:'cloud-up', short:'Saved here', long:'Saved here, syncing in a few seconds', s:'saving' };
   return { ic:'cloud', short:'Synced', long:sync.lastSync ? 'Synced ' + ago(sync.lastSync) : 'Synced', s:'synced' };
 }
 function ago(iso){ const m = Math.round((Date.now() - new Date(iso)) / 60000); if(m < 1) return 'just now'; if(m < 60) return `${m} ${m === 1 ? 'minute' : 'minutes'} ago`; const h = Math.round(m / 60); if(h < 24) return `${h} ${h === 1 ? 'hour' : 'hours'} ago`; return 'on ' + new Date(iso).toLocaleDateString('en-GB', { day:'numeric', month:'short' }); }
@@ -3162,6 +3171,8 @@ window.addEventListener('online', () => { if(sync.token) syncNow(); });
 window.addEventListener('offline', () => { if(sync.token){ S.syncState = 'offline'; paintSync(); } });
 window.addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz = setTimeout(() => { Object.values(MAPS).forEach(M => { if(M && M.el.isConnected) M.resize(); }); }, 150); });
 setInterval(() => { if(document.visibilityState === 'visible' && !S.dialog && !document.activeElement.matches('input, textarea, select')) paintSync(); }, 60000);
+// While the app is open, check every two minutes for changes made on your other devices.
+setInterval(() => { if(sync.token && !S.gate && document.visibilityState === 'visible' && navigator.onLine && !syncing) syncNow(); }, SYNC_CHECK);
 if('serviceWorker' in navigator && (location.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(location.hostname))) navigator.serviceWorker.register('sw.js').catch(() => {});
 
 </script>

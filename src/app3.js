@@ -716,4 +716,6 @@ window.addEventListener('online', () => { if(sync.token) syncNow(); });
 window.addEventListener('offline', () => { if(sync.token){ S.syncState = 'offline'; paintSync(); } });
 window.addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz = setTimeout(() => { Object.values(MAPS).forEach(M => { if(M && M.el.isConnected) M.resize(); }); }, 150); });
 setInterval(() => { if(document.visibilityState === 'visible' && !S.dialog && !document.activeElement.matches('input, textarea, select')) paintSync(); }, 60000);
+// While the app is open, check every two minutes for changes made on your other devices.
+setInterval(() => { if(sync.token && !S.gate && document.visibilityState === 'visible' && navigator.onLine && !syncing) syncNow(); }, SYNC_CHECK);
 if('serviceWorker' in navigator && (location.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(location.hostname))) navigator.serviceWorker.register('sw.js').catch(() => {});

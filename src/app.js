@@ -802,7 +802,16 @@ async function lockNow(){
 function lockReset(){ try{ [LS_VAULT, LS_KEY, LS_LEGACY].forEach(k => localStorage.removeItem(k)); }catch(e){} vault = null; vaultKey = null; sync.token = ''; sync.meta = {}; sync.deleted = {}; saveSync(); delete dev.lock; saveDev(); location.reload(); }
 function syncMeta(id){ return sync.meta[id] || (sync.meta[id] = { sha:'', dirty:true }); }
 let syncTimer = null, syncing = false, syncAgain = false;
-function syncSoon(ms = 60000){ if(!sync.token) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, ms); if(S.syncState !== 'saving'){ S.syncState = 'pending'; paintSync(); } }
+// Edits sync a few seconds after you stop, and never more than SYNC_MAX_WAIT after the first unsynced
+// edit, so a long planning session still reaches GitHub (and your other devices) every half minute.
+const SYNC_QUIET = 5000, SYNC_MAX_WAIT = 30000, SYNC_CHECK = 120000;
+let syncDue = 0;
+function syncSoon(ms = SYNC_QUIET){
+  if(!sync.token) return;
+  const now = Date.now(); if(!syncDue) syncDue = now + SYNC_MAX_WAIT;
+  clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, Math.max(0, Math.min(now + ms, syncDue) - now));
+  if(S.syncState !== 'saving'){ S.syncState = 'pending'; paintSync(); }
+}
 function b64encode(str){ const bytes = new TextEncoder().encode(str); let bin = ''; for(let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(bin); }
 function b64decode(b64){ const bin = atob(String(b64).replace(/\s/g, '')); const bytes = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); return new TextDecoder().decode(bytes); }
 async function gh(path, opts = {}){
@@ -838,7 +847,7 @@ async function syncSettings(){
   return changedLocal;
 }
 async function syncNow(){
-  clearTimeout(syncTimer);
+  clearTimeout(syncTimer); syncDue = 0;
   if(!sync.token) return;
   if(syncing){ syncAgain = true; return; }
   if(!navigator.onLine){ S.syncState = 'offline'; paintSync(); return; }
@@ -930,7 +939,7 @@ function syncInfo(){
   if(st === 'offline') return { ic:'cloud-off', short:'Offline', long:'Offline, saved on this device', s:'offline' };
   const dl = tokenDaysLeft();
   if(dl != null && dl <= 14) return { ic:'alert', short:'Token expiring', long:dl < 0 ? 'Sync token has expired' : `Sync token expires in ${dl} ${dl === 1 ? 'day' : 'days'}`, s:'expiring' };
-  if(st === 'pending') return { ic:'cloud-up', short:'Saved here', long:'Saved here, syncs in a minute', s:'saving' };
+  if(st === 'pending') return { ic:'cloud-up', short:'Saved here', long:'Saved here, syncing in a few seconds', s:'saving' };
   return { ic:'cloud', short:'Synced', long:sync.lastSync ? 'Synced ' + ago(sync.lastSync) : 'Synced', s:'synced' };
 }
 function ago(iso){ const m = Math.round((Date.now() - new Date(iso)) / 60000); if(m < 1) return 'just now'; if(m < 60) return `${m} ${m === 1 ? 'minute' : 'minutes'} ago`; const h = Math.round(m / 60); if(h < 24) return `${h} ${h === 1 ? 'hour' : 'hours'} ago`; return 'on ' + new Date(iso).toLocaleDateString('en-GB', { day:'numeric', month:'short' }); }
