@@ -95,7 +95,7 @@ function googleAdapter(el, g, opts){
 }
 // Puts map `key` into `host`, making it on first use. Returns null while Google's script is still loading.
 function ensureMap(key, host, opts){
-  const want = gkey() && !googleBroken && navigator.onLine ? 'google' : 'leaflet';
+  const want = gkey() && !googleBroken && navigator.onLine && !nearCap('mapLoads') ? 'google' : 'leaflet';
   let M = MAPS[key];
   if(M && M.kind !== want){ M.el.remove(); M = MAPS[key] = null; }
   if(!M){
@@ -320,6 +320,30 @@ function saveExpense(){
   announce(`${S.editing ? 'Saved' : 'Added'} ${e.desc}, ${fmt(e.currency, expTotal(e))}`);
   S.editing = null; S.draft = Object.assign(blankDraft(t, d.cat), { date:d.date, trip:t.id }); changed(); render();
 }
+async function doUnlock(){
+  if(S.lockBusy) return;
+  const pass = (document.getElementById('upass') || {}).value || '';
+  if(!pass){ S.addErr = 'Type your passcode.'; render(); document.getElementById('upass')?.focus(); return; }
+  S.lockBusy = true; S.addErr = null; render();
+  try{
+    await unlock(pass);
+    S.lockBusy = false; S.dialog = S.afterUnlock || null; S.afterUnlock = null; render(); announce('Unlocked');
+    if(sync.token) syncNow();
+  }catch(e){
+    S.lockBusy = false;
+    S.addErr = e.wait ? `Too many wrong tries. Wait ${Math.ceil((unlockWait - Date.now()) / 1000)} seconds, then try again.` : e.wrong ? 'That passcode isn\'t right.' : 'Could not unlock on this browser.';
+    render(); document.getElementById('upass')?.focus();
+  }
+}
+async function doLockOn(){
+  if(S.lockBusy) return;
+  const a = (document.getElementById('lp1') || {}).value || '', b = (document.getElementById('lp2') || {}).value || '';
+  S.lockErr = a.length < PASS_MIN ? `Use at least ${PASS_MIN} characters.` : a !== b ? 'The two passcodes are different. Type them again.' : null;
+  if(S.lockErr){ render(); return; }
+  S.lockBusy = true; render();
+  try{ await lockOn(a); S.lockBusy = false; render(); toast('Passcode lock on. You\'ll type it each time you open the app'); }
+  catch(e){ S.lockBusy = false; S.lockErr = 'Could not turn the lock on in this browser.'; render(); }
+}
 function confirmBox(title, body, yes, fn){ S.confirm = { title, body, yes, fn }; S.dialog = 'confirm'; render(); }
 function openTrip(id, screen = 'overview'){ library.activeTripId = id; S.day = 0; S.mapMode = 'day'; S.tripShow = S.placesZoom = null; S.daysPick = false; S.mapFocus = S.mapPopup = S.picking = null; S.editing = null; S.draft = null; S.editDay = false; S.screen = screen; saveSoon(); window.scrollTo(0, 0); }
 function deleteTrip(id){
@@ -338,7 +362,7 @@ document.addEventListener('click', e => {
   switch(a){
     case 'gotoday': { const h = findTodayTrip(); if(h){ openTrip(h.t.id, 'itinerary'); S.day = h.i; } } break;
     case 'nav': S.screen = el.dataset.to; S.dialog = null; S.picking = null; S.mapFull = false; S.mapFocus = S.mapPopup = null; window.scrollTo(0, 0); break;
-    case 'syncbtn': if(sync.token){ syncNow(); return; } S.screen = 'settings'; window.scrollTo(0, 0); break;
+    case 'syncbtn': if(isLocked()){ S.dialog = 'unlock'; S.addErr = null; break; } if(sync.token){ syncNow(); return; } S.screen = 'settings'; window.scrollTo(0, 0); break;
     case 'syncnow': syncNow(); return;
     case 'savetoken': {
       const tok = document.getElementById('tok').value.trim(); const repo = document.getElementById('trepo').value.trim().replace(/^https:\/\/github\.com\//, '').replace(/\.git$|\/$/g, '');
@@ -370,7 +394,15 @@ document.addEventListener('click', e => {
     case 'theme': dev.theme = el.dataset.v; saveDev(); break;
     case 'sz': dev.scale = Math.max(.8, Math.min(1.5, +(dev.scale + .1 * el.dataset.d).toFixed(1))); saveDev(); break;
     case 'print': window.print(); return;
-    case 'dialog': S.dialog = el.dataset.d; S.addErr = null; if(el.dataset.d === 'add'){ resetAdd(); } break;
+    case 'dialog':
+      // With the lock on and locked, keys and sync can't be changed until it is unlocked.
+      if(isLocked() && ['key', 'token', 'helper'].includes(el.dataset.d)){ S.afterUnlock = el.dataset.d; S.dialog = 'unlock'; S.addErr = null; break; }
+      S.dialog = el.dataset.d; S.addErr = null; if(el.dataset.d === 'add'){ resetAdd(); } break;
+    case 'unlock': doUnlock(); return;
+    case 'lockon': doLockOn(); return;
+    case 'locknow': lockNow(); S.dialog = null; toast('Locked. Your keys and token are scrambled again'); break;
+    case 'asklockoff': confirmBox('Turn the passcode lock off?', 'Your keys and GitHub token will be stored on this device without scrambling again.', 'Turn it off', () => { lockOff().then(() => { toast('Passcode lock off'); render(); }); }); return;
+    case 'asklockreset': confirmBox('Start again without the lock?', 'The scrambled keys and GitHub token on this device are deleted. Your trips stay. Reconnect GitHub with your token afterwards, and the Google key comes back from your private repo.', 'Delete the scrambled keys', () => { lockReset(); toast('Lock removed. Reconnect GitHub in Settings'); S.screen = 'settings'; render(); }); return;
     case 'close': case 'closebg': S.dialog = null; S.addErr = null; break;
     case 'confirmyes': { const fn = S.confirm.fn; S.dialog = null; fn(); } break;
     case 'fpu': { const k = el.dataset.k; if(S.fp && S.fp.lit[k]){ S.hlRegion = S.hlRegion === k ? null : k; break; } return; }
@@ -471,7 +503,7 @@ let pastTimer = null, searchTimer = null, searchSeq = 0, linkTimer = null;
 async function runSearch(q){
   const seq = ++searchSeq; const hint = addCityHint();
   let res = null;
-  if(gkey()){ res = await searchPlacesGoogle(q, hint); if(res && !res.length) res = await searchPlacesGoogleText(q, hint); }
+  if(googleSearchOK()){ res = await searchPlacesGoogle(q, hint); if(res && !res.length && !nearCap('textSearch')) res = await searchPlacesGoogleText(q, hint); }
   if(!res) res = await searchPlaces(q, hint);
   if(seq !== searchSeq) return;
   S.results = res || []; S.searching = false; paintResults();
@@ -532,6 +564,8 @@ document.addEventListener('change', e => {
 });
 document.addEventListener('keydown', e => {
   if(e.key === 'Escape' && (S.dialog || S.picking || S.mapFull)){ if(S.dialog || S.picking){ S.dialog = null; S.picking = null; S.addErr = null; } else S.mapFull = false; render(); return; }
+  if(e.key === 'Enter' && e.target.id === 'upass'){ e.preventDefault(); doUnlock(); return; }
+  if(e.key === 'Enter' && (e.target.id === 'lp1' || e.target.id === 'lp2')){ e.preventDefault(); doLockOn(); return; }
   if(e.key === 'Enter' && e.target.id === 'aq'){ e.preventDefault(); const first = document.querySelector('#ares .results button'); if(first && !S.picked) first.click(); return; }
   const h = e.target.closest && e.target.closest('.handle[data-drag]');
   if(!h || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
@@ -601,6 +635,7 @@ loadLibrary();
   if(hit){ library.activeTripId = hit.t.id; S.screen = 'itinerary'; S.day = hit.i; }
   else S.screen = 'home';
 })();
+if(isLocked()) S.dialog = 'unlock';
 render();
 saveNow();
 window.addEventListener('pagehide', saveNow);

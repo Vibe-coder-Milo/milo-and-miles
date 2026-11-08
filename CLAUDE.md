@@ -11,6 +11,8 @@
   - `migrateState()` / `migrateLibrary()` check every field's kind (ids, currencies, dates, times, numbers, shared keys). Keep doing that for any new field.
   - Every value put into HTML goes through `esc()`, ids and numbers included. Never use inline `on…=` handlers or `javascript:` links: the Content Security Policy blocks them.
   - The policy is written by `src/build.py`, with a hash of the app's script. A new outside service must be added to it there.
+  - Optional passcode lock (`trip-tracker-vault-v1`): when on, the keys and the token are stored only in the scrambled vault. `saveNow()` and `saveSync()` blank them in plain storage; keep it that way for any new secret.
+  - Cost guard: `nearCap()` switches a Google service to the free one at 90% of its monthly free allowance. Any new Google call goes through `trackApiCall()` and a `nearCap()` check.
   - Saved keys are never put back into the page in full (only "ends in …"). The token only ever goes to `api.github.com`.
 - Must work well on iPad, including touch drag-and-drop.
 - Deploying means pushing to `main` (GitHub Pages).

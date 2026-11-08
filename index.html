@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-FmAuI3QDA6U+UIn3CUBWWB4fvIMaWEStD/GKszHQDJY=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-p0MmYyhNpEai7Sl9PYbpiSdRg3+iEZPKFYe1pQeorqk=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Milo &amp; Miles</title>
 <meta name="description" content="Plan each trip day by day: places, hotels, flights, a map and spending.">
@@ -812,6 +812,7 @@ body.noscroll { overflow: hidden; }
   <symbol id="i-grip" viewBox="0 0 24 24"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" stroke-width="2.6"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
   <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
   <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
@@ -1037,7 +1038,9 @@ let saveTimer = null;
 function saveNow(){
   clearTimeout(saveTimer);
   let ok = true;
-  try{ localStorage.setItem(LS_KEY, JSON.stringify(library)); }catch(e){ ok = false; }
+  // With the passcode lock on, the keys are kept only in the scrambled vault, never in the plain library.
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(vaultOn() ? Object.assign({}, library, BLANK_SHARED) : library)); }catch(e){ ok = false; }
+  if(vaultKey) sealSoon();
   if(ok !== !S.saveFail) return;
   S.saveFail = !ok; render();
 }
@@ -1132,7 +1135,7 @@ const S = {
   addType:'activity', addCat:'attraction', addMode:'search', q:'', results:null, searching:false, picked:null, link:'', linkRes:null,
   addDay:null, hFrom:null, hTo:null, fName:'', fDep:'', fArr:'', addNote:'', wiki:null, sTime:'', sWhat:'',
   draft:null, editing:null, editDay:false, scrollDay:false, editTime:null, undo:null, editItem:null, expErr:null, addErr:null,
-  hlCity:null, confirm:null, pastForm:{ name:'', from:'', to:'', cities:'' }, newTrip:{ name:'', from:'', to:'' }, saveFail:false,
+  hlCity:null, confirm:null, lockErr:null, lockBusy:false, afterUnlock:null, pastForm:{ name:'', from:'', to:'', cities:'' }, newTrip:{ name:'', from:'', to:'' }, saveFail:false,
 };
 
 /* ===== Google Places (needs the key in Settings) and free search fallbacks ===== */
@@ -1144,6 +1147,10 @@ function trackApiCall(kind){
   u[kind] = (u[kind] || 0) + 1;
   saveSoon(); // counts go up with the next sync; they never mark the keys as changed
 }
+// Cost guard: once this month's count for a Google service reaches 90% of its free allowance (counted
+// across every synced device), the app uses the free service for it until the month changes.
+function nearCap(kind){ const u = USAGE.find(x => x[0] === kind); return !!u && usageTotal(kind) >= u[2] * 0.9; }
+const googleSearchOK = () => !!gkey() && !nearCap('autocomplete') && !nearCap('placeDetails');
 function usageTotal(kind){ const mk = isoLocal(today()).slice(0, 7); return Object.values(library.usage).reduce((a, u) => a + (u && u.month === mk ? (u[kind] || 0) : 0), 0); }
 let googleSessionToken = null, googleMapsLoadingPromise = null;
 function loadGoogleMapsScript(apiKey){
@@ -1399,7 +1406,7 @@ function parseMaps(text){
 // a few wordings and preferring a result in the right town.
 async function findFromText(p){
   const hint = addCityHint();
-  if(gkey()){ const g = await searchPlacesGoogleText(p.query, ''); if(g && g.length) return g[0]; }
+  if(gkey() && !nearCap('textSearch')){ const g = await searchPlacesGoogleText(p.query, ''); if(g && g.length) return g[0]; }
   const tk = townKey(p.town || hint);
   const tries = [];
   if(p.town) tries.push([`${p.name} ${stripTown(p.town)}`, '']);
@@ -1467,7 +1474,71 @@ function paintLink(){ const el = document.getElementById('alinkres'); if(el) el.
 
 /* ===== GitHub sync ===== */
 const sync = Object.assign({ token:'', repo:DATA_REPO_DEFAULT, expires:'', meta:{}, deleted:{}, settingsSha:'', settingsDirty:false, lastSync:'', status:'', error:'' }, readJSON(LS_SYNC) || {});
-function saveSync(){ writeJSON(LS_SYNC, sync); }
+function saveSync(){ writeJSON(LS_SYNC, vaultOn() ? Object.assign({}, sync, { token:'' }) : sync); if(vaultKey) sealSoon(); }
+
+/* ===== passcode lock =====
+   Optional, per device. The Google key, the CARTO key, the short-link reader address and the GitHub token
+   are encrypted with a key made from the passcode (PBKDF2, 600,000 rounds, then AES-GCM), and only that
+   scrambled copy is stored. Another page on the same github.io address, or anyone reading the browser's
+   storage, gets only the scrambled copy. The passcode itself is never stored. The unscrambling key lives
+   in memory while the app is open and is gone when the page closes or "Lock now" is pressed.
+   Trips themselves are not scrambled: they stay readable so the app works offline without a passcode. */
+const LS_VAULT = 'trip-tracker-vault-v1', VAULT_ROUNDS = 600000, PASS_MIN = 8;
+const BLANK_SHARED = Object.fromEntries(SHARED_KEYS.map(k => [k, '']));
+let vault = (v => v && typeof v.salt === 'string' && typeof v.data === 'string' ? v : null)(readJSON(LS_VAULT));
+let vaultKey = null, sealChain = Promise.resolve(), sealTimer = null, unlockFails = 0, unlockWait = 0;
+function vaultOn(){ return !!vault; }
+function isLocked(){ return !!vault && !vaultKey; }
+const toB64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const fromB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function keyFromPass(pass, salt, rounds){
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass.normalize('NFC')), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:rounds, hash:'SHA-256' }, base, { name:'AES-GCM', length:256 }, false, ['encrypt', 'decrypt']);
+}
+// Writes the current keys and token into the vault, scrambled with a fresh random IV each time.
+function seal(){
+  sealChain = sealChain.then(async () => {
+    if(!vault || !vaultKey) return;
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const plain = new TextEncoder().encode(JSON.stringify(Object.assign(sharedOf(library), { token:sync.token })));
+    const data = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, vaultKey, plain);
+    vault = { v:1, salt:vault.salt, rounds:vault.rounds, iv:toB64(iv), data:toB64(data) }; writeJSON(LS_VAULT, vault);
+  }).catch(e => console.error('Could not save the locked keys', e));
+  return sealChain;
+}
+function sealSoon(){ clearTimeout(sealTimer); sealTimer = setTimeout(seal, 50); }
+// The old Trip Tracker kept its keys in its own storage. With the lock on, those plain copies go.
+function scrubLegacyKeys(){ const old = readJSON(LS_LEGACY); if(old && (old.googleApiKey || old.cartoApiKey)){ old.googleApiKey = ''; old.cartoApiKey = ''; writeJSON(LS_LEGACY, old); } }
+async function lockOn(pass){
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  vaultKey = await keyFromPass(pass, salt, VAULT_ROUNDS);
+  vault = { v:1, salt:toB64(salt), rounds:VAULT_ROUNDS, iv:'', data:'' };
+  await seal(); saveNow(); saveSync(); scrubLegacyKeys();
+}
+async function unlock(pass){
+  if(Date.now() < unlockWait) throw Object.assign(new Error('wait'), { wait:true });
+  let secrets;
+  try{
+    const key = await keyFromPass(pass, fromB64(vault.salt), vault.rounds || VAULT_ROUNDS);
+    secrets = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name:'AES-GCM', iv:fromB64(vault.iv) }, key, fromB64(vault.data))));
+    vaultKey = key;
+  }catch(e){
+    // A wrong passcode fails the AES-GCM check. Each wrong try makes the next one wait longer.
+    unlockFails++; if(unlockFails >= 3) unlockWait = Date.now() + Math.min(300, 5 * 2 ** (unlockFails - 3)) * 1000;
+    throw Object.assign(new Error('wrong'), { wrong:true });
+  }
+  unlockFails = 0; unlockWait = 0;
+  SHARED_KEYS.forEach(k => { library[k] = cleanShared(k, secrets[k]); });
+  sync.token = typeof secrets.token === 'string' ? secrets.token : '';
+}
+function lockNow(){
+  vaultKey = null; Object.assign(library, BLANK_SHARED); sync.token = '';
+  clearTimeout(syncTimer); S.syncState = ''; googleMapsLoadingPromise = null;
+}
+async function lockOff(){ await sealChain; vault = null; vaultKey = null; try{ localStorage.removeItem(LS_VAULT); }catch(e){} saveNow(); saveSync(); }
+// Forgotten passcode: the scrambled keys are thrown away. Trips stay. Reconnect GitHub on this device and
+// the Google key comes back from the private data repo.
+function lockReset(){ vault = null; vaultKey = null; try{ localStorage.removeItem(LS_VAULT); }catch(e){} Object.assign(library, BLANK_SHARED); sync.token = ''; saveNow(); saveSync(); }
 function syncMeta(id){ return sync.meta[id] || (sync.meta[id] = { sha:'', dirty:true }); }
 let syncTimer = null, syncing = false, syncAgain = false;
 function syncSoon(ms = 60000){ if(!sync.token) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, ms); if(S.syncState !== 'saving'){ S.syncState = 'pending'; paintSync(); } }
@@ -1589,6 +1660,7 @@ async function syncNow(){
 }
 function tokenDaysLeft(){ return okDate(sync.expires) ? daysUntil(sync.expires) : null; }
 function syncInfo(){
+  if(isLocked()) return { ic:'lock', short:'Locked', long:'Locked. Unlock to sync and use your keys', s:'locked' };
   if(!sync.token) return { ic:'cloud-off', short:'This device', long:'Saved on this device only', s:'local' };
   const st = S.syncState || sync.status;
   if(st === 'stopped') return { ic:'alert', short:'Sync stopped', long:'Sync stopped, the token was refused', s:'stopped' };
@@ -1991,7 +2063,7 @@ function addPanelHTML(i){
 }
 function searchResHTML(){
   const q = S.q.trim();
-  if(q.length < 2) return `<p class="sub">${gkey() ? 'Searching Google Maps.' : 'Free search. Add a Google key in Settings for Google’s results.'} Results show the full address so you can pick the right branch.</p>`;
+  if(q.length < 2) return `<p class="sub">${googleSearchOK() ? 'Searching Google Maps.' : 'Free search. Add a Google key in Settings for Google’s results.'} Results show the full address so you can pick the right branch.</p>`;
   if(S.picked && S.picked.pending) return `<p class="sub">Confirming the exact location of ${esc(S.picked.name)}…</p>`;
   if(S.picked) return `<div class="result ok">${I('check')}<div><b>${esc(S.picked.name)}</b><span>${esc(S.picked.addr || '')}</span> <button type="button" class="link" data-act="unpick">Pick another</button></div></div>`;
   if(S.searching && !S.results) return `<p class="sub">Searching…</p>`;
@@ -2047,6 +2119,17 @@ function scrBudget(){
 }
 
 /* ===== Settings ===== */
+function lockSecHTML(){
+  if(isLocked()) return `<p class="state warn">${I('lock','sm')}Locked</p><p>Your keys and GitHub token are scrambled on this device. Unlock to sync and to use Google search and maps.</p>
+      <div class="chips"><button type="button" class="btn btn--primary" data-act="dialog" data-d="unlock">Unlock</button></div>`;
+  if(vaultOn()) return `<p class="state ok">${I('lock','sm')}On, unlocked for now</p><p>Your keys and GitHub token are stored scrambled on this device. You type the passcode each time you open the app.</p>
+      <div class="chips"><button type="button" class="btn" data-act="locknow">Lock now</button><button type="button" class="btn btn--quiet" data-act="asklockoff">Turn the lock off</button></div>`;
+  return `<p>Scrambles your Google key, map key, short-link reader address and GitHub token on this device, so no other page or app can read them. You type the passcode each time you open the app. Your trips stay readable, so the app still works without it.</p>
+      <div class="grid2"><div class="field"><label for="lp1">New passcode</label><input id="lp1" type="password" class="input" autocomplete="new-password" minlength="${PASS_MIN}" aria-describedby="lp-help"></div><div class="field"><label for="lp2">Type it again</label><input id="lp2" type="password" class="input" autocomplete="new-password"></div></div>
+      <p class="help" id="lp-help">At least ${PASS_MIN} characters. Three short words make a strong one that's easy to type.</p>
+      ${S.lockErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.lockErr)}</p>` : ''}
+      <div class="chips"><button type="button" class="btn btn--primary" data-act="lockon" ${S.lockBusy ? 'disabled' : ''}>${S.lockBusy ? 'Turning it on…' : 'Turn on the lock'}</button></div>`;
+}
 function scrSettings(){
   const t = T(); const sy = syncInfo(); const dl = tokenDaysLeft(); const key = gkey();
   const tok = !sync.token ? '' : sync.status === 'stopped' ? '<span class="state bad">Turned down by GitHub</span>' : dl == null ? '<span class="sub">Expiry date not entered</span>' : dl < 0 ? `<span class="state bad">Expired on ${dLong(sync.expires)}</span>` : dl <= 14 ? `<span class="state warn">Expires on ${dLong(sync.expires)}</span>` : `<span class="state ok">Working until ${dLong(sync.expires)}</span>`;
@@ -2061,11 +2144,12 @@ function scrSettings(){
   return `<div class="screen">${syncBanner()}<header class="pagehead"><h1>Settings</h1><button type="button" class="btn" data-act="nav" data-to="${t ? 'overview' : 'home'}">Close settings</button></header>
   <div class="set-grid">
     <section class="set box" aria-labelledby="h-sync"><h2 id="h-sync">Sync</h2>${syncSec}</section>
+    <section class="set box" aria-labelledby="h-lock"><h2 id="h-lock">Passcode lock</h2>${lockSecHTML()}</section>
     <section class="set box" aria-labelledby="h-key"><h2 id="h-key">Google Maps key</h2><p>Powers the map and place search. ${sync.token ? 'It\'s saved in your private repo, so you enter it once for every device.' : 'Without one, the map and search use free services that find fewer places and show local-language names.'}</p>
       <dl class="kv"><dt>Key</dt><dd class="num">${key ? `Saved, ends in ${esc(key.slice(-3))}` : 'Not added'}</dd></dl>
       <div class="chips"><button type="button" class="btn" data-act="dialog" data-d="key">${key ? 'Change the key' : 'Add a key'}</button>${key ? '<button type="button" class="btn btn--quiet" data-act="askdelkey">Remove it</button>' : ''}</div>
       <p class="sub">Browsers can still read a map key, so in Google Cloud restrict yours to vibe-coder-milo.github.io. That stops other sites from using it.</p>
-      ${key ? `<h3>Google's free monthly allowance${sync.token ? ', all devices' : ', this device'}</h3><dl class="usage">${usage}</dl>` : ''}</section>
+      ${key ? `<h3>Google's free monthly allowance${sync.token ? ', all devices' : ', this device'}</h3><dl class="usage">${usage}</dl><p class="sub">If any of these reaches 90%, the app quietly uses the free map and search for that part until next month, so you stay inside Google's free allowance.</p>` : ''}</section>
     <section class="set box" aria-labelledby="h-help"><h2 id="h-help">Short-link reader</h2><p>Google Maps on the iPad shares short links that hide the location. This small script in your Google account opens them so the app can place the pin.</p>
       <p class="state ${library.helperUrl ? 'ok' : 'warn'}">${I(library.helperUrl ? 'check' : 'alert','sm')}${library.helperUrl ? 'Connected' : 'Not set up'}</p>
       <div class="chips"><button type="button" class="btn" data-act="dialog" data-d="helper">${library.helperUrl ? 'Change it' : 'Set it up'}</button>${library.helperUrl ? '<button type="button" class="btn btn--quiet" data-act="delhelper">Disconnect</button>' : ''}</div></section>
@@ -2097,6 +2181,11 @@ function dialogHTML(){
       <div><button type="button" class="btn btn--primary" data-act="savepast">Add to my map</button></div>`);
   }
   if(k === 'newtrip'){ const n = S.newTrip; return box('New trip', `<div class="field"><label for="ntname">Trip name</label><input id="ntname" class="input" data-nt="name" value="${esc(n.name)}" placeholder="Hokkaido in winter"></div><div class="grid2"><div class="field"><label for="ntfrom">First day</label><input id="ntfrom" type="date" class="input" data-nt="from" value="${esc(n.from)}"></div><div class="field"><label for="ntto">Last day (optional)</label><input id="ntto" type="date" class="input" data-nt="to" value="${esc(n.to)}"></div></div><p class="sub">Every day from the first to the last is set up for you. You can add or remove days later.</p>${S.addErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.addErr)}</p>` : ''}<div><button type="button" class="btn btn--primary" data-act="createtrip">Create the trip</button></div>`); }
+  if(k === 'unlock') return box('Unlock', `<p>Type your passcode to sync and to use your Google key on this device.</p>
+    <div class="field"><label for="upass">Passcode</label><input id="upass" type="password" class="input" autocomplete="current-password" ${S.lockBusy ? 'disabled' : ''}></div>
+    ${S.addErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.addErr)}</p>` : ''}
+    <div class="chips"><button type="button" class="btn btn--primary" data-act="unlock" ${S.lockBusy ? 'disabled' : ''}>${S.lockBusy ? 'Unlocking…' : 'Unlock'}</button><button type="button" class="btn" data-act="close">Not now</button></div>
+    <p class="sub">Forgot it? <button type="button" class="link" data-act="asklockreset">Start again without the lock</button>. Your trips stay. You'll paste your GitHub token again, and the Google key comes back from your private repo.</p>`);
   if(k === 'token') return box('Connect GitHub', `<p>Trips are saved as files in a private repo on your GitHub account. It takes a few minutes, once:</p>
     <ol class="steps"><li>On GitHub, <a href="https://github.com/new?name=Trip-Tracker-data&visibility=private" target="_blank" rel="noopener">create a new repo</a> named Trip-Tracker-data. Choose <b>Private</b> and tick <b>Add a README file</b>.</li><li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub, Settings, Fine-grained tokens</a>. Under Repository access pick only Trip-Tracker-data. Under Permissions set Contents to Read and write.</li><li>Copy the token and paste it below. Do this on each device; the token never leaves the device.</li></ol>
     <div class="field"><label for="trepo">Repo</label><input id="trepo" class="input num" value="${esc(sync.repo)}" autocomplete="off" spellcheck="false"></div>
@@ -2218,7 +2307,7 @@ function googleAdapter(el, g, opts){
 }
 // Puts map `key` into `host`, making it on first use. Returns null while Google's script is still loading.
 function ensureMap(key, host, opts){
-  const want = gkey() && !googleBroken && navigator.onLine ? 'google' : 'leaflet';
+  const want = gkey() && !googleBroken && navigator.onLine && !nearCap('mapLoads') ? 'google' : 'leaflet';
   let M = MAPS[key];
   if(M && M.kind !== want){ M.el.remove(); M = MAPS[key] = null; }
   if(!M){
@@ -2443,6 +2532,30 @@ function saveExpense(){
   announce(`${S.editing ? 'Saved' : 'Added'} ${e.desc}, ${fmt(e.currency, expTotal(e))}`);
   S.editing = null; S.draft = Object.assign(blankDraft(t, d.cat), { date:d.date, trip:t.id }); changed(); render();
 }
+async function doUnlock(){
+  if(S.lockBusy) return;
+  const pass = (document.getElementById('upass') || {}).value || '';
+  if(!pass){ S.addErr = 'Type your passcode.'; render(); document.getElementById('upass')?.focus(); return; }
+  S.lockBusy = true; S.addErr = null; render();
+  try{
+    await unlock(pass);
+    S.lockBusy = false; S.dialog = S.afterUnlock || null; S.afterUnlock = null; render(); announce('Unlocked');
+    if(sync.token) syncNow();
+  }catch(e){
+    S.lockBusy = false;
+    S.addErr = e.wait ? `Too many wrong tries. Wait ${Math.ceil((unlockWait - Date.now()) / 1000)} seconds, then try again.` : e.wrong ? 'That passcode isn\'t right.' : 'Could not unlock on this browser.';
+    render(); document.getElementById('upass')?.focus();
+  }
+}
+async function doLockOn(){
+  if(S.lockBusy) return;
+  const a = (document.getElementById('lp1') || {}).value || '', b = (document.getElementById('lp2') || {}).value || '';
+  S.lockErr = a.length < PASS_MIN ? `Use at least ${PASS_MIN} characters.` : a !== b ? 'The two passcodes are different. Type them again.' : null;
+  if(S.lockErr){ render(); return; }
+  S.lockBusy = true; render();
+  try{ await lockOn(a); S.lockBusy = false; render(); toast('Passcode lock on. You\'ll type it each time you open the app'); }
+  catch(e){ S.lockBusy = false; S.lockErr = 'Could not turn the lock on in this browser.'; render(); }
+}
 function confirmBox(title, body, yes, fn){ S.confirm = { title, body, yes, fn }; S.dialog = 'confirm'; render(); }
 function openTrip(id, screen = 'overview'){ library.activeTripId = id; S.day = 0; S.mapMode = 'day'; S.tripShow = S.placesZoom = null; S.daysPick = false; S.mapFocus = S.mapPopup = S.picking = null; S.editing = null; S.draft = null; S.editDay = false; S.screen = screen; saveSoon(); window.scrollTo(0, 0); }
 function deleteTrip(id){
@@ -2461,7 +2574,7 @@ document.addEventListener('click', e => {
   switch(a){
     case 'gotoday': { const h = findTodayTrip(); if(h){ openTrip(h.t.id, 'itinerary'); S.day = h.i; } } break;
     case 'nav': S.screen = el.dataset.to; S.dialog = null; S.picking = null; S.mapFull = false; S.mapFocus = S.mapPopup = null; window.scrollTo(0, 0); break;
-    case 'syncbtn': if(sync.token){ syncNow(); return; } S.screen = 'settings'; window.scrollTo(0, 0); break;
+    case 'syncbtn': if(isLocked()){ S.dialog = 'unlock'; S.addErr = null; break; } if(sync.token){ syncNow(); return; } S.screen = 'settings'; window.scrollTo(0, 0); break;
     case 'syncnow': syncNow(); return;
     case 'savetoken': {
       const tok = document.getElementById('tok').value.trim(); const repo = document.getElementById('trepo').value.trim().replace(/^https:\/\/github\.com\//, '').replace(/\.git$|\/$/g, '');
@@ -2493,7 +2606,15 @@ document.addEventListener('click', e => {
     case 'theme': dev.theme = el.dataset.v; saveDev(); break;
     case 'sz': dev.scale = Math.max(.8, Math.min(1.5, +(dev.scale + .1 * el.dataset.d).toFixed(1))); saveDev(); break;
     case 'print': window.print(); return;
-    case 'dialog': S.dialog = el.dataset.d; S.addErr = null; if(el.dataset.d === 'add'){ resetAdd(); } break;
+    case 'dialog':
+      // With the lock on and locked, keys and sync can't be changed until it is unlocked.
+      if(isLocked() && ['key', 'token', 'helper'].includes(el.dataset.d)){ S.afterUnlock = el.dataset.d; S.dialog = 'unlock'; S.addErr = null; break; }
+      S.dialog = el.dataset.d; S.addErr = null; if(el.dataset.d === 'add'){ resetAdd(); } break;
+    case 'unlock': doUnlock(); return;
+    case 'lockon': doLockOn(); return;
+    case 'locknow': lockNow(); S.dialog = null; toast('Locked. Your keys and token are scrambled again'); break;
+    case 'asklockoff': confirmBox('Turn the passcode lock off?', 'Your keys and GitHub token will be stored on this device without scrambling again.', 'Turn it off', () => { lockOff().then(() => { toast('Passcode lock off'); render(); }); }); return;
+    case 'asklockreset': confirmBox('Start again without the lock?', 'The scrambled keys and GitHub token on this device are deleted. Your trips stay. Reconnect GitHub with your token afterwards, and the Google key comes back from your private repo.', 'Delete the scrambled keys', () => { lockReset(); toast('Lock removed. Reconnect GitHub in Settings'); S.screen = 'settings'; render(); }); return;
     case 'close': case 'closebg': S.dialog = null; S.addErr = null; break;
     case 'confirmyes': { const fn = S.confirm.fn; S.dialog = null; fn(); } break;
     case 'fpu': { const k = el.dataset.k; if(S.fp && S.fp.lit[k]){ S.hlRegion = S.hlRegion === k ? null : k; break; } return; }
@@ -2594,7 +2715,7 @@ let pastTimer = null, searchTimer = null, searchSeq = 0, linkTimer = null;
 async function runSearch(q){
   const seq = ++searchSeq; const hint = addCityHint();
   let res = null;
-  if(gkey()){ res = await searchPlacesGoogle(q, hint); if(res && !res.length) res = await searchPlacesGoogleText(q, hint); }
+  if(googleSearchOK()){ res = await searchPlacesGoogle(q, hint); if(res && !res.length && !nearCap('textSearch')) res = await searchPlacesGoogleText(q, hint); }
   if(!res) res = await searchPlaces(q, hint);
   if(seq !== searchSeq) return;
   S.results = res || []; S.searching = false; paintResults();
@@ -2655,6 +2776,8 @@ document.addEventListener('change', e => {
 });
 document.addEventListener('keydown', e => {
   if(e.key === 'Escape' && (S.dialog || S.picking || S.mapFull)){ if(S.dialog || S.picking){ S.dialog = null; S.picking = null; S.addErr = null; } else S.mapFull = false; render(); return; }
+  if(e.key === 'Enter' && e.target.id === 'upass'){ e.preventDefault(); doUnlock(); return; }
+  if(e.key === 'Enter' && (e.target.id === 'lp1' || e.target.id === 'lp2')){ e.preventDefault(); doLockOn(); return; }
   if(e.key === 'Enter' && e.target.id === 'aq'){ e.preventDefault(); const first = document.querySelector('#ares .results button'); if(first && !S.picked) first.click(); return; }
   const h = e.target.closest && e.target.closest('.handle[data-drag]');
   if(!h || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
@@ -2724,6 +2847,7 @@ loadLibrary();
   if(hit){ library.activeTripId = hit.t.id; S.screen = 'itinerary'; S.day = hit.i; }
   else S.screen = 'home';
 })();
+if(isLocked()) S.dialog = 'unlock';
 render();
 saveNow();
 window.addEventListener('pagehide', saveNow);

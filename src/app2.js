@@ -362,7 +362,7 @@ function addPanelHTML(i){
 }
 function searchResHTML(){
   const q = S.q.trim();
-  if(q.length < 2) return `<p class="sub">${gkey() ? 'Searching Google Maps.' : 'Free search. Add a Google key in Settings for Google’s results.'} Results show the full address so you can pick the right branch.</p>`;
+  if(q.length < 2) return `<p class="sub">${googleSearchOK() ? 'Searching Google Maps.' : 'Free search. Add a Google key in Settings for Google’s results.'} Results show the full address so you can pick the right branch.</p>`;
   if(S.picked && S.picked.pending) return `<p class="sub">Confirming the exact location of ${esc(S.picked.name)}…</p>`;
   if(S.picked) return `<div class="result ok">${I('check')}<div><b>${esc(S.picked.name)}</b><span>${esc(S.picked.addr || '')}</span> <button type="button" class="link" data-act="unpick">Pick another</button></div></div>`;
   if(S.searching && !S.results) return `<p class="sub">Searching…</p>`;
@@ -418,6 +418,17 @@ function scrBudget(){
 }
 
 /* ===== Settings ===== */
+function lockSecHTML(){
+  if(isLocked()) return `<p class="state warn">${I('lock','sm')}Locked</p><p>Your keys and GitHub token are scrambled on this device. Unlock to sync and to use Google search and maps.</p>
+      <div class="chips"><button type="button" class="btn btn--primary" data-act="dialog" data-d="unlock">Unlock</button></div>`;
+  if(vaultOn()) return `<p class="state ok">${I('lock','sm')}On, unlocked for now</p><p>Your keys and GitHub token are stored scrambled on this device. You type the passcode each time you open the app.</p>
+      <div class="chips"><button type="button" class="btn" data-act="locknow">Lock now</button><button type="button" class="btn btn--quiet" data-act="asklockoff">Turn the lock off</button></div>`;
+  return `<p>Scrambles your Google key, map key, short-link reader address and GitHub token on this device, so no other page or app can read them. You type the passcode each time you open the app. Your trips stay readable, so the app still works without it.</p>
+      <div class="grid2"><div class="field"><label for="lp1">New passcode</label><input id="lp1" type="password" class="input" autocomplete="new-password" minlength="${PASS_MIN}" aria-describedby="lp-help"></div><div class="field"><label for="lp2">Type it again</label><input id="lp2" type="password" class="input" autocomplete="new-password"></div></div>
+      <p class="help" id="lp-help">At least ${PASS_MIN} characters. Three short words make a strong one that's easy to type.</p>
+      ${S.lockErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.lockErr)}</p>` : ''}
+      <div class="chips"><button type="button" class="btn btn--primary" data-act="lockon" ${S.lockBusy ? 'disabled' : ''}>${S.lockBusy ? 'Turning it on…' : 'Turn on the lock'}</button></div>`;
+}
 function scrSettings(){
   const t = T(); const sy = syncInfo(); const dl = tokenDaysLeft(); const key = gkey();
   const tok = !sync.token ? '' : sync.status === 'stopped' ? '<span class="state bad">Turned down by GitHub</span>' : dl == null ? '<span class="sub">Expiry date not entered</span>' : dl < 0 ? `<span class="state bad">Expired on ${dLong(sync.expires)}</span>` : dl <= 14 ? `<span class="state warn">Expires on ${dLong(sync.expires)}</span>` : `<span class="state ok">Working until ${dLong(sync.expires)}</span>`;
@@ -432,11 +443,12 @@ function scrSettings(){
   return `<div class="screen">${syncBanner()}<header class="pagehead"><h1>Settings</h1><button type="button" class="btn" data-act="nav" data-to="${t ? 'overview' : 'home'}">Close settings</button></header>
   <div class="set-grid">
     <section class="set box" aria-labelledby="h-sync"><h2 id="h-sync">Sync</h2>${syncSec}</section>
+    <section class="set box" aria-labelledby="h-lock"><h2 id="h-lock">Passcode lock</h2>${lockSecHTML()}</section>
     <section class="set box" aria-labelledby="h-key"><h2 id="h-key">Google Maps key</h2><p>Powers the map and place search. ${sync.token ? 'It\'s saved in your private repo, so you enter it once for every device.' : 'Without one, the map and search use free services that find fewer places and show local-language names.'}</p>
       <dl class="kv"><dt>Key</dt><dd class="num">${key ? `Saved, ends in ${esc(key.slice(-3))}` : 'Not added'}</dd></dl>
       <div class="chips"><button type="button" class="btn" data-act="dialog" data-d="key">${key ? 'Change the key' : 'Add a key'}</button>${key ? '<button type="button" class="btn btn--quiet" data-act="askdelkey">Remove it</button>' : ''}</div>
       <p class="sub">Browsers can still read a map key, so in Google Cloud restrict yours to vibe-coder-milo.github.io. That stops other sites from using it.</p>
-      ${key ? `<h3>Google's free monthly allowance${sync.token ? ', all devices' : ', this device'}</h3><dl class="usage">${usage}</dl>` : ''}</section>
+      ${key ? `<h3>Google's free monthly allowance${sync.token ? ', all devices' : ', this device'}</h3><dl class="usage">${usage}</dl><p class="sub">If any of these reaches 90%, the app quietly uses the free map and search for that part until next month, so you stay inside Google's free allowance.</p>` : ''}</section>
     <section class="set box" aria-labelledby="h-help"><h2 id="h-help">Short-link reader</h2><p>Google Maps on the iPad shares short links that hide the location. This small script in your Google account opens them so the app can place the pin.</p>
       <p class="state ${library.helperUrl ? 'ok' : 'warn'}">${I(library.helperUrl ? 'check' : 'alert','sm')}${library.helperUrl ? 'Connected' : 'Not set up'}</p>
       <div class="chips"><button type="button" class="btn" data-act="dialog" data-d="helper">${library.helperUrl ? 'Change it' : 'Set it up'}</button>${library.helperUrl ? '<button type="button" class="btn btn--quiet" data-act="delhelper">Disconnect</button>' : ''}</div></section>
@@ -468,6 +480,11 @@ function dialogHTML(){
       <div><button type="button" class="btn btn--primary" data-act="savepast">Add to my map</button></div>`);
   }
   if(k === 'newtrip'){ const n = S.newTrip; return box('New trip', `<div class="field"><label for="ntname">Trip name</label><input id="ntname" class="input" data-nt="name" value="${esc(n.name)}" placeholder="Hokkaido in winter"></div><div class="grid2"><div class="field"><label for="ntfrom">First day</label><input id="ntfrom" type="date" class="input" data-nt="from" value="${esc(n.from)}"></div><div class="field"><label for="ntto">Last day (optional)</label><input id="ntto" type="date" class="input" data-nt="to" value="${esc(n.to)}"></div></div><p class="sub">Every day from the first to the last is set up for you. You can add or remove days later.</p>${S.addErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.addErr)}</p>` : ''}<div><button type="button" class="btn btn--primary" data-act="createtrip">Create the trip</button></div>`); }
+  if(k === 'unlock') return box('Unlock', `<p>Type your passcode to sync and to use your Google key on this device.</p>
+    <div class="field"><label for="upass">Passcode</label><input id="upass" type="password" class="input" autocomplete="current-password" ${S.lockBusy ? 'disabled' : ''}></div>
+    ${S.addErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.addErr)}</p>` : ''}
+    <div class="chips"><button type="button" class="btn btn--primary" data-act="unlock" ${S.lockBusy ? 'disabled' : ''}>${S.lockBusy ? 'Unlocking…' : 'Unlock'}</button><button type="button" class="btn" data-act="close">Not now</button></div>
+    <p class="sub">Forgot it? <button type="button" class="link" data-act="asklockreset">Start again without the lock</button>. Your trips stay. You'll paste your GitHub token again, and the Google key comes back from your private repo.</p>`);
   if(k === 'token') return box('Connect GitHub', `<p>Trips are saved as files in a private repo on your GitHub account. It takes a few minutes, once:</p>
     <ol class="steps"><li>On GitHub, <a href="https://github.com/new?name=Trip-Tracker-data&visibility=private" target="_blank" rel="noopener">create a new repo</a> named Trip-Tracker-data. Choose <b>Private</b> and tick <b>Add a README file</b>.</li><li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub, Settings, Fine-grained tokens</a>. Under Repository access pick only Trip-Tracker-data. Under Permissions set Contents to Read and write.</li><li>Copy the token and paste it below. Do this on each device; the token never leaves the device.</li></ol>
     <div class="field"><label for="trepo">Repo</label><input id="trepo" class="input num" value="${esc(sync.repo)}" autocomplete="off" spellcheck="false"></div>

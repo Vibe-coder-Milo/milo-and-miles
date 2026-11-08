@@ -198,7 +198,9 @@ let saveTimer = null;
 function saveNow(){
   clearTimeout(saveTimer);
   let ok = true;
-  try{ localStorage.setItem(LS_KEY, JSON.stringify(library)); }catch(e){ ok = false; }
+  // With the passcode lock on, the keys are kept only in the scrambled vault, never in the plain library.
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(vaultOn() ? Object.assign({}, library, BLANK_SHARED) : library)); }catch(e){ ok = false; }
+  if(vaultKey) sealSoon();
   if(ok !== !S.saveFail) return;
   S.saveFail = !ok; render();
 }
@@ -293,7 +295,7 @@ const S = {
   addType:'activity', addCat:'attraction', addMode:'search', q:'', results:null, searching:false, picked:null, link:'', linkRes:null,
   addDay:null, hFrom:null, hTo:null, fName:'', fDep:'', fArr:'', addNote:'', wiki:null, sTime:'', sWhat:'',
   draft:null, editing:null, editDay:false, scrollDay:false, editTime:null, undo:null, editItem:null, expErr:null, addErr:null,
-  hlCity:null, confirm:null, pastForm:{ name:'', from:'', to:'', cities:'' }, newTrip:{ name:'', from:'', to:'' }, saveFail:false,
+  hlCity:null, confirm:null, lockErr:null, lockBusy:false, afterUnlock:null, pastForm:{ name:'', from:'', to:'', cities:'' }, newTrip:{ name:'', from:'', to:'' }, saveFail:false,
 };
 
 /* ===== Google Places (needs the key in Settings) and free search fallbacks ===== */
@@ -305,6 +307,10 @@ function trackApiCall(kind){
   u[kind] = (u[kind] || 0) + 1;
   saveSoon(); // counts go up with the next sync; they never mark the keys as changed
 }
+// Cost guard: once this month's count for a Google service reaches 90% of its free allowance (counted
+// across every synced device), the app uses the free service for it until the month changes.
+function nearCap(kind){ const u = USAGE.find(x => x[0] === kind); return !!u && usageTotal(kind) >= u[2] * 0.9; }
+const googleSearchOK = () => !!gkey() && !nearCap('autocomplete') && !nearCap('placeDetails');
 function usageTotal(kind){ const mk = isoLocal(today()).slice(0, 7); return Object.values(library.usage).reduce((a, u) => a + (u && u.month === mk ? (u[kind] || 0) : 0), 0); }
 let googleSessionToken = null, googleMapsLoadingPromise = null;
 function loadGoogleMapsScript(apiKey){
@@ -560,7 +566,7 @@ function parseMaps(text){
 // a few wordings and preferring a result in the right town.
 async function findFromText(p){
   const hint = addCityHint();
-  if(gkey()){ const g = await searchPlacesGoogleText(p.query, ''); if(g && g.length) return g[0]; }
+  if(gkey() && !nearCap('textSearch')){ const g = await searchPlacesGoogleText(p.query, ''); if(g && g.length) return g[0]; }
   const tk = townKey(p.town || hint);
   const tries = [];
   if(p.town) tries.push([`${p.name} ${stripTown(p.town)}`, '']);
@@ -628,7 +634,71 @@ function paintLink(){ const el = document.getElementById('alinkres'); if(el) el.
 
 /* ===== GitHub sync ===== */
 const sync = Object.assign({ token:'', repo:DATA_REPO_DEFAULT, expires:'', meta:{}, deleted:{}, settingsSha:'', settingsDirty:false, lastSync:'', status:'', error:'' }, readJSON(LS_SYNC) || {});
-function saveSync(){ writeJSON(LS_SYNC, sync); }
+function saveSync(){ writeJSON(LS_SYNC, vaultOn() ? Object.assign({}, sync, { token:'' }) : sync); if(vaultKey) sealSoon(); }
+
+/* ===== passcode lock =====
+   Optional, per device. The Google key, the CARTO key, the short-link reader address and the GitHub token
+   are encrypted with a key made from the passcode (PBKDF2, 600,000 rounds, then AES-GCM), and only that
+   scrambled copy is stored. Another page on the same github.io address, or anyone reading the browser's
+   storage, gets only the scrambled copy. The passcode itself is never stored. The unscrambling key lives
+   in memory while the app is open and is gone when the page closes or "Lock now" is pressed.
+   Trips themselves are not scrambled: they stay readable so the app works offline without a passcode. */
+const LS_VAULT = 'trip-tracker-vault-v1', VAULT_ROUNDS = 600000, PASS_MIN = 8;
+const BLANK_SHARED = Object.fromEntries(SHARED_KEYS.map(k => [k, '']));
+let vault = (v => v && typeof v.salt === 'string' && typeof v.data === 'string' ? v : null)(readJSON(LS_VAULT));
+let vaultKey = null, sealChain = Promise.resolve(), sealTimer = null, unlockFails = 0, unlockWait = 0;
+function vaultOn(){ return !!vault; }
+function isLocked(){ return !!vault && !vaultKey; }
+const toB64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const fromB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function keyFromPass(pass, salt, rounds){
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass.normalize('NFC')), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:rounds, hash:'SHA-256' }, base, { name:'AES-GCM', length:256 }, false, ['encrypt', 'decrypt']);
+}
+// Writes the current keys and token into the vault, scrambled with a fresh random IV each time.
+function seal(){
+  sealChain = sealChain.then(async () => {
+    if(!vault || !vaultKey) return;
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const plain = new TextEncoder().encode(JSON.stringify(Object.assign(sharedOf(library), { token:sync.token })));
+    const data = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, vaultKey, plain);
+    vault = { v:1, salt:vault.salt, rounds:vault.rounds, iv:toB64(iv), data:toB64(data) }; writeJSON(LS_VAULT, vault);
+  }).catch(e => console.error('Could not save the locked keys', e));
+  return sealChain;
+}
+function sealSoon(){ clearTimeout(sealTimer); sealTimer = setTimeout(seal, 50); }
+// The old Trip Tracker kept its keys in its own storage. With the lock on, those plain copies go.
+function scrubLegacyKeys(){ const old = readJSON(LS_LEGACY); if(old && (old.googleApiKey || old.cartoApiKey)){ old.googleApiKey = ''; old.cartoApiKey = ''; writeJSON(LS_LEGACY, old); } }
+async function lockOn(pass){
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  vaultKey = await keyFromPass(pass, salt, VAULT_ROUNDS);
+  vault = { v:1, salt:toB64(salt), rounds:VAULT_ROUNDS, iv:'', data:'' };
+  await seal(); saveNow(); saveSync(); scrubLegacyKeys();
+}
+async function unlock(pass){
+  if(Date.now() < unlockWait) throw Object.assign(new Error('wait'), { wait:true });
+  let secrets;
+  try{
+    const key = await keyFromPass(pass, fromB64(vault.salt), vault.rounds || VAULT_ROUNDS);
+    secrets = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name:'AES-GCM', iv:fromB64(vault.iv) }, key, fromB64(vault.data))));
+    vaultKey = key;
+  }catch(e){
+    // A wrong passcode fails the AES-GCM check. Each wrong try makes the next one wait longer.
+    unlockFails++; if(unlockFails >= 3) unlockWait = Date.now() + Math.min(300, 5 * 2 ** (unlockFails - 3)) * 1000;
+    throw Object.assign(new Error('wrong'), { wrong:true });
+  }
+  unlockFails = 0; unlockWait = 0;
+  SHARED_KEYS.forEach(k => { library[k] = cleanShared(k, secrets[k]); });
+  sync.token = typeof secrets.token === 'string' ? secrets.token : '';
+}
+function lockNow(){
+  vaultKey = null; Object.assign(library, BLANK_SHARED); sync.token = '';
+  clearTimeout(syncTimer); S.syncState = ''; googleMapsLoadingPromise = null;
+}
+async function lockOff(){ await sealChain; vault = null; vaultKey = null; try{ localStorage.removeItem(LS_VAULT); }catch(e){} saveNow(); saveSync(); }
+// Forgotten passcode: the scrambled keys are thrown away. Trips stay. Reconnect GitHub on this device and
+// the Google key comes back from the private data repo.
+function lockReset(){ vault = null; vaultKey = null; try{ localStorage.removeItem(LS_VAULT); }catch(e){} Object.assign(library, BLANK_SHARED); sync.token = ''; saveNow(); saveSync(); }
 function syncMeta(id){ return sync.meta[id] || (sync.meta[id] = { sha:'', dirty:true }); }
 let syncTimer = null, syncing = false, syncAgain = false;
 function syncSoon(ms = 60000){ if(!sync.token) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, ms); if(S.syncState !== 'saving'){ S.syncState = 'pending'; paintSync(); } }
@@ -750,6 +820,7 @@ async function syncNow(){
 }
 function tokenDaysLeft(){ return okDate(sync.expires) ? daysUntil(sync.expires) : null; }
 function syncInfo(){
+  if(isLocked()) return { ic:'lock', short:'Locked', long:'Locked. Unlock to sync and use your keys', s:'locked' };
   if(!sync.token) return { ic:'cloud-off', short:'This device', long:'Saved on this device only', s:'local' };
   const st = S.syncState || sync.status;
   if(st === 'stopped') return { ic:'alert', short:'Sync stopped', long:'Sync stopped, the token was refused', s:'stopped' };

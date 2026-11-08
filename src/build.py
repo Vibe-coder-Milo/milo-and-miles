@@ -30,7 +30,7 @@ css = css.replace('/* Polished mockup (Impeccable critique applied)', '/* Milo &
 css += expand_dark(read('extra.css'))
 
 svg = tpl[tpl.index('<svg width="0"'):tpl.index('</svg>\n\n<div id="app">') + 6]
-svg = svg.replace('<symbol id="i-plus"', '<symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>\n  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>\n  <symbol id="i-plus"')
+svg = svg.replace('<symbol id="i-plus"', '<symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>\n  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>\n  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>\n  <symbol id="i-plus"')
 
 js = read('app.js') + read('app2.js') + read('app3.js')
 js = js.replace('%%HELPER%%', json.dumps(read('helper.gs')).replace('</', '<\\/'))
