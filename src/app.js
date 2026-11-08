@@ -398,6 +398,42 @@ async function resolveGooglePlace(pp){
     return place.location ? { lat: place.location.lat(), lon: place.location.lng(), addr: place.formattedAddress || '', placeId: pp.placeId || place.id || '' } : null;
   }catch(e){ console.error('Could not confirm the Google place', e); return null; }
 }
+// An address line from the free search's details: street, district, postcode and city, state, country.
+function photonAddr(p){
+  p = p || {}; const street = [p.housenumber, p.street].filter(Boolean).join(' '); const cityLine = [p.postcode, p.city].filter(Boolean).join(' ');
+  let parts = [street, p.district, cityLine, p.state && p.state !== p.city ? p.state : null, p.country].filter(Boolean);
+  return parts.filter((v, i) => i === 0 || v !== parts[i - 1]).join(', ');
+}
+// The address of a place at a known spot (free search, no Google cost): the place itself if the search
+// knows it there, otherwise the street address at that spot.
+async function addressAt(lat, lon, name){
+  try{
+    const near = f => f.geometry && nearKm({ lat, lon }, { lat:f.geometry.coordinates[1], lon:f.geometry.coordinates[0] }) < 0.4;
+    if(name && name !== 'Pinned place'){
+      const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(name)}&lat=${lat}&lon=${lon}&limit=5&lang=en`);
+      if(r.ok){ const j = await r.json(); const f = ((j && j.features) || []).find(near); const a = f && photonAddr(f.properties); if(a) return a; }
+    }
+    const r = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}&limit=1&lang=en`);
+    if(!r.ok) return '';
+    const j = await r.json(); const f = j && j.features && j.features[0];
+    return f ? photonAddr(f.properties) : '';
+  }catch(e){ return ''; }
+}
+// Places added from a link before addresses were looked up get theirs, one at a time, in the background.
+let addrBusy = false;
+async function fillMissingAddresses(){
+  if(addrBusy || !library) return; addrBusy = true;
+  try{
+    for(const t of Object.values(library.trips)) for(const d of t.days) for(const p of d.places){
+      if(!p.gmap || p.address || p.lat == null || p.type === 'flight') continue;
+      const a = await addressAt(p.lat, p.lon, p.name); await sleep(1200);
+      if(!a || p.address || !library.trips[t.id]) continue;
+      t.days.forEach(dd => dd.places.forEach(q => { if(q.gmap === p.gmap && q.name === p.name && !q.address) q.address = a; }));
+      changed(t);
+      if(!document.activeElement || !document.activeElement.matches('input, textarea, select')) render();
+    }
+  }finally{ addrBusy = false; }
+}
 async function searchPlaces(query, cityHint){
   const q = cityHint ? `${query}, ${cityHint}` : query;
   try{
@@ -406,10 +442,7 @@ async function searchPlaces(query, cityHint){
     if(!data || !Array.isArray(data.features)) return [];
     return data.features.map(f => {
       const p = f.properties || {}; const c = f.geometry && f.geometry.coordinates; if(!c) return null;
-      const street = [p.housenumber, p.street].filter(Boolean).join(' '); const cityLine = [p.postcode, p.city].filter(Boolean).join(' ');
-      let parts = [street, p.district, cityLine, p.state && p.state !== p.city ? p.state : null, p.country].filter(Boolean);
-      parts = parts.filter((v, i) => i === 0 || v !== parts[i - 1]);
-      return { lat:c[1], lon:c[0], label:p.name || p.street || query, sub:parts.join(', ') || 'No address details' };
+      return { lat:c[1], lon:c[0], label:p.name || p.street || query, sub:photonAddr(p) || 'No address details' };
     }).filter(Boolean);
   }catch(e){ return []; }
 }
@@ -670,13 +703,17 @@ async function resolveLink(){
     if(seq !== linkSeq) return;
     r = hit ? { kind:'coords', lat:hit.lat, lon:hit.lon, name:r.name, addr:hit.sub, found:hit.label, via:'name' } : { kind:'notfound', name:r.name };
   }
+  // A link with an exact spot has no address in it: look it up, and show it as soon as it's found.
+  if(r.kind === 'coords' && !r.addr){
+    const res = r; res.addrPending = addressAt(res.lat, res.lon, res.name).then(a => { res.addr = a || ''; delete res.addrPending; if(seq === linkSeq && S.linkRes === res) paintLink(); return a; });
+  }
   S.linkRes = r; paintLink();
 }
 function linkResHTML(){
   const r = S.linkRes || { kind:'empty' };
   if(r.kind === 'empty') return `<p class="sub">In Google Maps, tap Share, then Copy link, and paste it here. Short and full links both work.</p>`;
   if(r.kind === 'loading') return `<p class="sub">Reading the link…</p>`;
-  if(r.kind === 'coords') return `<div class="result ok">${I('check')}<div><span class="num">${r.lat.toFixed(5)}, ${r.lon.toFixed(5)}</span>${r.found && r.found !== r.name ? ` <span>${esc(r.found)}</span>` : ''}${r.addr ? `<br><span>${esc(r.addr)}</span>` : ''}<br><span>${r.via === 'helper' ? 'Found through your short-link reader.' : r.via === 'name' ? 'The link had no exact location, so the pin comes from a search. Check it on the map after adding.' : r.via === 'view' ? 'The link only shows the area of the map, so the pin is roughly there. Check it on the map after adding.' : 'The location was read straight from the link.'}</span></div></div>
+  if(r.kind === 'coords') return `<div class="result ok">${I('check')}<div><span class="num">${r.lat.toFixed(5)}, ${r.lon.toFixed(5)}</span>${r.found && r.found !== r.name ? ` <span>${esc(r.found)}</span>` : ''}${r.addr ? `<br><span>${esc(r.addr)}</span>` : r.addrPending ? '<br><span class="sub">Finding the address…</span>' : ''}<br><span>${r.via === 'helper' ? 'Found through your short-link reader.' : r.via === 'name' ? 'The link had no exact location, so the pin comes from a search. Check it on the map after adding.' : r.via === 'view' ? 'The link only shows the area of the map, so the pin is roughly there. Check it on the map after adding.' : 'The location was read straight from the link.'}</span></div></div>
     <div class="field"><label for="lname">Name</label><input id="lname" class="input" data-in="lname" value="${esc(r.name)}"></div>`;
   if(r.kind === 'nohelper') return `<div class="result warn">${I('alert')}<div><b>Short links need the short-link reader</b><span>Set it up once in Settings. For now, search by name, or add it without a location and drop a pin.</span></div></div>`;
   if(r.kind === 'helperfail') return `<div class="result warn">${I('alert')}<div><b>The short-link reader didn't answer</b><span>${r.detail ? esc(r.detail) + '. ' : ''}Check the reader in Settings, or search by name for now.</span></div></div>`;
