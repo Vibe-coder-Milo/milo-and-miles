@@ -7,5 +7,10 @@
 - Keep Google costs at zero: Place Details asks only for `location` and `formattedAddress`. Never add `editorialSummary`, ratings or hours.
 - No keys or tokens in this repo. The keys listed in `SHARED_KEYS` sync through the private `Trip-Tracker-data` repo; the GitHub token stays on each device and never goes into a sync, an export or a backup.
 - Dark mode has one colour scheme (onyx, midnight indigo, tropical mint). In `src/extra.css`, write each dark rule once inside a `/*@dark*/ … /*@end*/` block using `:dark` as the selector; the build writes it out for both "Automatic" and "Dark".
+- Security, because trips arrive from backup files and from sync:
+  - `migrateState()` / `migrateLibrary()` check every field's kind (ids, currencies, dates, times, numbers, shared keys). Keep doing that for any new field.
+  - Every value put into HTML goes through `esc()`, ids and numbers included. Never use inline `on…=` handlers or `javascript:` links: the Content Security Policy blocks them.
+  - The policy is written by `src/build.py`, with a hash of the app's script. A new outside service must be added to it there.
+  - Saved keys are never put back into the page in full (only "ends in …"). The token only ever goes to `api.github.com`.
 - Must work well on iPad, including touch drag-and-drop.
 - Deploying means pushing to `main` (GitHub Pages).

@@ -33,6 +33,10 @@ const USAGE = [['mapLoads','Map loads',10000],['autocomplete','Suggestions as yo
 
 /* ===== small helpers ===== */
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+// Ids are made by uid(): letters and digits. Anything else in a file or in synced data gets a fresh one.
+const SAFE_ID = /^[A-Za-z0-9_-]{1,40}$/;
+const cleanId = (v, seen) => { let id = typeof v === 'string' && SAFE_ID.test(v) && !(seen && seen.has(v)) ? v : uid(); if(seen) seen.add(id); return id; };
+const num0 = v => { const n = Number(v); return Number.isFinite(n) ? n : null; };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const I = (name, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -65,6 +69,17 @@ let library = null;
 // The settings every device shares through the private data repo. The GitHub token is never one of them.
 const SHARED_KEYS = ['googleApiKey', 'cartoApiKey', 'helperUrl'];
 const sharedOf = o => Object.fromEntries(SHARED_KEYS.map(k => [k, o[k]]));
+// What each shared setting must look like. Anything else is dropped, so a bad value can't be slipped in.
+const KEY_OK = { googleApiKey: v => /^[A-Za-z0-9_-]{20,100}$/.test(v), cartoApiKey: v => /^[A-Za-z0-9_-]{8,100}$/.test(v),
+  helperUrl: v => /^https:\/\/script\.google(usercontent)?\.com\/[A-Za-z0-9_\-\/.?=&]+$/.test(v) };
+const cleanShared = (k, v) => typeof v === 'string' && (v === '' || KEY_OK[k](v.trim())) ? v.trim() : '';
+// API usage counts per device, shown in Settings: a month and whole numbers only.
+function cleanUsage(u){
+  const out = {}; if(!u || typeof u !== 'object') return out;
+  Object.keys(u).forEach(id => { const x = u[id]; if(!SAFE_ID.test(id) || !x || typeof x !== 'object') return;
+    const o = { month: /^\d{4}-\d{2}$/.test(x.month) ? x.month : '' }; USAGE.forEach(([k]) => { const n = num0(x[k]); if(n !== null && n >= 0) o[k] = Math.round(n); }); out[id] = o; });
+  return out;
+}
 function defaultTrip(){
   const now = new Date().toISOString();
   return { id:uid(), createdAt:now, updatedAt:now, tripName:'', kind:'full', currency:'SGD', baseCurrency:'SGD', rates:{}, budgetTarget:null, start:'', end:'', cities:[], days:[], expenses:[], geocodeCache:{} };
@@ -75,26 +90,35 @@ function newDay(date = ''){ return { id:uid(), date, city:'', notes:'', logistic
 // loading. It adds missing fields and tidies old ones. The only thing it removes is an expense row with
 // nothing in it at all (no description, amount, date or unit).
 function migrateState(t){
+  // Everything here may come from a file someone else made, or from synced data, so each field is
+  // checked for its kind: ids, currencies, dates, times and numbers must look exactly right, and every
+  // piece of text is plain text (it is escaped wherever it is shown).
   if(!t || typeof t !== 'object') return t;
-  if(!t.id) t.id = uid();
-  if(!t.createdAt) t.createdAt = new Date().toISOString();
-  if(!t.updatedAt) t.updatedAt = t.createdAt;
+  t.id = cleanId(t.id);
+  const iso = v => typeof v === 'string' && !isNaN(Date.parse(v)) ? new Date(v).toISOString() : '';
+  t.createdAt = iso(t.createdAt) || new Date().toISOString();
+  t.updatedAt = iso(t.updatedAt) || t.createdAt;
   if(typeof t.tripName !== 'string') t.tripName = String(t.tripName || '');
+  t.olderCopy = t.olderCopy === true;
   // A copy kept when two devices edited the same trip. It is a backup, so Home doesn't count it again.
   if(t.olderCopy !== true && / \(older copy\)$/.test(t.tripName)) t.olderCopy = true;
-  if(!t.currency) t.currency = 'SGD';
-  if(!t.baseCurrency) t.baseCurrency = 'SGD';
-  if(!t.rates || typeof t.rates !== 'object' || Array.isArray(t.rates)) t.rates = {};
+  if(!CURS.includes(t.currency)) t.currency = 'SGD';
+  if(!CURS.includes(t.baseCurrency)) t.baseCurrency = 'SGD';
+  const rates = t.rates && typeof t.rates === 'object' && !Array.isArray(t.rates) ? t.rates : {};
+  t.rates = {}; CURS.forEach(c => { const r = num0(rates[c]); if(r && r > 0) t.rates[c] = r; });
+  if(typeof t.budgetTarget !== 'number' || !Number.isFinite(t.budgetTarget)) t.budgetTarget = null;
   if(t.kind !== 'maponly') t.kind = 'full';
-  if(!Array.isArray(t.cities)) t.cities = [];
-  if(typeof t.start !== 'string') t.start = '';
-  if(typeof t.end !== 'string') t.end = '';
-  if(!Array.isArray(t.days)) t.days = [];
-  if(!Array.isArray(t.expenses)) t.expenses = [];
-  if(!t.geocodeCache || typeof t.geocodeCache !== 'object') t.geocodeCache = {};
+  t.cities = Array.isArray(t.cities) ? t.cities.filter(c => typeof c === 'string' && c.trim()) : [];
+  if(!okDate(t.start)) t.start = '';
+  if(!okDate(t.end)) t.end = '';
+  const objs = a => Array.isArray(a) ? a.filter(x => x && typeof x === 'object' && !Array.isArray(x)) : [];
+  t.days = objs(t.days);
+  t.expenses = objs(t.expenses);
+  if(!t.geocodeCache || typeof t.geocodeCache !== 'object' || Array.isArray(t.geocodeCache)) t.geocodeCache = {};
+  const seen = new Set();
   t.days.forEach(d => {
-    if(!d.id) d.id = uid();
-    if(typeof d.date !== 'string') d.date = '';
+    d.id = cleanId(d.id, seen);
+    if(!okDate(d.date)) d.date = '';
     if(typeof d.city !== 'string') d.city = String(d.city || '');
     if(typeof d.notes !== 'string') d.notes = String(d.notes || '');
     if(!Array.isArray(d.places)){
@@ -103,22 +127,26 @@ function migrateState(t){
       if(Array.isArray(d.activities)) d.activities.forEach(a => d.places.push({ id:uid(), type:'activity', name:a, lat:null, lon:null }));
       delete d.hotel; delete d.activities;
     }
-    if(!Array.isArray(d.logistics)) d.logistics = [];
+    d.places = objs(d.places);
+    d.logistics = objs(d.logistics);
     d.logistics.forEach(l => {
       l.time = normalizeTimeForInput(l.time);
       if(typeof l.desc !== 'string') l.desc = String(l.desc || '');
       if(l.kind !== 'activity') l.kind = 'transport';
     });
     d.places.forEach(p => {
-      if(!p.id) p.id = uid();
+      p.id = cleanId(p.id, seen);
       if(!['hotel','flight','activity'].includes(p.type)) p.type = 'activity';
       if(p.type === 'activity' && p.category !== 'food') p.category = 'attraction';
+      if(p.type !== 'activity') delete p.category;
       if(typeof p.name !== 'string') p.name = String(p.name || '');
       if(typeof p.note !== 'string') p.note = String(p.note || '');
-      if(typeof p.lat !== 'number' || typeof p.lon !== 'number'){
+      if(p.address != null && typeof p.address !== 'string') p.address = String(p.address);
+      const okLat = typeof p.lat === 'number' && Math.abs(p.lat) <= 90, okLon = typeof p.lon === 'number' && Math.abs(p.lon) <= 180;
+      if(!okLat || !okLon){
         p.lat = null; p.lon = null;
         const c = t.geocodeCache[geoKey(p.name, d.city)];
-        if(c && typeof c.lat === 'number'){ p.lat = c.lat; p.lon = c.lon; }
+        if(c && typeof c.lat === 'number' && typeof c.lon === 'number' && Math.abs(c.lat) <= 90 && Math.abs(c.lon) <= 180){ p.lat = c.lat; p.lon = c.lon; }
       }
       if(p.type === 'activity') p.time = normalizeTimeForInput(p.time);
       if(p.type === 'flight'){ p.departTime = normalizeTimeForInput(p.departTime); p.arriveTime = normalizeTimeForInput(p.arriveTime); }
@@ -127,12 +155,13 @@ function migrateState(t){
   // Blank rows from the old app's "+ Add expense" carry nothing: no description, amount or date.
   t.expenses = t.expenses.filter(e => e && (e.desc || Number(e.amount) || e.date || e.unit));
   t.expenses.forEach(e => {
-    if(!e.id) e.id = uid();
-    if(CATEGORY_RENAME_MAP[e.category]) e.category = CATEGORY_RENAME_MAP[e.category];
+    e.id = cleanId(e.id, seen);
+    if(Object.hasOwn(CATEGORY_RENAME_MAP, e.category)) e.category = CATEGORY_RENAME_MAP[e.category];
     if(!CATS.some(c => c.k === e.category)) e.category = 'Misc';
-    if(!e.currency) e.currency = t.currency || 'SGD';
+    if(!CURS.includes(e.currency)) e.currency = t.currency;
     if(typeof e.desc !== 'string') e.desc = String(e.desc || '');
-    if(typeof e.date !== 'string') e.date = '';
+    if(!okDate(e.date)) e.date = '';
+    ['unit','qty','nights'].forEach(k => { if(e[k] == null) return; const n = num0(e[k]); if(n === null) delete e[k]; else e[k] = n; });
     if(e.unit != null && e.qty != null) e.amount = round2(Number(e.unit) * Number(e.qty));
     e.amount = Number(e.amount) || 0;
   });
@@ -150,11 +179,13 @@ function loadLibrary(){
 function migrateLibrary(lib){
   if(!lib || typeof lib !== 'object') lib = {};
   if(!lib.trips || typeof lib.trips !== 'object') lib.trips = {};
-  SHARED_KEYS.forEach(k => { if(typeof lib[k] !== 'string') lib[k] = ''; });
-  if(!lib.cityCache || typeof lib.cityCache !== 'object') lib.cityCache = {};
+  SHARED_KEYS.forEach(k => { lib[k] = cleanShared(k, lib[k]); });
+  if(!lib.cityCache || typeof lib.cityCache !== 'object' || Array.isArray(lib.cityCache)) lib.cityCache = {};
   if(!lib.usage || typeof lib.usage !== 'object') lib.usage = {};
   if(lib.apiUsage && lib.apiUsage.month){ lib.usage[dev.id] = Object.assign({}, lib.apiUsage); delete lib.apiUsage; }
-  Object.values(lib.trips).forEach(migrateState);
+  lib.usage = cleanUsage(lib.usage);
+  // Each trip is checked, and filed under its (checked) id.
+  const trips = {}; Object.values(lib.trips).forEach(t => { if(!t || typeof t !== 'object' || Array.isArray(t)) return; migrateState(t); trips[t.id] = t; }); lib.trips = trips;
   // An empty, unnamed trip is what older versions created on first open. It isn't a real trip, so it goes.
   Object.values(lib.trips).forEach(t => { if(!t.tripName && !t.days.length && !t.expenses.length && Object.keys(lib.trips).length > 1) delete lib.trips[t.id]; });
   if(!lib.trips[lib.activeTripId]) lib.activeTripId = Object.keys(lib.trips)[0] || null;
@@ -180,12 +211,12 @@ function changed(t = T()){
 function settingsChanged(){ sync.settingsDirty = true; saveSync(); saveSoon(); syncSoon(); }
 
 /* ===== money ===== */
-function fmt(cur, n){ if(!isFinite(n)) return 'No rate yet'; const dec = ZERO_DEC.has(cur) ? 0 : 2; return (SYM[cur] || cur + ' ') + Number(n).toLocaleString('en-SG', { minimumFractionDigits:dec, maximumFractionDigits:dec }); }
+function fmt(cur, n){ if(!isFinite(n)) return 'No rate yet'; const dec = ZERO_DEC.has(cur) ? 0 : 2; return (Object.hasOwn(SYM, cur) ? SYM[cur] : esc(cur) + ' ') + Number(n).toLocaleString('en-SG', { minimumFractionDigits:dec, maximumFractionDigits:dec }); }
 const rateOf = (t, cur) => cur === t.baseCurrency ? 1 : t.rates[cur];
 const conv = (t, from, to, n) => { const a = rateOf(t, from), b = rateOf(t, to); return a && b ? n / a * b : NaN; };
 const fmtRate = n => Number(n).toLocaleString('en-SG', { maximumFractionDigits:4 });
 function tripCurs(t){ const s = new Set([t.currency]); t.expenses.forEach(e => s.add(e.currency)); s.delete(t.baseCurrency); return [...s]; }
-function rateLine(t){ const l = tripCurs(t).filter(c => t.rates[c]).map(c => `1 ${t.baseCurrency} = ${fmtRate(t.rates[c])} ${c}`); return l.length ? `Rate: ${l.join(', ')}` : (tripCurs(t).length ? 'No exchange rate set yet' : ''); }
+function rateLine(t){ const l = tripCurs(t).filter(c => t.rates[c]).map(c => `1 ${esc(t.baseCurrency)} = ${fmtRate(t.rates[c])} ${esc(c)}`); return l.length ? `Rate: ${l.join(', ')}` : (tripCurs(t).length ? 'No exchange rate set yet' : ''); }
 function changeBase(t, N){
   const r = t.rates, B = t.baseCurrency; if(N === B) return;
   const k = r[N]; const nr = {};
@@ -262,7 +293,7 @@ const S = {
   addType:'activity', addCat:'attraction', addMode:'search', q:'', results:null, searching:false, picked:null, link:'', linkRes:null,
   addDay:null, hFrom:null, hTo:null, fName:'', fDep:'', fArr:'', addNote:'', wiki:null, sTime:'', sWhat:'',
   draft:null, editing:null, editDay:false, scrollDay:false, editTime:null, undo:null, editItem:null, expErr:null, addErr:null,
-  hlCity:null, confirm:null, showKey:false, pastForm:{ name:'', from:'', to:'', cities:'' }, newTrip:{ name:'', from:'', to:'' }, saveFail:false,
+  hlCity:null, confirm:null, pastForm:{ name:'', from:'', to:'', cities:'' }, newTrip:{ name:'', from:'', to:'' }, saveFail:false,
 };
 
 /* ===== Google Places (needs the key in Settings) and free search fallbacks ===== */
@@ -625,8 +656,8 @@ async function syncSettings(){
   // Keys changed on this device win; otherwise what another device saved is taken up here, a removed key
   // included. On this device's first sync an empty remote value doesn't wipe a key it already has.
   const synced = !!sync.settingsSha;
-  if(!sync.settingsDirty && r) SHARED_KEYS.forEach(k => { if(typeof remote[k] === 'string' && (remote[k] || synced) && remote[k] !== library[k]){ library[k] = remote[k]; changedLocal = true; } });
-  const usage = Object.assign({}, remote.usage || {}); if(library.usage[dev.id]) usage[dev.id] = library.usage[dev.id];
+  if(!sync.settingsDirty && r) SHARED_KEYS.forEach(k => { if(typeof remote[k] !== 'string') return; const v = cleanShared(k, remote[k]); if((v || synced) && v !== library[k]){ library[k] = v; changedLocal = true; } });
+  const usage = cleanUsage(remote.usage); if(library.usage[dev.id]) usage[dev.id] = library.usage[dev.id];
   Object.keys(usage).forEach(k => { if(k !== dev.id) library.usage[k] = usage[k]; });
   const out = Object.assign(sharedOf(library), { usage });
   if(!r || JSON.stringify(out) !== JSON.stringify(Object.assign(sharedOf(remote), { usage:remote.usage || {} }))){
@@ -650,7 +681,7 @@ async function syncNow(){
     if(!info.private) throw Object.assign(new Error('public repo'), { status:451, detail:`${sync.repo} is public, so anyone could read your trips and Google key. Nothing was saved there. Make the repo private on GitHub (Settings, Danger zone, Change visibility), then sync again.` });
     if(info.permissions && info.permissions.push === false) throw Object.assign(new Error('read only'), { status:403 });
     const list = await gh('/contents/trips');
-    const remote = {}; (Array.isArray(list) ? list : []).forEach(f => { if(f.name.endsWith('.json')) remote[f.name.slice(0, -5)] = f.sha; });
+    const remote = {}; (Array.isArray(list) ? list : []).forEach(f => { const m = f && typeof f.name === 'string' && f.name.match(/^([A-Za-z0-9_-]{1,40})\.json$/); if(m) remote[m[1]] = f.sha; }); // only files named like a trip id
     await syncSettings();
     for(const [id, sha] of Object.entries(sync.deleted)){
       if(remote[id]) await ghDelete(`trips/${id}.json`, remote[id], 'Delete a trip');
@@ -660,7 +691,7 @@ async function syncNow(){
     for(const [id, sha] of Object.entries(remote)){
       const m = sync.meta[id]; const local = library.trips[id];
       if(local && m && m.sha === sha){ if(m.dirty) await pushTrip(id, sha, 'Save'); continue; }
-      const got = await ghGet(`trips/${id}.json`); if(!got) continue;
+      const got = await ghGet(`trips/${id}.json`); if(!got || !got.data || typeof got.data !== 'object' || Array.isArray(got.data)) continue;
       const data = migrateState(got.data); data.id = id;
       if(!local){ library.trips[id] = data; sync.meta[id] = { sha:got.sha, dirty:false }; downloaded[id] = data; continue; }
       if(!m || !m.dirty){ library.trips[id] = data; sync.meta[id] = { sha:got.sha, dirty:false }; continue; }

@@ -349,7 +349,11 @@ document.addEventListener('click', e => {
       saveSync(); S.addErr = null; S.dialog = null; announce('Token saved on this device. Syncing now'); render(); syncNow(); return;
     }
     case 'askdisconnect': confirmBox('Disconnect sync on this device?', 'The token is removed from this device. Your trips stay here and in the GitHub repo.', 'Disconnect', () => { sync.token = ''; sync.status = ''; sync.error = ''; S.syncState = ''; saveSync(); announce('Sync turned off on this device'); render(); }); return;
-    case 'savekey': library.googleApiKey = document.getElementById('gk').value.trim(); googleBroken = false; library.cartoApiKey = (document.getElementById('ck')?.value || '').trim(); googleMapsLoadingPromise = null; S.dialog = null; settingsChanged(); announce('Key saved'); break;
+    case 'savekey': {
+      const g = document.getElementById('gk').value.trim(), ck = (document.getElementById('ck')?.value || '').trim();
+      if(g && !KEY_OK.googleApiKey(g)){ toast('That doesn’t look like a Google key. Copy it again from Google Cloud.'); return; }
+      if(ck && !KEY_OK.cartoApiKey(ck)){ toast('That doesn’t look like a CARTO key.'); return; }
+      library.googleApiKey = g || library.googleApiKey; googleBroken = false; library.cartoApiKey = ck || library.cartoApiKey; googleMapsLoadingPromise = null; S.dialog = null; settingsChanged(); announce('Key saved'); } break;
     case 'askdelkey': confirmBox('Remove the Google key?', 'Search falls back to the free service.' + (sync.token ? ' It is removed from every device.' : ''), 'Remove the key', () => { library.googleApiKey = ''; settingsChanged(); render(); }); return;
     case 'copyscript': navigator.clipboard?.writeText(HELPER_SCRIPT).then(() => toast('Script copied'), () => { const ta = document.getElementById('hscript'); ta.select(); toast('Select all and copy'); }); return;
     case 'savehelper': {
@@ -362,8 +366,8 @@ document.addEventListener('click', e => {
       return;
     }
     case 'delhelper': library.helperUrl = ''; settingsChanged(); break;
+    case 'delcarto': library.cartoApiKey = ''; MAPS.trip && MAPS.trip.theme && MAPS.trip.theme(isDark()); settingsChanged(); toast('CARTO key removed'); break;
     case 'theme': dev.theme = el.dataset.v; saveDev(); break;
-    case 'showkey': S.showKey = !S.showKey; break;
     case 'sz': dev.scale = Math.max(.8, Math.min(1.5, +(dev.scale + .1 * el.dataset.d).toFixed(1))); saveDev(); break;
     case 'print': window.print(); return;
     case 'dialog': S.dialog = el.dataset.d; S.addErr = null; if(el.dataset.d === 'add'){ resetAdd(); } break;

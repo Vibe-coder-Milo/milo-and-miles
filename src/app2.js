@@ -2,7 +2,7 @@
 /* ===== shell ===== */
 function bar(){
   const t = T(); const during = t && tripDayIndex(t) > -1; const sy = syncInfo();
-  const tab = (k, l, extra = '') => `<button type="button" class="tab" data-act="nav" data-to="${k}" ${S.screen === k ? 'aria-current="page"' : ''} ${k !== 'home' && !t ? 'disabled' : ''}>${l}${extra}</button>`;
+  const tab = (k, l, extra = '') => `<button type="button" class="tab" data-act="nav" data-to="${esc(k)}" ${S.screen === k ? 'aria-current="page"' : ''} ${k !== 'home' && !t ? 'disabled' : ''}>${l}${extra}</button>`;
   return `<header class="bar"><div class="wrap bar-in">
     <button type="button" class="wordmark" data-act="nav" data-to="home" aria-label="Milo &amp; Miles, home">${I('plane')}Milo &amp; Miles</button>
     <nav class="tabs" aria-label="Sections">${tab('home','Home')}${tab('overview','Overview')}${tab('itinerary','Itinerary', during ? ' <span class="today">Today</span>' : '')}${tab('budget','Budget')}</nav>
@@ -34,15 +34,15 @@ function scrHome(){
   const now = findTodayTrip();
   const band = now
     ? `<section class="todayband" aria-label="Today"><div class="nt"><p>Day ${now.i + 1}${now.t.days[now.i].city ? ' in ' + esc(now.t.days[now.i].city) : ''}</p><span>${esc(tripLabel(now.t))}, ${dLong(now.t.days[now.i].date)}</span></div><button type="button" class="btn btn--primary" data-act="gotoday">Open today's plan</button></section>`
-    : next ? `<section class="todayband" aria-label="Next trip"><div class="nt"><p>${esc(tripLabel(next))} starts ${startsIn(daysUntil(tripStart(next)))}</p><span>${dLong(tripStart(next))}${tripCities(next).length ? '. ' + tripCities(next).map(esc).join(', ') : ''}</span></div><button type="button" class="btn btn--primary" data-act="opentrip" data-id="${next.id}">Open trip</button></section>` : '';
+    : next ? `<section class="todayband" aria-label="Next trip"><div class="nt"><p>${esc(tripLabel(next))} starts ${startsIn(daysUntil(tripStart(next)))}</p><span>${dLong(tripStart(next))}${tripCities(next).length ? '. ' + tripCities(next).map(esc).join(', ') : ''}</span></div><button type="button" class="btn btn--primary" data-act="opentrip" data-id="${esc(next.id)}">Open trip</button></section>` : '';
   const sorted = trips.slice().sort((a, b) => (tripStart(b) || '9999').localeCompare(tripStart(a) || '9999'));
   const rows = sorted.map(t => {
     const st = tripStart(t), en = tripEnd(t);
     const live = now && now.t === t; const up = isUpcoming(t); const done = isPast(t);
     const status = live ? 'Travelling now' : up ? `Starts ${startsIn(daysUntil(st))}` : done ? (t.kind === 'maponly' ? 'Map-only' : `${I('check','sm')}Done`) : okDate(st) ? 'Travelling now' : 'Being planned';
     const len = tripLen(t);
-    return `<tr><td><button type="button" class="row-open" data-act="opentrip" data-id="${t.id}">${esc(tripLabel(t))}</button></td><td class="num">${range(st, en)}${len ? `<br><span class="sub">${len} ${len === 1 ? 'day' : 'days'}</span>` : ''}</td><td>${tripCities(t).map(esc).join(', ') || '<span class="sub">No towns yet</span>'}</td><td><span class="status ${done ? 'done' : 'now'}">${status}</span></td>
-      <td><button type="button" class="iconbtn" data-act="askdeltrip" data-id="${t.id}" aria-label="Delete ${esc(tripLabel(t))}">${I('x')}</button></td></tr>`;
+    return `<tr><td><button type="button" class="row-open" data-act="opentrip" data-id="${esc(t.id)}">${esc(tripLabel(t))}</button></td><td class="num">${range(st, en)}${len ? `<br><span class="sub">${len} ${len === 1 ? 'day' : 'days'}</span>` : ''}</td><td>${tripCities(t).map(esc).join(', ') || '<span class="sub">No towns yet</span>'}</td><td><span class="status ${done ? 'done' : 'now'}">${status}</span></td>
+      <td><button type="button" class="iconbtn" data-act="askdeltrip" data-id="${esc(t.id)}" aria-label="Delete ${esc(tripLabel(t))}">${I('x')}</button></td></tr>`;
   }).join('');
   return `<div class="screen">${syncBanner()}${band}
     <section class="worldfig box" aria-labelledby="h-world"><h1 id="h-world">Where you've been</h1>
@@ -71,11 +71,11 @@ function noDaysHTML(t){
 function spendSummary(t){
   const tt = totals(t); const cats = CATS.filter(c => tt.by[c.k]);
   return `<section class="summary box" aria-labelledby="h-spent">
-      <div><h2 id="h-spent" class="visually-hidden">Spending</h2><p class="sub">Spent so far, in ${t.baseCurrency}</p><p class="figure">${fmt(t.baseCurrency, tt.all)}</p><p class="sub">${rateLine(t)}</p></div>
+      <div><h2 id="h-spent" class="visually-hidden">Spending</h2><p class="sub">Spent so far, in ${esc(t.baseCurrency)}</p><p class="figure">${fmt(t.baseCurrency, tt.all)}</p><p class="sub">${rateLine(t)}</p></div>
       ${cats.length ? `<dl class="bars">${barRows(t, tt, cats)}</dl>` : `<p class="sub">No expenses yet. <button type="button" class="link" data-act="nav" data-to="budget">Add them in Budget</button></p>`}
     </section>`;
 }
-function barRows(t, tt, cats){ return cats.map(c => `<dt><span class="cat-ic c-${CATKEY[c.k]}">${I(c.ic,'sm')}</span>${c.k}</dt><dd><span class="track"><span class="fill c-${CATKEY[c.k]}" style="width:${(tt.by[c.k] / tt.all * 100).toFixed(1)}%"></span></span></dd><dd class="v">${fmt(t.baseCurrency, tt.by[c.k])}</dd>`).join(''); }
+function barRows(t, tt, cats){ return cats.map(c => `<dt><span class="cat-ic c-${CATKEY[c.k]}">${I(c.ic,'sm')}</span>${esc(c.k)}</dt><dd><span class="track"><span class="fill c-${CATKEY[c.k]}" style="width:${(tt.by[c.k] / tt.all * 100).toFixed(1)}%"></span></span></dd><dd class="v">${fmt(t.baseCurrency, tt.by[c.k])}</dd>`).join(''); }
 function scrOverview(){
   const t = T(); const ti = tripDayIndex(t);
   if(!t.days.length) return `<div class="screen">${syncBanner()}${pageHead()}${t.expenses.length ? spendSummary(t) : ''}${noDaysHTML(t)}</div>`;
@@ -84,21 +84,21 @@ function scrOverview(){
     const plan = planOf(d);
     const rows = plan.map(e => {
       if(e.kind === 'divider') return '<li class="anytime">Any time</li>';
-      const grip = (what, idx, name) => `<button type="button" class="handle" data-drag="ov" data-what="${what}" data-day="${i}" data-idx="${idx}" aria-label="Move ${esc(name)}: drag, or use arrow keys (up and down within the day, left and right to another day)">${I('grip')}</button>`;
-      if(e.kind === 'place'){ const p = e.p; return `<li class="ovrow" data-row="p:${i}:${e.pi}"><span class="pt">${e.t || ''}</span>${grip('p', e.pi, p.name)}<span class="badge c-${p.category}">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-${p.category}">${I(placeIcon(p),'sm')}</span>${esc(p.name)}</b>${p.note ? `<span class="ovnote">${esc(p.note)}</span>` : ''}</div></li>`; }
-      if(e.kind === 'step') return `<li class="ovrow" data-row="s:${i}:${e.k}"><span class="pt">${e.t || ''}</span>${grip('s', e.k, e.d || 'this step')}<span class="badge c-${e.sk}">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-${e.sk}">${I(STEPIC[e.sk],'sm')}</span>${esc(e.d) || 'No description'}</b></div></li>`;
+      const grip = (what, idx, name) => `<button type="button" class="handle" data-drag="ov" data-what="${what}" data-day="${esc(i)}" data-idx="${esc(idx)}" aria-label="Move ${esc(name)}: drag, or use arrow keys (up and down within the day, left and right to another day)">${I('grip')}</button>`;
+      if(e.kind === 'place'){ const p = e.p; return `<li class="ovrow" data-row="p:${esc(i)}:${esc(e.pi)}"><span class="pt">${esc(e.t || '')}</span>${grip('p', e.pi, p.name)}<span class="badge c-${p.category}">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-${p.category}">${I(placeIcon(p),'sm')}</span>${esc(p.name)}</b>${p.note ? `<span class="ovnote">${esc(p.note)}</span>` : ''}</div></li>`; }
+      if(e.kind === 'step') return `<li class="ovrow" data-row="s:${esc(i)}:${esc(e.k)}"><span class="pt">${esc(e.t || '')}</span>${grip('s', e.k, e.d || 'this step')}<span class="badge c-${esc(e.sk)}">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-${esc(e.sk)}">${I(STEPIC[e.sk],'sm')}</span>${esc(e.d) || 'No description'}</b></div></li>`;
       const fp = e.p; const lands = e.t && e.t === fp.arriveTime && fp.arriveTime !== fp.departTime;
-      return `<li class="ovrow" data-row="f:${i}:${e.pi}"><span class="pt">${e.t || ''}</span><span></span><span class="badge c-air">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-air">${I('plane','sm')}</span>${esc(fp.name)}</b><span class="ovnote">${e.t ? `${lands ? 'Lands' : 'Departs'} ${e.t}` : 'Times not set'}${fp.note ? '. ' + esc(fp.note) : ''}</span></div></li>`;
+      return `<li class="ovrow" data-row="f:${esc(i)}:${esc(e.pi)}"><span class="pt">${esc(e.t || '')}</span><span></span><span class="badge c-air">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-air">${I('plane','sm')}</span>${esc(fp.name)}</b><span class="ovnote">${e.t ? `${lands ? 'Lands' : 'Departs'} ${esc(e.t)}` : 'Times not set'}${fp.note ? '. ' + esc(fp.note) : ''}</span></div></li>`;
     }).join('');
-    return `<li class="ov-day" data-day="${i}">
+    return `<li class="ov-day" data-day="${esc(i)}">
       <div class="ov-when"><b>Day ${i + 1}</b><span>${dMid(d.date)}</span>${i === ti ? '<span class="now">Today</span>' : ''}</div>
       <div class="ov-body">
-        <h3><button type="button" class="row-open" data-act="day" data-i="${i}">${esc(d.city) || 'Where to?'}</button></h3>
+        <h3><button type="button" class="row-open" data-act="day" data-i="${esc(i)}">${esc(d.city) || 'Where to?'}</button></h3>
         ${hotels.length ? `<ul class="facts">${hotels.map(h => `<li><span class="cat-ic c-hotel">${I('bed','sm')}</span>${esc(h)}</li>`).join('')}</ul>` : ''}
         ${d.notes ? `<p class="ovdaynote">${esc(d.notes)}</p>` : ''}
         ${plan.length ? `<ol class="ovplan">${rows}</ol>` : '<p class="sub">Nothing planned yet. Drop a place here from another day.</p>'}
       </div>
-      <div class="ov-move"><button type="button" class="btn btn--quiet daymove" data-act="moveday" data-i="${i}" data-d="-1" aria-label="Move Day ${i + 1} earlier" ${i === 0 ? 'disabled' : ''}>${I('up','sm')}<span class="lbl">Earlier</span></button><button type="button" class="btn btn--quiet daymove" data-act="moveday" data-i="${i}" data-d="1" aria-label="Move Day ${i + 1} later" ${i === t.days.length - 1 ? 'disabled' : ''}>${I('down','sm')}<span class="lbl">Later</span></button></div>
+      <div class="ov-move"><button type="button" class="btn btn--quiet daymove" data-act="moveday" data-i="${esc(i)}" data-d="-1" aria-label="Move Day ${i + 1} earlier" ${i === 0 ? 'disabled' : ''}>${I('up','sm')}<span class="lbl">Earlier</span></button><button type="button" class="btn btn--quiet daymove" data-act="moveday" data-i="${esc(i)}" data-d="1" aria-label="Move Day ${i + 1} later" ${i === t.days.length - 1 ? 'disabled' : ''}>${I('down','sm')}<span class="lbl">Later</span></button></div>
     </li>`;
   }).join('');
   return `<div class="screen">${syncBanner()}${pageHead()}
@@ -112,7 +112,7 @@ function scrOverview(){
 }
 
 /* ===== Itinerary ===== */
-function moveSelect(id, attrs, i){ const t = T(); return `<div class="item-tools"><label for="${id}">Move to</label><select id="${id}" ${attrs}>${t.days.map((d, j) => `<option value="${j}" ${j === i ? 'selected' : ''}>${esc(dayLabel(d, j))}</option>`).join('')}</select></div>`; }
+function moveSelect(id, attrs, i){ const t = T(); return `<div class="item-tools"><label for="${id}">Move to</label><select id="${id}" ${attrs}>${t.days.map((d, j) => `<option value="${esc(j)}" ${j === i ? 'selected' : ''}>${esc(dayLabel(d, j))}</option>`).join('')}</select></div>`; }
 function itemHTML(p, i, pi, t = null, n = null){
   const trip = T(); const timed = t !== null;
   const flightSub = [p.departTime ? 'Departs ' + p.departTime : '', p.arriveTime ? 'arrives ' + p.arriveTime : ''].filter(Boolean).join(', ');
@@ -121,26 +121,26 @@ function itemHTML(p, i, pi, t = null, n = null){
   const badge = n != null ? `<span class="badge ${cls}">${n}</span>` : `<span class="badge ${cls}">${I(placeIcon(p),'sm')}</span>`;
   const editing = S.editItem === p.id;
   const noPin = p.type !== 'flight' && p.lat == null;
-  const move = p.type !== 'hotel' ? moveSelect('mv' + p.id, `data-in="moveto" data-id="${p.id}"`, i) : '';
-  const timeField = p.type === 'activity' ? `<div class="field" style="max-width:12rem"><label for="pt${p.id}">Time (optional)</label><input id="pt${p.id}" type="time" class="input num" data-in="ptime" data-id="${p.id}" value="${p.time || ''}"></div>`
-    : p.type === 'flight' ? `<div class="grid2"><div class="field"><label for="fd${p.id}">Departs</label><input id="fd${p.id}" type="time" class="input num" data-in="pdep" data-id="${p.id}" value="${p.departTime || ''}"></div><div class="field"><label for="fa${p.id}">Arrives</label><input id="fa${p.id}" type="time" class="input num" data-in="parr" data-id="${p.id}" value="${p.arriveTime || ''}"></div></div>` : '';
-  const kindField = p.type === 'activity' ? `<div class="seg" role="group" aria-label="Type"><button type="button" data-act="pcat" data-id="${p.id}" data-c="attraction" aria-pressed="${p.category === 'attraction'}">Sight</button><button type="button" data-act="pcat" data-id="${p.id}" data-c="food" aria-pressed="${p.category === 'food'}">Food</button></div>` : '';
-  const edit = editing ? `<div class="item-edit">${kindField}<div class="field"><label for="pn${p.id}">Name</label><input id="pn${p.id}" class="input" data-in="pname" data-id="${p.id}" value="${esc(p.name)}"></div>${timeField}<div class="field"><label for="nt${p.id}">${p.type === 'flight' ? 'Booking details' : 'Note'}</label><textarea id="nt${p.id}" class="input" rows="2" data-in="pnote" data-id="${p.id}" placeholder="${p.type === 'flight' ? 'Booking reference, seats, terminal' : 'Why you picked it, what to order'}">${esc(p.note)}</textarea></div>${move}<div class="chips"><button type="button" class="btn" data-act="doneitem">Done</button>${p.type !== 'flight' && p.lat != null ? `<button type="button" class="btn btn--quiet" data-act="pick" data-id="${p.id}">Move the pin</button>` : ''}</div></div>` : '';
-  return `<li class="item ${timed ? 'timed' : ''}" ${p.type === 'activity' ? `data-drag-item="p:${i}:${pi}"` : ''}>
-    ${timed ? `<span class="pt">${t || ''}</span>` : ''}${p.type === 'activity' ? `<button type="button" class="handle" data-drag="it" data-what="p" data-day="${i}" data-idx="${pi}" aria-label="Move ${esc(p.name)}: drag, or use arrow keys">${I('grip')}</button>` : '<span></span>'}${badge}
-    <div class="item-main"><div class="item-name">${n != null ? `<span class="cat-ic ${cls}">${I(placeIcon(p),'sm')}</span>` : ''}${p.lat != null ? `<button type="button" class="row-open" data-act="showpin" data-id="${p.id}" aria-label="Show ${esc(p.name)} on the map">${esc(p.name)}</button>` : esc(p.name)}</div>${sub ? `<div class="item-sub">${esc(sub)}</div>` : ''}
+  const move = p.type !== 'hotel' ? moveSelect('mv' + p.id, `data-in="moveto" data-id="${esc(p.id)}"`, i) : '';
+  const timeField = p.type === 'activity' ? `<div class="field" style="max-width:12rem"><label for="pt${esc(p.id)}">Time (optional)</label><input id="pt${esc(p.id)}" type="time" class="input num" data-in="ptime" data-id="${esc(p.id)}" value="${esc(p.time || '')}"></div>`
+    : p.type === 'flight' ? `<div class="grid2"><div class="field"><label for="fd${esc(p.id)}">Departs</label><input id="fd${esc(p.id)}" type="time" class="input num" data-in="pdep" data-id="${esc(p.id)}" value="${esc(p.departTime || '')}"></div><div class="field"><label for="fa${esc(p.id)}">Arrives</label><input id="fa${esc(p.id)}" type="time" class="input num" data-in="parr" data-id="${esc(p.id)}" value="${esc(p.arriveTime || '')}"></div></div>` : '';
+  const kindField = p.type === 'activity' ? `<div class="seg" role="group" aria-label="Type"><button type="button" data-act="pcat" data-id="${esc(p.id)}" data-c="attraction" aria-pressed="${p.category === 'attraction'}">Sight</button><button type="button" data-act="pcat" data-id="${esc(p.id)}" data-c="food" aria-pressed="${p.category === 'food'}">Food</button></div>` : '';
+  const edit = editing ? `<div class="item-edit">${kindField}<div class="field"><label for="pn${esc(p.id)}">Name</label><input id="pn${esc(p.id)}" class="input" data-in="pname" data-id="${esc(p.id)}" value="${esc(p.name)}"></div>${timeField}<div class="field"><label for="nt${esc(p.id)}">${p.type === 'flight' ? 'Booking details' : 'Note'}</label><textarea id="nt${esc(p.id)}" class="input" rows="2" data-in="pnote" data-id="${esc(p.id)}" placeholder="${p.type === 'flight' ? 'Booking reference, seats, terminal' : 'Why you picked it, what to order'}">${esc(p.note)}</textarea></div>${move}<div class="chips"><button type="button" class="btn" data-act="doneitem">Done</button>${p.type !== 'flight' && p.lat != null ? `<button type="button" class="btn btn--quiet" data-act="pick" data-id="${esc(p.id)}">Move the pin</button>` : ''}</div></div>` : '';
+  return `<li class="item ${timed ? 'timed' : ''}" ${p.type === 'activity' ? `data-drag-item="p:${esc(i)}:${esc(pi)}"` : ''}>
+    ${timed ? `<span class="pt">${esc(t || '')}</span>` : ''}${p.type === 'activity' ? `<button type="button" class="handle" data-drag="it" data-what="p" data-day="${esc(i)}" data-idx="${esc(pi)}" aria-label="Move ${esc(p.name)}: drag, or use arrow keys">${I('grip')}</button>` : '<span></span>'}${badge}
+    <div class="item-main"><div class="item-name">${n != null ? `<span class="cat-ic ${cls}">${I(placeIcon(p),'sm')}</span>` : ''}${p.lat != null ? `<button type="button" class="row-open" data-act="showpin" data-id="${esc(p.id)}" aria-label="Show ${esc(p.name)} on the map">${esc(p.name)}</button>` : esc(p.name)}</div>${sub ? `<div class="item-sub">${esc(sub)}</div>` : ''}
       ${p.note && !editing ? `<p class="item-note">${esc(p.note)}</p>` : ''}
-      ${noPin ? `<div class="nomap">${I('alert','sm')}Not on the map yet. <button type="button" class="link" data-act="pick" data-id="${p.id}">Drop a pin</button></div>` : ''}${edit}</div>
-    <span class="item-acts">${editing ? '' : `<button type="button" class="iconbtn" data-act="edititem" data-id="${p.id}" aria-label="Edit ${esc(p.name)}">${I('pen')}</button>`}<button type="button" class="iconbtn" data-act="delplace" data-id="${p.id}" aria-label="Remove ${esc(p.name)}">${I('x')}</button></span></li>`;
+      ${noPin ? `<div class="nomap">${I('alert','sm')}Not on the map yet. <button type="button" class="link" data-act="pick" data-id="${esc(p.id)}">Drop a pin</button></div>` : ''}${edit}</div>
+    <span class="item-acts">${editing ? '' : `<button type="button" class="iconbtn" data-act="edititem" data-id="${esc(p.id)}" aria-label="Edit ${esc(p.name)}">${I('pen')}</button>`}<button type="button" class="iconbtn" data-act="delplace" data-id="${esc(p.id)}" aria-label="Remove ${esc(p.name)}">${I('x')}</button></span></li>`;
 }
 function stepHTML(e, i){
   const k = e.k; const s = T().days[i].logistics[k]; const sk = s.kind || 'transport';
-  const grip = `<button type="button" class="handle" data-drag="it" data-what="s" data-day="${i}" data-idx="${k}" aria-label="Move ${esc(s.desc || 'this step')}: drag, or use arrow keys">${I('grip')}</button>`;
-  if(S.editTime === k) return `<li class="item timed step editing" data-drag-item="s:${i}:${k}"><span class="pt">${s.time || ''}</span>${grip}<span class="badge c-${sk}">${e.n}</span>
-    <div class="item-main"><div class="item-name"><span class="cat-ic c-${sk}">${I(STEPIC[sk],'sm')}</span>${esc(s.desc) || 'New step'}</div><div class="item-edit"><div class="seg" role="group" aria-label="Kind of step"><button type="button" data-act="stepkind" data-k="${k}" data-v="activity" aria-pressed="${sk === 'activity'}">Activity</button><button type="button" data-act="stepkind" data-k="${k}" data-v="transport" aria-pressed="${sk === 'transport'}">Transport</button></div><div class="field" style="max-width:12rem"><label for="tt${k}">Time</label><input id="tt${k}" type="time" class="input num" data-in="ttime" data-k="${k}" value="${s.time || ''}"></div>
-    <div class="field"><label for="td${k}">What happens</label><textarea id="td${k}" class="input" rows="2" data-in="tdesc" data-k="${k}" placeholder="Grab to the airport, meet the driver in the lobby">${esc(s.desc)}</textarea></div>${moveSelect(`ms${i}-${k}`, `data-in="movestep" data-k="${k}"`, i)}<div><button type="button" class="btn" data-act="donetime">Done</button></div></div></div><span class="item-acts"></span></li>`;
-  return `<li class="item timed step" data-drag-item="s:${i}:${k}"><span class="pt">${s.time || ''}</span>${grip}<span class="badge c-${sk}">${e.n}</span><div class="item-main"><div class="item-name"><span class="cat-ic c-${sk}">${I(STEPIC[sk],'sm')}</span>${esc(s.desc) || '<span class="sub">No description</span>'}</div></div>
-    <span class="item-acts"><button type="button" class="iconbtn" data-act="edittime" data-k="${k}" aria-label="Edit ${esc(s.desc || 'this step')}">${I('pen')}</button><button type="button" class="iconbtn" data-act="deltime" data-k="${k}" aria-label="Remove ${esc(s.desc || 'this step')}">${I('x')}</button></span></li>`;
+  const grip = `<button type="button" class="handle" data-drag="it" data-what="s" data-day="${esc(i)}" data-idx="${esc(k)}" aria-label="Move ${esc(s.desc || 'this step')}: drag, or use arrow keys">${I('grip')}</button>`;
+  if(S.editTime === k) return `<li class="item timed step editing" data-drag-item="s:${esc(i)}:${esc(k)}"><span class="pt">${esc(s.time || '')}</span>${grip}<span class="badge c-${esc(sk)}">${e.n}</span>
+    <div class="item-main"><div class="item-name"><span class="cat-ic c-${esc(sk)}">${I(STEPIC[sk],'sm')}</span>${esc(s.desc) || 'New step'}</div><div class="item-edit"><div class="seg" role="group" aria-label="Kind of step"><button type="button" data-act="stepkind" data-k="${esc(k)}" data-v="activity" aria-pressed="${sk === 'activity'}">Activity</button><button type="button" data-act="stepkind" data-k="${esc(k)}" data-v="transport" aria-pressed="${sk === 'transport'}">Transport</button></div><div class="field" style="max-width:12rem"><label for="tt${esc(k)}">Time</label><input id="tt${esc(k)}" type="time" class="input num" data-in="ttime" data-k="${esc(k)}" value="${esc(s.time || '')}"></div>
+    <div class="field"><label for="td${esc(k)}">What happens</label><textarea id="td${esc(k)}" class="input" rows="2" data-in="tdesc" data-k="${esc(k)}" placeholder="Grab to the airport, meet the driver in the lobby">${esc(s.desc)}</textarea></div>${moveSelect(`ms${esc(i)}-${esc(k)}`, `data-in="movestep" data-k="${esc(k)}"`, i)}<div><button type="button" class="btn" data-act="donetime">Done</button></div></div></div><span class="item-acts"></span></li>`;
+  return `<li class="item timed step" data-drag-item="s:${esc(i)}:${esc(k)}"><span class="pt">${esc(s.time || '')}</span>${grip}<span class="badge c-${esc(sk)}">${e.n}</span><div class="item-main"><div class="item-name"><span class="cat-ic c-${esc(sk)}">${I(STEPIC[sk],'sm')}</span>${esc(s.desc) || '<span class="sub">No description</span>'}</div></div>
+    <span class="item-acts"><button type="button" class="iconbtn" data-act="edittime" data-k="${esc(k)}" aria-label="Edit ${esc(s.desc || 'this step')}">${I('pen')}</button><button type="button" class="iconbtn" data-act="deltime" data-k="${esc(k)}" aria-label="Remove ${esc(s.desc || 'this step')}">${I('x')}</button></span></li>`;
 }
 // The trip map with its controls. Itinerary shows it beside the day; Overview shows it above the days.
 // Either can go full screen.
@@ -149,10 +149,10 @@ function tripMapPanel(where){
   const focusPl = S.mapFocus ? findPlace(S.mapFocus) : null;
   const filter = focusPl ? t.days.indexOf(focusPl.d) : (ov || S.mapMode === 'trip') ? 'all' : i;
   const whole = filter === 'all';
-  const groups = t.days.map((d, j) => { const o = d.places.filter(p => p.type !== 'flight' && p.lat != null); return o.length ? `<optgroup label="${esc(dayLabel(d, j).replace(/, \d+ \w+,/, ','))}">${o.map(p => `<option value="${p.id}" ${S.mapFocus === p.id ? 'selected' : ''}>${p.type === 'hotel' ? esc(p.name) + ' (hotel)' : nums[p.id] + '. ' + esc(p.name)}</option>`).join('')}</optgroup>` : ''; }).join('');
+  const groups = t.days.map((d, j) => { const o = d.places.filter(p => p.type !== 'flight' && p.lat != null); return o.length ? `<optgroup label="${esc(dayLabel(d, j).replace(/, \d+ \w+,/, ','))}">${o.map(p => `<option value="${esc(p.id)}" ${S.mapFocus === p.id ? 'selected' : ''}>${p.type === 'hotel' ? esc(p.name) + ' (hotel)' : nums[p.id] + '. ' + esc(p.name)}</option>`).join('')}</optgroup>` : ''; }).join('');
   const unplaced = ov ? [] : t.days[i].places.filter(p => p.lat == null && p.type !== 'flight');
   let popup = '';
-  if(S.mapPopup){ const f = findPlace(S.mapPopup); if(f){ const p = f.p; const di = t.days.indexOf(f.d); popup = `<div class="popup"><div class="top"><b>${p.type === 'hotel' ? '' : (nums[p.id] || '') + '. '}${esc(p.name)}</b><button type="button" class="iconbtn" data-act="closepop" aria-label="Close details">${I('x','sm')}</button></div><span class="sub">${p.type === 'hotel' ? 'Hotel, ' + dayList(hotelDays(t, p.name)) : 'Day ' + (di + 1) + (f.d.city ? ', ' + esc(f.d.city) : '') + (p.time ? ', ' + p.time : '')}</span>${ov || di !== S.day ? `<div><button type="button" class="link" data-act="day" data-i="${di}">Open Day ${di + 1}</button></div>` : ''}${p.address ? `<span class="sub">${esc(p.address)}</span>` : ''}${p.note ? `<p>${esc(p.note)}</p>` : ''}<div class="chips"><a class="link" href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}" target="_blank" rel="noopener">Open in Google Maps</a></div></div>`; } }
+  if(S.mapPopup){ const f = findPlace(S.mapPopup); if(f){ const p = f.p; const di = t.days.indexOf(f.d); popup = `<div class="popup"><div class="top"><b>${p.type === 'hotel' ? '' : (nums[p.id] || '') + '. '}${esc(p.name)}</b><button type="button" class="iconbtn" data-act="closepop" aria-label="Close details">${I('x','sm')}</button></div><span class="sub">${p.type === 'hotel' ? 'Hotel, ' + dayList(hotelDays(t, p.name)) : 'Day ' + (di + 1) + (f.d.city ? ', ' + esc(f.d.city) : '') + (p.time ? ', ' + p.time : '')}</span>${ov || di !== S.day ? `<div><button type="button" class="link" data-act="day" data-i="${esc(di)}">Open Day ${di + 1}</button></div>` : ''}${p.address ? `<span class="sub">${esc(p.address)}</span>` : ''}${p.note ? `<p>${esc(p.note)}</p>` : ''}<div class="chips"><a class="link" href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}" target="_blank" rel="noopener">Open in Google Maps</a></div></div>`; } }
   const picking = S.picking ? findPlace(S.picking) : null;
   S.lastMap = { filter, focus:S.mapFocus, picking:!!picking, curDay:i };
   const full = S.mapFull;
@@ -166,8 +166,8 @@ function tripMapPanel(where){
     ${popup || `<p class="sub maphint">${whole && !focusPl ? 'Zoomed out, each day gets one marker. Zoom in, or tap a day marker, to see every place with its number.' : 'Select a pin to see its details.'}</p>`}
     ${S.mapFocus ? `<div><button type="button" class="link" data-act="unfocus">Show the whole ${whole || ov ? 'trip' : 'day'} again</button></div>` : ''}
     ${groups && (!ov || full) ? `<div class="field"><label for="findp">Find a place on the map</label><select id="findp" class="input" data-in="findplace"><option value="">Choose a place</option>${groups}</select></div>` : ''}
-    ${whole && !focusPl && (!ov || full) ? `<div class="field"><span class="label" id="lbl-dk">Open a day</span><ul class="daykey" aria-labelledby="lbl-dk">${t.days.map((d, j) => `<li><button type="button" data-act="${ov ? 'day' : 'mapday'}" data-i="${j}">Day ${j + 1}${d.city ? ', ' + esc(cityName(d.city)) : ''}</button></li>`).join('')}</ul></div>` : ''}
-    ${unplaced.length ? `<div class="unplaced"><b>${unplaced.length === 1 ? 'One place is' : unplaced.length + ' places are'} not on the map yet</b>${unplaced.map(p => `<div class="r"><span>${esc(p.name)}</span><button type="button" class="btn" data-act="pick" data-id="${p.id}">Drop a pin</button></div>`).join('')}</div>` : ''}
+    ${whole && !focusPl && (!ov || full) ? `<div class="field"><span class="label" id="lbl-dk">Open a day</span><ul class="daykey" aria-labelledby="lbl-dk">${t.days.map((d, j) => `<li><button type="button" data-act="${ov ? 'day' : 'mapday'}" data-i="${esc(j)}">Day ${j + 1}${d.city ? ', ' + esc(cityName(d.city)) : ''}</button></li>`).join('')}</ul></div>` : ''}
+    ${unplaced.length ? `<div class="unplaced"><b>${unplaced.length === 1 ? 'One place is' : unplaced.length + ' places are'} not on the map yet</b>${unplaced.map(p => `<div class="r"><span>${esc(p.name)}</span><button type="button" class="btn" data-act="pick" data-id="${esc(p.id)}">Drop a pin</button></div>`).join('')}</div>` : ''}
   </${ov ? 'section' : 'aside'}>`;
 }
 const mapAside = () => tripMapPanel('itin');
@@ -179,7 +179,7 @@ let FPV = null; // the current view [x, y, w, h] in map units; null until first 
 function footHTML(){
   const fp = footprint(); S.fp = fp;
   const sel = S.hlRegion && fp.lit[S.hlRegion]; wmPrep(); const su = S.hlRegion && WM.byKey[S.hlRegion];
-  const cap = sel ? `<div class="hcap"><b>${esc(su.n)}${su.n !== WM.countries[su.cc][0] ? ', ' + esc(WM.countries[su.cc][0]) : ''}</b><span class="sub">${esc(sel.cities.join(', '))}</span>${[...sel.trips].map(t => `<button type="button" class="link" data-act="opentrip" data-id="${t.id}">${esc(tripLabel(t))}, ${range(tripStart(t), tripEnd(t))}</button>`).join('')}<button type="button" class="iconbtn" data-act="fpu" data-k="${esc(S.hlRegion)}" aria-label="Close">${I('x','sm')}</button></div>` : '';
+  const cap = sel ? `<div class="hcap"><b>${esc(su.n)}${su.n !== WM.countries[su.cc][0] ? ', ' + esc(WM.countries[su.cc][0]) : ''}</b><span class="sub">${esc(sel.cities.join(', '))}</span>${[...sel.trips].map(t => `<button type="button" class="link" data-act="opentrip" data-id="${esc(t.id)}">${esc(tripLabel(t))}, ${range(tripStart(t), tripEnd(t))}</button>`).join('')}<button type="button" class="iconbtn" data-act="fpu" data-k="${esc(S.hlRegion)}" aria-label="Close">${I('x','sm')}</button></div>` : '';
   const pct = Math.max(fp.countries ? 1.5 : 0, fp.countries / 195 * 100).toFixed(1);
   return `<div class="fp-card">
       <div class="fp-stat main"><span class="sub">Countries<span class="wide"> lit up</span></span><p class="fp-num"><b>${fp.countries}</b><span>/ 195</span></p><div class="fp-bar" role="img" aria-label="${fp.countries} of 195 countries"><span style="width:${pct}%"></span></div></div>
@@ -296,13 +296,13 @@ function nextUp(i){
   const d = T().days[i]; const now = today().toTimeString().slice(0, 5);
   const timed = planOf(d).filter(e => e.t).map(e => ({ t:e.t, txt: e.kind === 'step' ? e.d : e.p.name })).sort((a, b) => a.t.localeCompare(b.t));
   const next = timed.find(x => x.t >= now);
-  return `<section class="nextup" aria-label="Next up">${next ? `<span class="t">${next.t}</span><div class="what"><span>Next up, ${untilText(next.t, now)}</span><b>${esc(next.txt)}</b></div>` : `<span class="t">${now}</span><div class="what"><span>Nothing else timed today</span></div>`}</section>`;
+  return `<section class="nextup" aria-label="Next up">${next ? `<span class="t">${esc(next.t)}</span><div class="what"><span>Next up, ${untilText(next.t, now)}</span><b>${esc(next.txt)}</b></div>` : `<span class="t">${esc(now)}</span><div class="what"><span>Nothing else timed today</span></div>`}</section>`;
 }
 function scrItinerary(){
   const t = T();
   if(!t.days.length) return `<div class="screen">${syncBanner()}${pageHead(true)}${noDaysHTML(t)}</div>`;
   const i = Math.max(0, Math.min(S.day, t.days.length - 1)); S.day = i; const d = t.days[i]; const ti = tripDayIndex(t);
-  const tabs = t.days.map((dd, j) => `<button type="button" class="daytab" data-act="day" data-i="${j}" aria-current="${j === i}"><b>${j === ti ? 'Today' : 'Day ' + (j + 1)}</b><span>${dShort(dd.date)}, ${esc(dd.city) || 'not set'}</span></button>`).join('') + `<button type="button" class="daytab add" data-act="addday">${I('plus','sm')}Add a day</button>`;
+  const tabs = t.days.map((dd, j) => `<button type="button" class="daytab" data-act="day" data-i="${esc(j)}" aria-current="${j === i}"><b>${j === ti ? 'Today' : 'Day ' + (j + 1)}</b><span>${dShort(dd.date)}, ${esc(dd.city) || 'not set'}</span></button>`).join('') + `<button type="button" class="daytab add" data-act="addday">${I('plus','sm')}Add a day</button>`;
   const plan = planOf(d);
   const hotels = d.places.map((p, pi) => ({ p, pi })).filter(x => x.p.type === 'hotel');
   const rows = plan.map(e => e.kind === 'divider' ? '<li class="anytime">Any time</li>' : e.kind === 'step' ? stepHTML(e, i) : itemHTML(e.p, i, e.pi, e.t, e.n)).join('');
@@ -310,7 +310,7 @@ function scrItinerary(){
       <div class="details"><div class="field"><label for="ddate">Date</label><input id="ddate" type="date" class="input" data-in="ddate" value="${esc(d.date)}"></div>
       <div class="field"><label for="dcity">Town</label><input id="dcity" class="input" data-in="dcity" value="${esc(d.city)}" placeholder="For example, Shantou" aria-describedby="dcity-help"><span class="help" id="dcity-help">Helps search find places nearby</span></div></div>
       <div class="field"><label for="dnotes">Day note</label><textarea id="dnotes" class="input" rows="2" data-in="dnotes" placeholder="Anything to remember for the whole day">${esc(d.notes)}</textarea></div>
-      <div class="dayactions"><button type="button" class="btn btn--quiet" data-act="moveday" data-i="${i}" data-d="-1" ${i === 0 ? 'disabled' : ''}>${I('left','sm')}Move day earlier</button><button type="button" class="btn btn--quiet" data-act="moveday" data-i="${i}" data-d="1" ${i === t.days.length - 1 ? 'disabled' : ''}>Move day later${I('right','sm')}</button><button type="button" class="btn btn--danger" data-act="askdelday">Delete Day ${i + 1}</button></div></section>`
+      <div class="dayactions"><button type="button" class="btn btn--quiet" data-act="moveday" data-i="${esc(i)}" data-d="-1" ${i === 0 ? 'disabled' : ''}>${I('left','sm')}Move day earlier</button><button type="button" class="btn btn--quiet" data-act="moveday" data-i="${esc(i)}" data-d="1" ${i === t.days.length - 1 ? 'disabled' : ''}>Move day later${I('right','sm')}</button><button type="button" class="btn btn--danger" data-act="askdelday">Delete Day ${i + 1}</button></div></section>`
     : '';
   return `<div class="screen it-screen" style="gap:var(--space-xl)">${syncBanner()}${pageHead(true)}
     <nav class="daystrip" aria-label="Days">${tabs}</nav>
@@ -331,16 +331,16 @@ function scrItinerary(){
 function addCityHint(){ const t = T(); const di = S.addDay != null ? S.addDay : S.day; const d = t && t.days[di]; return d ? cityName(d.city) : ''; }
 function addPanelHTML(i){
   const trip = T(); const t = S.addType; const di = S.addDay != null ? S.addDay : i; const step = t === 'do' || t === 'move';
-  const dayOpts = sel => trip.days.map((d, j) => `<option value="${j}" ${j === sel ? 'selected' : ''}>${esc(dayLabel(d, j))}</option>`).join('');
+  const dayOpts = sel => trip.days.map((d, j) => `<option value="${esc(j)}" ${j === sel ? 'selected' : ''}>${esc(dayLabel(d, j))}</option>`).join('');
   const dayField = `<div class="field"><label for="aday">Day</label><select id="aday" class="input" data-in="aday">${dayOpts(di)}</select></div>`;
   let main;
   if(step){
-    main = `<div class="grid2"><div class="field"><label for="stime">Time</label><input id="stime" type="time" class="input num" data-in="stime" value="${S.sTime}"></div>${dayField}</div>
+    main = `<div class="grid2"><div class="field"><label for="stime">Time</label><input id="stime" type="time" class="input num" data-in="stime" value="${esc(S.sTime)}"></div>${dayField}</div>
       <div class="field"><label for="swhat">${t === 'do' ? 'What is it?' : 'Route or details'}</label><input id="swhat" class="input" data-in="swhat" value="${esc(S.sWhat)}" placeholder="${t === 'do' ? 'Cooking class, hotel check-in, lunch' : 'JR Yamanote to Shinjuku, about 25 min'}"></div>
       <p class="sub">${t === 'do' ? 'For things without a map pin: a class, a check-in, a meal booking.' : 'Trains, buses, taxis and walks between places.'}</p>`;
   } else if(t === 'flight'){
     main = `<div class="field"><label for="fname">Flight</label><input id="fname" class="input" data-in="fname" value="${esc(S.fName)}" placeholder="SQ12 Singapore to Tokyo"></div>
-      <div class="grid2"><div class="field"><label for="fdep">Departs</label><input id="fdep" type="time" class="input num" data-in="fdep" value="${S.fDep}"></div><div class="field"><label for="farr">Arrives</label><input id="farr" type="time" class="input num" data-in="farr" value="${S.fArr}"></div></div>${dayField}`;
+      <div class="grid2"><div class="field"><label for="fdep">Departs</label><input id="fdep" type="time" class="input num" data-in="fdep" value="${esc(S.fDep)}"></div><div class="field"><label for="farr">Arrives</label><input id="farr" type="time" class="input num" data-in="farr" value="${esc(S.fArr)}"></div></div>${dayField}`;
   } else {
     const how = `<div class="seg" role="group" aria-label="How to find it"><button type="button" data-act="amode" data-m="search" aria-pressed="${S.addMode === 'search'}">Search by name</button><button type="button" data-act="amode" data-m="link" aria-pressed="${S.addMode === 'link'}">Paste a Google Maps link</button></div>`;
     const finder = S.addMode === 'search'
@@ -352,7 +352,7 @@ function addPanelHTML(i){
       : dayField;
     main = `${cat}${how}${finder}${days}`;
   }
-  const tb = (k, ic, cls, label) => `<button type="button" data-act="atype" data-t="${k}" aria-pressed="${t === k}"><span class="cat-ic ${cls}">${I(ic,'sm')}</span>${label}</button>`;
+  const tb = (k, ic, cls, label) => `<button type="button" data-act="atype" data-t="${esc(k)}" aria-pressed="${t === k}"><span class="cat-ic ${cls}">${I(ic,'sm')}</span>${label}</button>`;
   return `<div class="seg addtypes" role="group" aria-label="What to add">${tb('activity','pin','c-sight','Place')}${tb('do','flag','c-activity','Activity')}${tb('move','train','c-transport','Transport')}${tb('hotel','bed','c-hotel','Hotel')}${tb('flight','plane','c-air','Flight')}</div>
     ${main}
     ${step ? '' : `<div class="field"><label for="anote">Note</label><textarea id="anote" class="input" rows="2" data-in="anote" placeholder="${t === 'flight' ? 'Booking reference, seat, terminal, bags' : t === 'hotel' ? 'Room type, check-in time, breakfast' : 'Why you picked it, what to order'}">${esc(S.addNote)}</textarea>
@@ -368,7 +368,7 @@ function searchResHTML(){
   if(S.searching && !S.results) return `<p class="sub">Searching…</p>`;
   const hits = S.results || [];
   if(!hits.length) return `<div class="result warn">${I('alert')}<div><b>Nothing found for “${esc(S.q)}”</b><span>Paste a Google Maps link for it instead, or add it without a location.</span> <button type="button" class="link" data-act="amode" data-m="link">Use a link</button></div></div>`;
-  return `<ul class="results">${hits.map((h, k) => `<li><button type="button" data-act="pickres" data-i="${k}"><b>${esc(h.label)}</b><span>${esc(h.sub)}</span></button></li>`).join('')}</ul>`;
+  return `<ul class="results">${hits.map((h, k) => `<li><button type="button" data-act="pickres" data-i="${esc(k)}"><b>${esc(h.label)}</b><span>${esc(h.sub)}</span></button></li>`).join('')}</ul>`;
 }
 function paintResults(){ const el = document.getElementById('ares'); if(el) el.innerHTML = searchResHTML(); }
 
@@ -379,16 +379,16 @@ function blankDraft(t, cat = 'Hotel'){
 }
 function draftPreview(){
   const t = T(); const d = S.draft; const m = catOf(d.cat).mode; const tb = t.baseCurrency; const cv = (n) => conv(t, d.cur, tb, n);
-  if(m === 'nights'){ const tot = parseFloat(d.total), n = parseInt(d.nights); if(!(tot > 0)) return { empty:true, big:'Fill in the total and nights to see the price per night' }; if(!(n > 0)) return { big:fmt(d.cur, tot), small:'Add the number of nights to see the price per night' }; return { big:`${fmt(d.cur, tot / n)} a night`, small:`${fmt(d.cur, tot)} for ${n} ${n === 1 ? 'night' : 'nights'}${d.cur !== tb ? `${isFinite(cv(1)) ? `, about ${fmt(tb, cv(tot / n))} a night` : `. Add a ${d.cur} rate to see it in ${tb}`}` : ''}` }; }
-  if(m === 'pax'){ const u = parseFloat(d.unit), q = parseInt(d.qty); if(!(u > 0)) return { empty:true, big:'Enter the price for one person and how many people' }; if(!(q > 0)) return { big:`${fmt(d.cur, u)} each`, small:'Add how many people to see the total' }; const sg = cv(u * q); return { big:`${fmt(d.cur, u * q)} in all`, small:`${q} ${q === 1 ? 'person' : 'people'} × ${fmt(d.cur, u)}${d.cur !== tb ? (isFinite(sg) ? `, about ${fmt(tb, sg)}` : `. Add a ${d.cur} rate to see it in ${tb}`) : ''}` }; }
-  const tot = parseFloat(d.total); if(!(tot > 0)) return { empty:true, big:'Enter the amount' }; return { big:fmt(d.cur, tot), small:d.cur !== tb ? (isFinite(cv(tot)) ? `About ${fmt(tb, cv(tot))}` : `Add a ${d.cur} rate to see it in ${tb}`) : '' };
+  if(m === 'nights'){ const tot = parseFloat(d.total), n = parseInt(d.nights); if(!(tot > 0)) return { empty:true, big:'Fill in the total and nights to see the price per night' }; if(!(n > 0)) return { big:fmt(d.cur, tot), small:'Add the number of nights to see the price per night' }; return { big:`${fmt(d.cur, tot / n)} a night`, small:`${fmt(d.cur, tot)} for ${n} ${n === 1 ? 'night' : 'nights'}${d.cur !== tb ? `${isFinite(cv(1)) ? `, about ${fmt(tb, cv(tot / n))} a night` : `. Add a ${esc(d.cur)} rate to see it in ${esc(tb)}`}` : ''}` }; }
+  if(m === 'pax'){ const u = parseFloat(d.unit), q = parseInt(d.qty); if(!(u > 0)) return { empty:true, big:'Enter the price for one person and how many people' }; if(!(q > 0)) return { big:`${fmt(d.cur, u)} each`, small:'Add how many people to see the total' }; const sg = cv(u * q); return { big:`${fmt(d.cur, u * q)} in all`, small:`${q} ${q === 1 ? 'person' : 'people'} × ${fmt(d.cur, u)}${d.cur !== tb ? (isFinite(sg) ? `, about ${fmt(tb, sg)}` : `. Add a ${esc(d.cur)} rate to see it in ${esc(tb)}`) : ''}` }; }
+  const tot = parseFloat(d.total); if(!(tot > 0)) return { empty:true, big:'Enter the amount' }; return { big:fmt(d.cur, tot), small:d.cur !== tb ? (isFinite(cv(tot)) ? `About ${fmt(tb, cv(tot))}` : `Add a ${esc(d.cur)} rate to see it in ${esc(tb)}`) : '' };
 }
 function calcHTML(){ const p = draftPreview(); return `<div class="calc ${p.empty ? 'empty' : ''}" id="calc" aria-live="polite"><span class="big">${esc(p.big)}</span>${p.small ? `<span class="small">${esc(p.small)}</span>` : ''}</div>`; }
 function scrBudget(){
   const t = T(); const tt = totals(t); if(!S.draft || S.draft.trip !== t.id) S.draft = Object.assign(blankDraft(t), { trip:t.id });
   const d = S.draft; const m = catOf(d.cat).mode; const editing = S.editing ? t.expenses.find(e => e.id === S.editing) : null;
   const used = [...new Set([t.baseCurrency, t.currency, ...t.expenses.map(e => e.currency)])];
-  const opt = (c, val) => `<option value="${c}" ${c === val ? 'selected' : ''}>${c}, ${esc(CUR_NAMES[c] || c)}</option>`;
+  const opt = (c, val) => `<option value="${esc(c)}" ${c === val ? 'selected' : ''}>${esc(c)}, ${esc(CUR_NAMES[c] || c)}</option>`;
   const curSel = (id, val, attr) => `<select id="${id}" class="input" ${attr}><optgroup label="On this trip">${used.map(c => opt(c, val)).join('')}</optgroup><optgroup label="All currencies">${CURS.filter(c => !used.includes(c)).map(c => opt(c, val)).join('')}</optgroup></select>`;
   const inv = f => S.expErr && S.expErr.f === f ? 'aria-invalid="true" aria-describedby="experr"' : '';
   const amount = m === 'nights'
@@ -396,25 +396,25 @@ function scrBudget(){
     : m === 'pax'
     ? `<div class="grid3"><div class="field"><label for="funit">Price for one person</label><input id="funit" class="input num" ${inv('funit')} inputmode="decimal" data-f="unit" value="${esc(d.unit)}" ></div><div class="field"><label for="fqty">People</label><input id="fqty" class="input num" ${inv('fqty')} inputmode="numeric" data-f="qty" value="${esc(d.qty)}" ></div><div class="field"><label for="fcur">Currency</label>${curSel('fcur', d.cur, 'data-f="cur"')}</div></div>`
     : `<div class="grid2"><div class="field"><label for="ftotal">Amount</label><input id="ftotal" class="input num" ${inv('ftotal')} inputmode="decimal" data-f="total" value="${esc(d.total)}" ></div><div class="field"><label for="fcur">Currency</label>${curSel('fcur', d.cur, 'data-f="cur"')}</div></div>`;
-  const rows = [...t.expenses].sort((a, b) => (a.date || '').localeCompare(b.date || '')).map(e => `<tr class="${S.editing === e.id ? 'editing' : ''}"><td class="num">${okDate(e.date) ? dShort(e.date) : ''}</td><td class="what"><b>${esc(e.desc) || esc(e.category)}</b><span><span class="cat-ic c-${CATKEY[e.category]}">${I(catOf(e.category).ic,'sm')}</span>${e.category}</span></td><td class="brk">${esc(breakdown(e))}</td><td class="r">${fmt(e.currency, expTotal(e))}</td><td class="r">${fmt(t.baseCurrency, conv(t, e.currency, t.baseCurrency, expTotal(e)))}</td>
-    <td><span class="acts"><button type="button" class="btn btn--quiet" data-act="editexp" data-id="${e.id}">Edit</button><button type="button" class="iconbtn" data-act="delexp" data-id="${e.id}" aria-label="Delete ${esc(e.desc || e.category)}">${I('x')}</button></span></td></tr>`).join('');
+  const rows = [...t.expenses].sort((a, b) => (a.date || '').localeCompare(b.date || '')).map(e => `<tr class="${S.editing === e.id ? 'editing' : ''}"><td class="num">${okDate(e.date) ? dShort(e.date) : ''}</td><td class="what"><b>${esc(e.desc) || esc(e.category)}</b><span><span class="cat-ic c-${CATKEY[e.category]}">${I(catOf(e.category).ic,'sm')}</span>${esc(e.category)}</span></td><td class="brk">${esc(breakdown(e))}</td><td class="r">${fmt(e.currency, expTotal(e))}</td><td class="r">${fmt(t.baseCurrency, conv(t, e.currency, t.baseCurrency, expTotal(e)))}</td>
+    <td><span class="acts"><button type="button" class="btn btn--quiet" data-act="editexp" data-id="${esc(e.id)}">Edit</button><button type="button" class="iconbtn" data-act="delexp" data-id="${esc(e.id)}" aria-label="Delete ${esc(e.desc || e.category)}">${I('x')}</button></span></td></tr>`).join('');
   const cats = CATS.filter(c => tt.by[c.k]);
   return `<div class="screen">${syncBanner()}${pageHead()}
     <div class="bud-top">
-      <section class="box" aria-labelledby="h-tot" style="display:flex;flex-direction:column;gap:var(--space-lg)"><div><h2 id="h-tot" class="visually-hidden">Total</h2><p class="sub">Spent so far, in ${t.baseCurrency}</p><p class="figure">${fmt(t.baseCurrency, tt.all)}</p><p class="sub">${rateLine(t)}</p>${tt.left ? `<p class="formerr">${I('alert','sm')}${tt.left} ${tt.left === 1 ? 'expense is' : 'expenses are'} left out until you add a rate for ${tt.missing.join(' and ')}.</p>` : ''}</div>
+      <section class="box" aria-labelledby="h-tot" style="display:flex;flex-direction:column;gap:var(--space-lg)"><div><h2 id="h-tot" class="visually-hidden">Total</h2><p class="sub">Spent so far, in ${esc(t.baseCurrency)}</p><p class="figure">${fmt(t.baseCurrency, tt.all)}</p><p class="sub">${rateLine(t)}</p>${tt.left ? `<p class="formerr">${I('alert','sm')}${tt.left} ${tt.left === 1 ? 'expense is' : 'expenses are'} left out until you add a rate for ${tt.missing.join(' and ')}.</p>` : ''}</div>
         ${cats.length ? `<dl class="bars">${barRows(t, tt, cats)}</dl>` : ''}
         <div class="grid2"><div class="field"><label for="lcur">Spending currency</label>${curSel('lcur', t.currency, 'data-in="lcur" aria-describedby="lcur-help"')}<span class="help" id="lcur-help">New expenses start in this currency</span></div><div class="field"><label for="bcur">Show totals in</label>${curSel('bcur', t.baseCurrency, 'data-in="bcur"')}</div></div>
         <fieldset class="rates"><legend>Exchange rate for this trip</legend><p class="sub">Enter the rate you actually got, for example from your money changer. Every total on this trip uses it.</p>
-          ${tripCurs(t).map(c => `<div class="raterow"><label for="rate-${c}">1 ${t.baseCurrency} =</label><input id="rate-${c}" class="input num" inputmode="decimal" data-rate="${c}" value="${t.rates[c] ? fmtRate(t.rates[c]).replace(/,/g, '') : ''}" ${t.rates[c] ? '' : 'aria-invalid="true"'}><span>${c}</span></div>`).join('') || '<p class="sub">All expenses are in ' + t.baseCurrency + ', so no rate is needed.</p>'}</fieldset></section>
+          ${tripCurs(t).map(c => `<div class="raterow"><label for="rate-${esc(c)}">1 ${esc(t.baseCurrency)} =</label><input id="rate-${esc(c)}" class="input num" inputmode="decimal" data-rate="${esc(c)}" value="${t.rates[c] ? fmtRate(t.rates[c]).replace(/,/g, '') : ''}" ${t.rates[c] ? '' : 'aria-invalid="true"'}><span>${esc(c)}</span></div>`).join('') || '<p class="sub">All expenses are in ' + t.baseCurrency + ', so no rate is needed.</p>'}</fieldset></section>
       <section class="panel" aria-labelledby="h-add"><div class="dialog-h"><h2 id="h-add">${editing ? 'Edit the expense' : 'Add an expense'}</h2>${editing ? '<button type="button" class="link" data-act="canceledit">Cancel</button>' : ''}</div>
         <form class="plan" style="gap:var(--space-md)" onsubmit="return false" data-form="exp">
-          <div class="field"><span class="label" id="lbl-ecat">Category</span><div class="chips" role="group" aria-labelledby="lbl-ecat">${CATS.map(c => `<button type="button" class="chip" data-act="cat" data-c="${c.k}" aria-pressed="${d.cat === c.k}"><span class="cat-ic c-${CATKEY[c.k]}">${I(c.ic,'sm')}</span>${c.k}</button>`).join('')}</div></div>
+          <div class="field"><span class="label" id="lbl-ecat">Category</span><div class="chips" role="group" aria-labelledby="lbl-ecat">${CATS.map(c => `<button type="button" class="chip" data-act="cat" data-c="${esc(c.k)}" aria-pressed="${d.cat === c.k}"><span class="cat-ic c-${CATKEY[c.k]}">${I(c.ic,'sm')}</span>${esc(c.k)}</button>`).join('')}</div></div>
           <div class="grid2"><div class="field"><label for="fdesc">Description</label><input id="fdesc" class="input" data-f="desc" value="${esc(d.desc)}" placeholder="${m === 'nights' ? 'Hotel name' : 'SQ flight to Tokyo'}"></div><div class="field"><label for="fdate">Date</label><input id="fdate" type="date" class="input" data-f="date" value="${esc(d.date)}"></div></div>
           ${amount}${calcHTML()}${S.expErr ? `<p class="formerr" id="experr" role="alert">${I('alert','sm')}${esc(S.expErr.msg)}</p>` : ''}
-          <div class="chips"><button type="button" class="btn btn--primary" data-act="saveexp">${editing ? 'Save the changes' : 'Add the expense'}</button>${editing ? `<button type="button" class="btn btn--danger" data-act="delexp" data-id="${editing.id}">Delete it</button>` : ''}</div></form></section>
+          <div class="chips"><button type="button" class="btn btn--primary" data-act="saveexp">${editing ? 'Save the changes' : 'Add the expense'}</button>${editing ? `<button type="button" class="btn btn--danger" data-act="delexp" data-id="${esc(editing.id)}">Delete it</button>` : ''}</div></form></section>
     </div>
     <section class="box" aria-labelledby="h-led"><div class="sechead"><h2 id="h-led">${I('receipt')}All expenses</h2><span class="sub">Oldest first</span></div>
-      ${t.expenses.length ? `<div class="tablewrap"><table class="ledger"><thead><tr><th scope="col">Date</th><th scope="col">Item</th><th scope="col">Breakdown</th><th scope="col" class="r">Amount</th><th scope="col" class="r">In ${t.baseCurrency}</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead><tbody>${rows}</tbody></table></div>` : `<p class="empty">No expenses yet. Add the flights first, they are usually the biggest cost.</p>`}</section></div>`;
+      ${t.expenses.length ? `<div class="tablewrap"><table class="ledger"><thead><tr><th scope="col">Date</th><th scope="col">Item</th><th scope="col">Breakdown</th><th scope="col" class="r">Amount</th><th scope="col" class="r">In ${esc(t.baseCurrency)}</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead><tbody>${rows}</tbody></table></div>` : `<p class="empty">No expenses yet. Add the flights first, they are usually the biggest cost.</p>`}</section></div>`;
 }
 
 /* ===== Settings ===== */
@@ -433,7 +433,7 @@ function scrSettings(){
   <div class="set-grid">
     <section class="set box" aria-labelledby="h-sync"><h2 id="h-sync">Sync</h2>${syncSec}</section>
     <section class="set box" aria-labelledby="h-key"><h2 id="h-key">Google Maps key</h2><p>Powers the map and place search. ${sync.token ? 'It\'s saved in your private repo, so you enter it once for every device.' : 'Without one, the map and search use free services that find fewer places and show local-language names.'}</p>
-      <dl class="kv"><dt>Key</dt><dd class="num">${key ? `${S.showKey ? esc(key) : 'Ends in ' + esc(key.slice(-3))} <button type="button" class="link" data-act="showkey">${S.showKey ? 'Hide key' : 'Show key'}</button>` : 'Not added'}</dd></dl>
+      <dl class="kv"><dt>Key</dt><dd class="num">${key ? `Saved, ends in ${esc(key.slice(-3))}` : 'Not added'}</dd></dl>
       <div class="chips"><button type="button" class="btn" data-act="dialog" data-d="key">${key ? 'Change the key' : 'Add a key'}</button>${key ? '<button type="button" class="btn btn--quiet" data-act="askdelkey">Remove it</button>' : ''}</div>
       <p class="sub">Browsers can still read a map key, so in Google Cloud restrict yours to vibe-coder-milo.github.io. That stops other sites from using it.</p>
       ${key ? `<h3>Google's free monthly allowance${sync.token ? ', all devices' : ', this device'}</h3><dl class="usage">${usage}</dl>` : ''}</section>
@@ -461,7 +461,7 @@ function dialogHTML(){
     const f = S.pastForm; const cs = f.cities.split(',').map(s => s.trim()).filter(Boolean);
     return box('Add a past trip', `<p>Just enough to put it on your world map. You can plan it in full later.</p>
       <div class="field"><label for="pname">Trip name</label><input id="pname" class="input" data-pf="name" value="${esc(f.name)}" placeholder="Hong Kong weekend"></div>
-      <div class="grid2"><div class="field"><label for="pfrom">First day</label><input id="pfrom" type="date" class="input" data-pf="from" value="${f.from}"></div><div class="field"><label for="pto">Last day</label><input id="pto" type="date" class="input" data-pf="to" value="${f.to}"></div></div>
+      <div class="grid2"><div class="field"><label for="pfrom">First day</label><input id="pfrom" type="date" class="input" data-pf="from" value="${esc(f.from)}"></div><div class="field"><label for="pto">Last day</label><input id="pto" type="date" class="input" data-pf="to" value="${esc(f.to)}"></div></div>
       <div class="field"><label for="pcities">Cities</label><input id="pcities" class="input" data-pf="cities" value="${esc(f.cities)}" placeholder="Hong Kong, Shanghai" aria-describedby="pc-help"><span class="help" id="pc-help">Separate cities with commas.</span></div>
       <div id="pcheck">${pastCheckHTML(cs)}</div>
       ${S.addErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.addErr)}</p>` : ''}
@@ -475,8 +475,8 @@ function dialogHTML(){
     <div class="field" style="max-width:16rem"><label for="texp">Token expires on</label><input id="texp" type="date" class="input" value="${esc(sync.expires)}" aria-describedby="texp-help"><span class="help" id="texp-help">GitHub shows it when you make the token. The app warns you two weeks before.</span></div>
     ${S.addErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.addErr)}</p>` : ''}
     <div><button type="button" class="btn btn--primary" data-act="savetoken">Save and sync</button></div>`);
-  if(k === 'key') return box('Google Maps key', `<div class="field"><label for="gk">Key</label><input id="gk" class="input num" placeholder="AIza" autocomplete="off" spellcheck="false" value="${esc(gkey())}"></div><p class="sub">${sync.token ? 'Saved to your private data repo and synced to your devices.' : 'Saved in this browser. Connect GitHub to have it on every device.'} It is never put in a downloaded backup.</p>
-    <details><summary>Map tiles key (optional)</summary><div class="field"><label for="ck">CARTO key</label><input id="ck" class="input num" autocomplete="off" spellcheck="false" value="${esc(library.cartoApiKey)}"></div><p class="sub">Optional. The map uses free OpenStreetMap tiles without it. With a free CARTO key it switches to CARTO's cleaner light and dark styles.</p></details>
+  if(k === 'key') return box('Google Maps key', `<div class="field"><label for="gk">Key</label><input id="gk" type="password" class="input num" placeholder="${gkey() ? 'Saved, ends in ' + esc(gkey().slice(-3)) + '. Paste a new one to replace it' : 'AIza…'}" autocomplete="off" spellcheck="false"></div><p class="sub">${sync.token ? 'Saved to your private data repo and synced to your devices.' : 'Saved in this browser. Connect GitHub to have it on every device.'} It is never put in a downloaded backup.</p>
+    <details><summary>Map tiles key (optional)</summary><div class="field"><label for="ck">CARTO key</label><input id="ck" type="password" class="input num" placeholder="${library.cartoApiKey ? 'Saved, ends in ' + esc(library.cartoApiKey.slice(-3)) + '. Paste a new one to replace it' : ''}" autocomplete="off" spellcheck="false"></div>${library.cartoApiKey ? '<div><button type="button" class="link" data-act="delcarto">Remove the CARTO key</button></div>' : ''}<p class="sub">Optional. The map uses free OpenStreetMap tiles without it. With a free CARTO key it switches to CARTO's cleaner light and dark styles.</p></details>
     <div><button type="button" class="btn btn--primary" data-act="savekey">Save the key</button></div>`);
   if(k === 'helper') return box('Short-link reader', `<p>A tiny script that runs free in your own Google account. It opens a short Google Maps link and tells the app where it leads.</p>
     <ol class="steps"><li>Open <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">Google Apps Script, New project</a>.</li><li>Replace everything in the editor with the script below, then save.</li><li>Choose Deploy, New deployment, type Web app. Execute as Me, access Anyone. Deploy and allow access.</li><li>Copy the Web app URL and paste it below.</li></ol>
