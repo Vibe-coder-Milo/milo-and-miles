@@ -77,18 +77,22 @@ const GSTYLE_MIDNIGHT = GS_BASE.concat([
 // The Google map's look, picked per device in Settings. 'auto' is how the map always looked.
 const MAP_LOOKS = [['auto', 'Follow the app'], ['midnight', 'Follow the app, midnight dark'], ['white', 'Clean white'], ['standard', 'Google standard'], ['terrain', 'Terrain'], ['satellite', 'Satellite']];
 const mapLook = () => MAP_LOOKS.some(([k]) => k === dev.mapLook) ? dev.mapLook : 'auto';
-function gLook(dark){
+// Zoomed out, shops, restaurants and stations stay hidden so your own pins stand out. From street level
+// (ZOOM_NEARBY) they show, with their icons, to see what's around. Street names show at every zoom.
+const ZOOM_NEARBY = 16;
+const nearbyOn = styles => styles && styles.filter(s => !GS_BASE.includes(s));
+function gLook(dark, near){
   const l = mapLook();
-  if(l === 'satellite') return { mapTypeId:'hybrid', styles:null };
-  if(l === 'terrain') return { mapTypeId:'terrain', styles:GS_BASE };
-  if(l === 'standard') return { mapTypeId:'roadmap', styles:GS_BASE };
-  if(l === 'white') return { mapTypeId:'roadmap', styles:GSTYLE_WHITE };
-  return { mapTypeId:'roadmap', styles:dark ? (l === 'midnight' ? GSTYLE_MIDNIGHT : GSTYLE_DARK) : GSTYLE_LIGHT };
+  const st = l === 'satellite' ? GS_BASE : l === 'terrain' || l === 'standard' ? GS_BASE : l === 'white' ? GSTYLE_WHITE
+    : dark ? (l === 'midnight' ? GSTYLE_MIDNIGHT : GSTYLE_DARK) : GSTYLE_LIGHT;
+  return { mapTypeId:l === 'satellite' ? 'hybrid' : l === 'terrain' ? 'terrain' : 'roadmap', styles:near ? nearbyOn(st) : st };
 }
 function googleAdapter(el, g, opts){
-  const map = new g.Map(el, Object.assign({ center:{ lat:HOME.lat, lng:HOME.lon }, zoom:4, minZoom:opts.home ? 2 : 0, disableDefaultUI:true, zoomControl:true, clickableIcons:false, gestureHandling:opts.home ? 'cooperative' : 'greedy', keyboardShortcuts:false }, gLook(isDark())));
+  const map = new g.Map(el, Object.assign({ center:{ lat:HOME.lat, lng:HOME.lon }, zoom:4, minZoom:opts.home ? 2 : 0, disableDefaultUI:true, zoomControl:true, clickableIcons:false, gestureHandling:opts.home ? 'cooperative' : 'greedy', keyboardShortcuts:false }, gLook(isDark(), false)));
   trackApiCall('mapLoads');
-  let items = [], lookSig = mapLook() + isDark();
+  let items = [], lookSig = mapLook() + isDark() + false;
+  const applyLook = dark => { const near = (map.getZoom() || 0) >= ZOOM_NEARBY, sig = mapLook() + dark + near; if(sig !== lookSig){ lookSig = sig; map.setOptions(gLook(dark, near)); } };
+  map.addListener('zoom_changed', () => applyLook(isDark()));
   class Pin extends g.OverlayView {
     constructor(lat, lon, o){ super(); this.at = new google.maps.LatLng(lat, lon); this.o = o; }
     onAdd(){
@@ -104,7 +108,7 @@ function googleAdapter(el, g, opts){
     onRemove(){ if(this.d) this.d.remove(); }
   }
   return { kind:'google', el,
-    theme: dark => { const sig = mapLook() + dark; if(sig !== lookSig){ lookSig = sig; map.setOptions(gLook(dark)); } },
+    theme: dark => applyLook(dark),
     zoom: () => map.getZoom(),
     setView: (lat, lon, z) => { map.setCenter({ lat, lng:lon }); map.setZoom(z); },
     fit: (pts, maxZoom) => { const b = new google.maps.LatLngBounds(); pts.forEach(p => b.extend({ lat:p[0], lng:p[1] })); map.fitBounds(b, 40); google.maps.event.addListenerOnce(map, 'idle', () => { if(map.getZoom() > maxZoom) map.setZoom(maxZoom); }); },
