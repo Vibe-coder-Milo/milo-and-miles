@@ -501,7 +501,6 @@ main { padding-block: var(--space-xl) var(--space-4xl); }
 .mapcol.box { gap: var(--space-md); }
 .mapcol .tripmap { border: 0; border-radius: 8px; }
 .nextup { background: var(--nextup-bg); color: var(--nextup-fg); border: 1px solid var(--nextup-edge); }
-:root[data-accent="lime"] .nextup { border: 2px solid var(--color-now); }
 .daytab[aria-current="true"] b:is(:first-child) { color: var(--color-ink); }
 .nextup .t, .nextup .what b { color: var(--nextup-fg); } .nextup .what span { color: var(--nextup-sub); }
 .nextup .btn { border-color: var(--nextup-sub); color: var(--nextup-fg); }
@@ -609,20 +608,8 @@ input.input, select.input, .item-tools select { height: var(--control-h); paddin
 }
 @media (max-width: 64rem) { .it-grid { grid-template-columns: minmax(0, 1fr); } }
 
-/* ===== dark accents to compare: signal lime (default), bubblegum, signal lime, first light ===== */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"])[data-accent="pink"] { --color-accent: oklch(79% 0.15 350); --color-accent-strong: oklch(85% 0.12 350); --color-accent-ink: oklch(21% 0.05 350); --color-accent-wash: oklch(30% 0.075 350); --color-map-arc: oklch(79% 0.15 350 / 0.75); --cat-sight: oklch(73% 0.16 28); }
-  :root:not([data-theme="light"])[data-accent="lime"] { --color-accent: oklch(85% 0.17 127); --color-accent-strong: oklch(90% 0.15 127); --color-accent-ink: oklch(22% 0.05 130); --color-accent-wash: oklch(24% 0.03 127); --color-map-arc: oklch(85% 0.17 127 / 0.7); --color-now: oklch(90% 0.2 126); --color-success: oklch(78% 0.1 185); --cat-food: oklch(80% 0.14 68); --cat-transport: oklch(76% 0.11 180); }
-  :root:not([data-theme="light"])[data-accent="dawn"] { --color-accent: oklch(86% 0.075 42); --color-accent-strong: oklch(91% 0.06 45); --color-accent-ink: oklch(22% 0.03 40); --color-accent-wash: oklch(30% 0.04 40); --color-map-arc: oklch(86% 0.075 42 / 0.8); }
-}
-:root[data-theme="dark"][data-accent="pink"] { --color-accent: oklch(79% 0.15 350); --color-accent-strong: oklch(85% 0.12 350); --color-accent-ink: oklch(21% 0.05 350); --color-accent-wash: oklch(30% 0.075 350); --color-map-arc: oklch(79% 0.15 350 / 0.75); --cat-sight: oklch(73% 0.16 28); }
-:root[data-theme="dark"][data-accent="lime"] { --color-accent: oklch(85% 0.17 127); --color-accent-strong: oklch(90% 0.15 127); --color-accent-ink: oklch(22% 0.05 130); --color-accent-wash: oklch(24% 0.03 127); --color-map-arc: oklch(85% 0.17 127 / 0.7); --color-now: oklch(90% 0.2 126); --color-success: oklch(78% 0.1 185); --cat-food: oklch(80% 0.14 68); --cat-transport: oklch(76% 0.11 180); }
-:root[data-theme="dark"][data-accent="dawn"] { --color-accent: oklch(86% 0.075 42); --color-accent-strong: oklch(91% 0.06 45); --color-accent-ink: oklch(22% 0.03 40); --color-accent-wash: oklch(30% 0.04 40); --color-map-arc: oklch(86% 0.075 42 / 0.8); }
 .maphint { font-size: var(--text-sm); }
 @media (min-width: 40.01rem) { .item:has(.item-edit) > .item-main { grid-column: 4 / -1; } .item:has(.item-edit) > .item-acts { display: none; } }
-.accentpick { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
-.accentpick button { gap: var(--space-xs); }
-.accentpick .swatch { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
 
 /* ===== day moves and handles ===== */
 .daymove { min-height: 36px; padding: 0 var(--space-sm); font-size: var(--text-sm); justify-content: flex-start; }
@@ -672,7 +659,9 @@ a.btn { text-decoration: none; }
 
 /* ===== colours: one colour (the accent) for every stop; hotels and what's coming up get the second colour ===== */
 :root { --color-visited: var(--color-accent); --color-upcoming: oklch(62% 0.16 45); --color-mark-2: var(--color-ink-2); --color-mark-2-ink: var(--color-paper); --color-home: oklch(53% 0.18 8); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --color-upcoming: var(--color-ink); --color-mark-2: oklch(85% 0.12 168); --color-mark-2-ink: oklch(20% 0.04 168); --color-home: oklch(74% 0.15 2); } }
+@media (prefers-color-scheme: dark) {
+:root:not([data-theme="light"]) { --color-upcoming: var(--color-ink); --color-mark-2: oklch(85% 0.12 168); --color-mark-2-ink: oklch(20% 0.04 168); --color-home: oklch(74% 0.15 2); }
+}
 :root[data-theme="dark"] { --color-upcoming: var(--color-ink); --color-mark-2: oklch(85% 0.12 168); --color-mark-2-ink: oklch(20% 0.04 168); --color-home: oklch(74% 0.15 2); }
 .c-air, .c-sight, .c-attraction, .c-food, .c-transport, .c-activity, .c-misc { --cat: var(--color-accent); }
 .c-hotel { --cat: var(--color-mark-2); }
@@ -765,36 +754,38 @@ body.noscroll { overflow: hidden; }
    The one bright, tropical mint (#88ffc0): main buttons, today and next up, the current tab, map pins and the places you've lit up.
    Icons use a dusty lavender and hotels show in white so nothing else competes with the mint. */
 @media (prefers-color-scheme: dark) {
-:root:not([data-theme="light"])[data-accent="onyx"] { --color-page: #101010; --color-bar: #101010; --color-section: oklch(20% 0.045 283); --section-edge: oklch(31% 0.06 283); --section-shadow: 0 1px 0 oklch(38% 0.06 283 / 0.45) inset, 0 12px 30px -14px oklch(0% 0 0 / 0.8); --color-card: oklch(24% 0.055 283); --color-card-edge: oklch(34% 0.065 283); --color-paper: oklch(17% 0.035 283); --color-paper-2: oklch(26% 0.055 283); --color-paper-3: oklch(31% 0.065 283); --color-ink: oklch(96% 0.008 283); --color-ink-2: oklch(88% 0.02 283); --color-muted: oklch(77% 0.035 283); --color-pencil: oklch(77% 0.035 283); --color-rule: oklch(31% 0.05 283); --color-edge: oklch(50% 0.06 283); --color-accent: #88ffc0; --color-accent-strong: #b0ffd6; --color-accent-ink: #101010; --color-accent-wash: oklch(28% 0.05 175); --color-now: #88ffc0; --color-now-ink: #101010; --color-success: #88ffc0; --color-focus: #88ffc0; --color-visited: #88ffc0; --color-upcoming: oklch(66% 0.075 172); --color-mark-2: oklch(92% 0.015 283); --color-mark-2-ink: #101010; --color-error: oklch(76% 0.12 25); --color-error-wash: oklch(26% 0.05 20); --color-warn: oklch(85% 0.1 80); --color-warn-wash: oklch(27% 0.04 70); --color-map-sea: oklch(16.5% 0.035 283); --color-map-land: oklch(27% 0.05 283); --color-map-edge: oklch(37% 0.06 283); --color-map-arc: rgb(136 255 192 / 0.8); --color-overlay: oklch(8% 0.02 283 / 0.75); --shadow-card: 0 0 0 1px oklch(31% 0.05 283), 0 12px 32px -12px oklch(0% 0 0 / 0.7); --nextup-bg: oklch(24% 0.055 283); --nextup-fg: oklch(96% 0.008 283); --nextup-sub: oklch(84% 0.03 283); --nextup-edge: #88ffc0; --color-drop: oklch(28% 0.05 175); --color-home: oklch(96% 0.008 283); --badge-bg: oklch(32% 0.065 283); --badge-ink: oklch(90% 0.03 283); --badge-hotel-bg: oklch(32% 0.065 283); --badge-hotel-ink: oklch(90% 0.03 283); --soft-ic: oklch(80% 0.07 283); }
-:root:not([data-theme="light"])[data-accent="onyx"] .btn--primary { background: #88ffc0; border-color: #88ffc0; color: #101010; font-weight: 600; }
-:root:not([data-theme="light"])[data-accent="onyx"] .btn--primary .ic { color: #101010; }
-:root:not([data-theme="light"])[data-accent="onyx"] .btn:not(.btn--primary):not(.btn--danger), :root:not([data-theme="light"])[data-accent="onyx"] .input, :root:not([data-theme="light"])[data-accent="onyx"] .item-tools select, :root:not([data-theme="light"])[data-accent="onyx"] .btn--danger { border-color: oklch(44% 0.06 283); }
-:root:not([data-theme="light"])[data-accent="onyx"] .seg button[aria-pressed="true"] { background: oklch(34% 0.07 283); color: var(--color-ink); box-shadow: inset 0 0 0 1px oklch(44% 0.08 283); }
-:root:not([data-theme="light"])[data-accent="onyx"] .nextup { border: 1px solid var(--nextup-edge); }
-:root:not([data-theme="light"])[data-accent="onyx"] .fp-card { background: var(--color-card); }
-:root:not([data-theme="light"])[data-accent="onyx"] .fp-lab.v, :root:not([data-theme="light"])[data-accent="onyx"] .fp-lab.u, :root:not([data-theme="light"])[data-accent="onyx"] .tab .today { color: #101010; }
-:root:not([data-theme="light"])[data-accent="onyx"] .tab .today { background: var(--color-now); }
-:root:not([data-theme="light"])[data-accent="onyx"] .box > .sechead .ic, :root:not([data-theme="light"])[data-accent="onyx"] .wordmark .ic { color: var(--soft-ic); }
-:root:not([data-theme="light"])[data-accent="onyx"] .todayband { background: var(--color-section); border-color: var(--section-edge); }
-:root:not([data-theme="light"])[data-accent="onyx"] .lpin { color: #101010; }
-@media (hover: hover) { :root:not([data-theme="light"])[data-accent="onyx"] .btn--primary:hover:not(:disabled) { background: #b0ffd6; border-color: #b0ffd6; color: #101010; } }
+:root:not([data-theme="light"]) { --color-page: #101010; --color-bar: #101010; --color-section: oklch(20% 0.045 283); --section-edge: oklch(31% 0.06 283); --section-shadow: 0 1px 0 oklch(38% 0.06 283 / 0.45) inset, 0 12px 30px -14px oklch(0% 0 0 / 0.8); --color-card: oklch(24% 0.055 283); --color-card-edge: oklch(34% 0.065 283); --color-paper: oklch(17% 0.035 283); --color-paper-2: oklch(26% 0.055 283); --color-paper-3: oklch(31% 0.065 283); --color-ink: oklch(96% 0.008 283); --color-ink-2: oklch(88% 0.02 283); --color-muted: oklch(77% 0.035 283); --color-pencil: oklch(77% 0.035 283); --color-rule: oklch(31% 0.05 283); --color-edge: oklch(50% 0.06 283); --color-accent: #88ffc0; --color-accent-strong: #b0ffd6; --color-accent-ink: #101010; --color-accent-wash: oklch(28% 0.05 175); --color-now: #88ffc0; --color-now-ink: #101010; --color-success: #88ffc0; --color-focus: #88ffc0; --color-visited: #88ffc0; --color-upcoming: oklch(66% 0.075 172); --color-mark-2: oklch(92% 0.015 283); --color-mark-2-ink: #101010; --color-error: oklch(76% 0.12 25); --color-error-wash: oklch(26% 0.05 20); --color-warn: oklch(85% 0.1 80); --color-warn-wash: oklch(27% 0.04 70); --color-map-sea: oklch(16.5% 0.035 283); --color-map-land: oklch(27% 0.05 283); --color-map-edge: oklch(37% 0.06 283); --color-map-arc: rgb(136 255 192 / 0.8); --color-overlay: oklch(8% 0.02 283 / 0.75); --shadow-card: 0 0 0 1px oklch(31% 0.05 283), 0 12px 32px -12px oklch(0% 0 0 / 0.7); --nextup-bg: oklch(24% 0.055 283); --nextup-fg: oklch(96% 0.008 283); --nextup-sub: oklch(84% 0.03 283); --nextup-edge: #88ffc0; --color-drop: oklch(28% 0.05 175); --color-home: oklch(96% 0.008 283); --badge-bg: oklch(32% 0.065 283); --badge-ink: oklch(90% 0.03 283); --badge-hotel-bg: oklch(32% 0.065 283); --badge-hotel-ink: oklch(90% 0.03 283); --soft-ic: oklch(80% 0.07 283); }
+:root:not([data-theme="light"]) .btn--primary { background: #88ffc0; border-color: #88ffc0; color: #101010; font-weight: 600; }
+:root:not([data-theme="light"]) .btn--primary .ic { color: #101010; }
+:root:not([data-theme="light"]) .btn:not(.btn--primary):not(.btn--danger), :root:not([data-theme="light"]) .input, :root:not([data-theme="light"]) .item-tools select, :root:not([data-theme="light"]) .btn--danger { border-color: oklch(44% 0.06 283); }
+:root:not([data-theme="light"]) .seg button[aria-pressed="true"] { background: oklch(34% 0.07 283); color: var(--color-ink); box-shadow: inset 0 0 0 1px oklch(44% 0.08 283); }
+:root:not([data-theme="light"]) .nextup { border: 1px solid var(--nextup-edge); }
+:root:not([data-theme="light"]) .fp-card { background: var(--color-card); }
+:root:not([data-theme="light"]) .fp-lab.v, :root:not([data-theme="light"]) .fp-lab.u, :root:not([data-theme="light"]) .tab .today { color: #101010; }
+:root:not([data-theme="light"]) .tab .today { background: var(--color-now); }
+:root:not([data-theme="light"]) .box > .sechead .ic, :root:not([data-theme="light"]) .wordmark .ic { color: var(--soft-ic); }
+:root:not([data-theme="light"]) .todayband { background: var(--color-section); border-color: var(--section-edge); }
+:root:not([data-theme="light"]) .lpin { color: #101010; }
+@media (hover: hover) { :root:not([data-theme="light"]) .btn--primary:hover:not(:disabled) { background: #b0ffd6; border-color: #b0ffd6; color: #101010; } }
 }
-:root[data-theme="dark"][data-accent="onyx"] { --color-page: #101010; --color-bar: #101010; --color-section: oklch(20% 0.045 283); --section-edge: oklch(31% 0.06 283); --section-shadow: 0 1px 0 oklch(38% 0.06 283 / 0.45) inset, 0 12px 30px -14px oklch(0% 0 0 / 0.8); --color-card: oklch(24% 0.055 283); --color-card-edge: oklch(34% 0.065 283); --color-paper: oklch(17% 0.035 283); --color-paper-2: oklch(26% 0.055 283); --color-paper-3: oklch(31% 0.065 283); --color-ink: oklch(96% 0.008 283); --color-ink-2: oklch(88% 0.02 283); --color-muted: oklch(77% 0.035 283); --color-pencil: oklch(77% 0.035 283); --color-rule: oklch(31% 0.05 283); --color-edge: oklch(50% 0.06 283); --color-accent: #88ffc0; --color-accent-strong: #b0ffd6; --color-accent-ink: #101010; --color-accent-wash: oklch(28% 0.05 175); --color-now: #88ffc0; --color-now-ink: #101010; --color-success: #88ffc0; --color-focus: #88ffc0; --color-visited: #88ffc0; --color-upcoming: oklch(66% 0.075 172); --color-mark-2: oklch(92% 0.015 283); --color-mark-2-ink: #101010; --color-error: oklch(76% 0.12 25); --color-error-wash: oklch(26% 0.05 20); --color-warn: oklch(85% 0.1 80); --color-warn-wash: oklch(27% 0.04 70); --color-map-sea: oklch(16.5% 0.035 283); --color-map-land: oklch(27% 0.05 283); --color-map-edge: oklch(37% 0.06 283); --color-map-arc: rgb(136 255 192 / 0.8); --color-overlay: oklch(8% 0.02 283 / 0.75); --shadow-card: 0 0 0 1px oklch(31% 0.05 283), 0 12px 32px -12px oklch(0% 0 0 / 0.7); --nextup-bg: oklch(24% 0.055 283); --nextup-fg: oklch(96% 0.008 283); --nextup-sub: oklch(84% 0.03 283); --nextup-edge: #88ffc0; --color-drop: oklch(28% 0.05 175); --color-home: oklch(96% 0.008 283); --badge-bg: oklch(32% 0.065 283); --badge-ink: oklch(90% 0.03 283); --badge-hotel-bg: oklch(32% 0.065 283); --badge-hotel-ink: oklch(90% 0.03 283); --soft-ic: oklch(80% 0.07 283); }
-:root[data-theme="dark"][data-accent="onyx"] .btn--primary { background: #88ffc0; border-color: #88ffc0; color: #101010; font-weight: 600; }
-:root[data-theme="dark"][data-accent="onyx"] .btn--primary .ic { color: #101010; }
-:root[data-theme="dark"][data-accent="onyx"] .btn:not(.btn--primary):not(.btn--danger), :root[data-theme="dark"][data-accent="onyx"] .input, :root[data-theme="dark"][data-accent="onyx"] .item-tools select, :root[data-theme="dark"][data-accent="onyx"] .btn--danger { border-color: oklch(44% 0.06 283); }
-:root[data-theme="dark"][data-accent="onyx"] .seg button[aria-pressed="true"] { background: oklch(34% 0.07 283); color: var(--color-ink); box-shadow: inset 0 0 0 1px oklch(44% 0.08 283); }
-:root[data-theme="dark"][data-accent="onyx"] .nextup { border: 1px solid var(--nextup-edge); }
-:root[data-theme="dark"][data-accent="onyx"] .fp-card { background: var(--color-card); }
-:root[data-theme="dark"][data-accent="onyx"] .fp-lab.v, :root[data-theme="dark"][data-accent="onyx"] .fp-lab.u, :root[data-theme="dark"][data-accent="onyx"] .tab .today { color: #101010; }
-:root[data-theme="dark"][data-accent="onyx"] .tab .today { background: var(--color-now); }
-:root[data-theme="dark"][data-accent="onyx"] .box > .sechead .ic, :root[data-theme="dark"][data-accent="onyx"] .wordmark .ic { color: var(--soft-ic); }
-:root[data-theme="dark"][data-accent="onyx"] .todayband { background: var(--color-section); border-color: var(--section-edge); }
-:root[data-theme="dark"][data-accent="onyx"] .lpin { color: #101010; }
-@media (hover: hover) { :root[data-theme="dark"][data-accent="onyx"] .btn--primary:hover:not(:disabled) { background: #b0ffd6; border-color: #b0ffd6; color: #101010; } }
+:root[data-theme="dark"] { --color-page: #101010; --color-bar: #101010; --color-section: oklch(20% 0.045 283); --section-edge: oklch(31% 0.06 283); --section-shadow: 0 1px 0 oklch(38% 0.06 283 / 0.45) inset, 0 12px 30px -14px oklch(0% 0 0 / 0.8); --color-card: oklch(24% 0.055 283); --color-card-edge: oklch(34% 0.065 283); --color-paper: oklch(17% 0.035 283); --color-paper-2: oklch(26% 0.055 283); --color-paper-3: oklch(31% 0.065 283); --color-ink: oklch(96% 0.008 283); --color-ink-2: oklch(88% 0.02 283); --color-muted: oklch(77% 0.035 283); --color-pencil: oklch(77% 0.035 283); --color-rule: oklch(31% 0.05 283); --color-edge: oklch(50% 0.06 283); --color-accent: #88ffc0; --color-accent-strong: #b0ffd6; --color-accent-ink: #101010; --color-accent-wash: oklch(28% 0.05 175); --color-now: #88ffc0; --color-now-ink: #101010; --color-success: #88ffc0; --color-focus: #88ffc0; --color-visited: #88ffc0; --color-upcoming: oklch(66% 0.075 172); --color-mark-2: oklch(92% 0.015 283); --color-mark-2-ink: #101010; --color-error: oklch(76% 0.12 25); --color-error-wash: oklch(26% 0.05 20); --color-warn: oklch(85% 0.1 80); --color-warn-wash: oklch(27% 0.04 70); --color-map-sea: oklch(16.5% 0.035 283); --color-map-land: oklch(27% 0.05 283); --color-map-edge: oklch(37% 0.06 283); --color-map-arc: rgb(136 255 192 / 0.8); --color-overlay: oklch(8% 0.02 283 / 0.75); --shadow-card: 0 0 0 1px oklch(31% 0.05 283), 0 12px 32px -12px oklch(0% 0 0 / 0.7); --nextup-bg: oklch(24% 0.055 283); --nextup-fg: oklch(96% 0.008 283); --nextup-sub: oklch(84% 0.03 283); --nextup-edge: #88ffc0; --color-drop: oklch(28% 0.05 175); --color-home: oklch(96% 0.008 283); --badge-bg: oklch(32% 0.065 283); --badge-ink: oklch(90% 0.03 283); --badge-hotel-bg: oklch(32% 0.065 283); --badge-hotel-ink: oklch(90% 0.03 283); --soft-ic: oklch(80% 0.07 283); }
+:root[data-theme="dark"] .btn--primary { background: #88ffc0; border-color: #88ffc0; color: #101010; font-weight: 600; }
+:root[data-theme="dark"] .btn--primary .ic { color: #101010; }
+:root[data-theme="dark"] .btn:not(.btn--primary):not(.btn--danger), :root[data-theme="dark"] .input, :root[data-theme="dark"] .item-tools select, :root[data-theme="dark"] .btn--danger { border-color: oklch(44% 0.06 283); }
+:root[data-theme="dark"] .seg button[aria-pressed="true"] { background: oklch(34% 0.07 283); color: var(--color-ink); box-shadow: inset 0 0 0 1px oklch(44% 0.08 283); }
+:root[data-theme="dark"] .nextup { border: 1px solid var(--nextup-edge); }
+:root[data-theme="dark"] .fp-card { background: var(--color-card); }
+:root[data-theme="dark"] .fp-lab.v, :root[data-theme="dark"] .fp-lab.u, :root[data-theme="dark"] .tab .today { color: #101010; }
+:root[data-theme="dark"] .tab .today { background: var(--color-now); }
+:root[data-theme="dark"] .box > .sechead .ic, :root[data-theme="dark"] .wordmark .ic { color: var(--soft-ic); }
+:root[data-theme="dark"] .todayband { background: var(--color-section); border-color: var(--section-edge); }
+:root[data-theme="dark"] .lpin { color: #101010; }
+@media (hover: hover) { :root[data-theme="dark"] .btn--primary:hover:not(:disabled) { background: #b0ffd6; border-color: #b0ffd6; color: #101010; } }
 
 /* OpenStreetMap tiles have no dark style: darken them to match the dark theme */
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .osm-tiles { filter: grayscale(0.9) invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); } }
+@media (prefers-color-scheme: dark) {
+:root:not([data-theme="light"]) .osm-tiles { filter: grayscale(0.9) invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); }
+}
 :root[data-theme="dark"] .osm-tiles { filter: grayscale(0.9) invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); }
 
 /* ===== print (Save as PDF from Overview) ===== */
@@ -901,28 +892,34 @@ function normalizeTimeForInput(str){
 }
 
 /* ===== device settings: theme, colour and text size belong to each device ===== */
-const dev = Object.assign({ scale:1, theme:'auto', accent:'lime', id:uid() }, readJSON(LS_DEVICE) || {});
-// Onyx & indigo is the dark colour unless this device picked another one in Settings.
-if(!dev.accentPicked) dev.accent = 'onyx';
+// Older versions also kept a dark-mode colour choice (accent, accentPicked). There is one dark colour now,
+// so those fields are simply ignored; they stay in the saved settings untouched.
+const dev = Object.assign({ scale:1, theme:'auto', id:uid() }, readJSON(LS_DEVICE) || {});
 function saveDev(){ writeJSON(LS_DEVICE, dev); }
 saveDev();
 
 /* ===== library ===== */
 let library = null;
+// The settings every device shares through the private data repo. The GitHub token is never one of them.
+const SHARED_KEYS = ['googleApiKey', 'cartoApiKey', 'helperUrl'];
+const sharedOf = o => Object.fromEntries(SHARED_KEYS.map(k => [k, o[k]]));
 function defaultTrip(){
   const now = new Date().toISOString();
   return { id:uid(), createdAt:now, updatedAt:now, tripName:'', kind:'full', currency:'SGD', baseCurrency:'SGD', rates:{}, budgetTarget:null, start:'', end:'', cities:[], days:[], expenses:[], geocodeCache:{} };
 }
 function newDay(date = ''){ return { id:uid(), date, city:'', notes:'', logistics:[], places:[] }; }
 
-// Brings any saved trip, from any version of this app, up to the current shape. Only adds or tidies
-// fields, never drops data, so old backups keep loading.
+// Brings any saved trip, from any version of this app, up to the current shape, so old backups keep
+// loading. It adds missing fields and tidies old ones. The only thing it removes is an expense row with
+// nothing in it at all (no description, amount, date or unit).
 function migrateState(t){
   if(!t || typeof t !== 'object') return t;
   if(!t.id) t.id = uid();
   if(!t.createdAt) t.createdAt = new Date().toISOString();
   if(!t.updatedAt) t.updatedAt = t.createdAt;
   if(typeof t.tripName !== 'string') t.tripName = String(t.tripName || '');
+  // A copy kept when two devices edited the same trip. It is a backup, so Home doesn't count it again.
+  if(t.olderCopy !== true && / \(older copy\)$/.test(t.tripName)) t.olderCopy = true;
   if(!t.currency) t.currency = 'SGD';
   if(!t.baseCurrency) t.baseCurrency = 'SGD';
   if(!t.rates || typeof t.rates !== 'object' || Array.isArray(t.rates)) t.rates = {};
@@ -985,17 +982,21 @@ function loadLibrary(){
     const old = readJSON(LS_LEGACY);
     if(old && Array.isArray(old.days)){ const t = Object.assign(defaultTrip(), old, { id:uid() }); lib = { activeTripId:t.id, trips:{ [t.id]:t } }; }
   }
+  library = migrateLibrary(lib);
+}
+// The same for the whole library (every trip plus the shared settings).
+function migrateLibrary(lib){
   if(!lib || typeof lib !== 'object') lib = {};
   if(!lib.trips || typeof lib.trips !== 'object') lib.trips = {};
-  ['googleApiKey','cartoApiKey','helperUrl'].forEach(k => { if(typeof lib[k] !== 'string') lib[k] = ''; });
+  SHARED_KEYS.forEach(k => { if(typeof lib[k] !== 'string') lib[k] = ''; });
   if(!lib.cityCache || typeof lib.cityCache !== 'object') lib.cityCache = {};
   if(!lib.usage || typeof lib.usage !== 'object') lib.usage = {};
   if(lib.apiUsage && lib.apiUsage.month){ lib.usage[dev.id] = Object.assign({}, lib.apiUsage); delete lib.apiUsage; }
   Object.values(lib.trips).forEach(migrateState);
-  // An empty, unnamed trip is what older versions created on first open. It isn't a real trip.
+  // An empty, unnamed trip is what older versions created on first open. It isn't a real trip, so it goes.
   Object.values(lib.trips).forEach(t => { if(!t.tripName && !t.days.length && !t.expenses.length && Object.keys(lib.trips).length > 1) delete lib.trips[t.id]; });
   if(!lib.trips[lib.activeTripId]) lib.activeTripId = Object.keys(lib.trips)[0] || null;
-  library = lib;
+  return lib;
 }
 const T = () => (library.activeTripId && library.trips[library.activeTripId]) || null;
 
@@ -1043,9 +1044,7 @@ function totals(t){
 }
 
 /* ===== dates ===== */
-// ?today=2026-11-21T10:15 pretends it is that moment, for checking the during-trip screens.
-const TODAY_OVERRIDE = (() => { try{ const v = new URLSearchParams(location.search).get('today'); const d = v ? new Date(v) : null; return d && !isNaN(d) ? d : null; }catch(e){ return null; } })();
-const today = () => TODAY_OVERRIDE ? new Date(TODAY_OVERRIDE) : new Date();
+const today = () => new Date();
 const isoLocal = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const okDate = iso => /^\d{4}-\d{2}-\d{2}$/.test(iso || '');
 const dLong = iso => okDate(iso) ? new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' }) : 'No date set';
@@ -1238,15 +1237,17 @@ function travelled(t){
   const td = isoLocal(today());
   if(t.kind === 'maponly'){
     const a = t.start, b = okDate(t.end) ? t.end : t.start;
-    if(!okDate(a) || a > td) return { days:0, cities:[] };
+    if(!okDate(a) || a > td) return { days:0, dates:[], cities:[] };
     const end = b < td ? b : td;
-    return { days:Math.round((new Date(end) - new Date(a)) / 864e5) + 1, cities:t.cities.filter(Boolean) };
+    const dates = []; for(let d = new Date(a + 'T12:00:00'); isoLocal(d) <= end; d.setDate(d.getDate() + 1)) dates.push(isoLocal(d));
+    return { days:dates.length, dates, cities:t.cities.filter(Boolean) };
   }
   const past = isPast(t);
   const done = t.days.filter(d => okDate(d.date) ? d.date <= td : past);
   const cities = [];
   done.forEach(d => { const c = cityName(d.city); if(c && !cities.some(x => x.toLowerCase() === c.toLowerCase())) cities.push(c); });
-  return { days:done.length, cities };
+  // A past day with no date still counts as a day away; it gets a key of its own.
+  return { days:done.length, dates:done.map((d, i) => okDate(d.date) ? d.date : t.id + '#' + i), cities };
 }
 
 /* ===== footprint: one world map with every place you've been lit up =====
@@ -1292,8 +1293,10 @@ function cityUnit(name, pt){
 }
 const COUNTS_AS = { HK:'CN', MO:'CN' }; // for the country count
 function footprint(){
-  const lit = {}; let days = 0, trips = 0; const cityNames = new Set();
-  Object.values(library.trips).forEach(t => { const tv = travelled(t); if(tv.days){ days += tv.days; trips++; tv.cities.forEach(c => cityNames.add(c.toLowerCase())); } });
+  // Older copies are left out, and a day covered by two trips (a map-only trip and a planned one) counts once.
+  const lit = {}; let trips = 0; const dates = new Set(), cityNames = new Set();
+  realTrips().forEach(t => { const tv = travelled(t); if(tv.days){ trips++; tv.dates.forEach(d => dates.add(d)); tv.cities.forEach(c => cityNames.add(c.toLowerCase())); } });
+  const days = dates.size;
   mapCities().forEach(c => {
     const k = cityUnit(c.name, c.pt); if(!k) return;
     const o = lit[k] || (lit[k] = { past:false, cities:[], trips:new Set() });
@@ -1305,9 +1308,10 @@ function footprint(){
 }
 
 /* ===== cities on the home map ===== */
+const realTrips = () => Object.values(library.trips).filter(t => !t.olderCopy);
 function mapCities(){
   const out = new Map();
-  Object.values(library.trips).forEach(t => {
+  realTrips().forEach(t => {
     const seen = travelled(t).cities.map(c => c.toLowerCase());
     tripCities(t).forEach(name => {
       const pt = cityPoint(name, t); if(!pt) return;
@@ -1336,19 +1340,24 @@ function splitPlaceText(q){
 // "Chao Zhou Shi" → "chaozhou", so it matches the "Chaozhou" a search result gives.
 const townKey = s => String(s || '').toLowerCase().replace(/\b(shi|qu|xian|zhen|city|ku|shi district|district|prefecture|province)\b/g, '').replace(/[^a-zÀ-ɏ一-鿿]/g, '');
 const stripTown = s => String(s || '').replace(/\s+(Shi|Qu|Xian|Zhen|City|Ku)$/i, '').trim();
+// Distance in km between two {lat, lon} points.
+function nearKm(a, b){ const R = Math.PI / 180, x = (b.lon - a.lon) * R * Math.cos((a.lat + b.lat) / 2 * R), y = (b.lat - a.lat) * R; return Math.hypot(x, y) * 6371; }
 function parseMaps(text){
   const raw = (text || '').trim(); if(!raw) return { kind:'empty' };
   const urlM = raw.match(/https?:\/\/\S+/); const t = urlM ? urlM[0] : raw;
   const lines = raw.split(/\n+/).map(s => s.trim()).filter(s => s && !/^https?:\/\//.test(s));
   const num = '(-?\\d{1,3}\\.\\d+)';
-  const m = t.match(new RegExp('!3d' + num + '!4d' + num)) || t.match(new RegExp('@' + num + ',' + num))
+  // !3d…!4d… and q=lat,lon are the place itself. @lat,lon is only where the map was centred.
+  const m = t.match(new RegExp('!3d' + num + '!4d' + num))
     || t.match(new RegExp('[?&](?:q|query|ll|destination|center|daddr)=' + num + '(?:,|%2C)\\s*\\+?' + num))
     || t.match(new RegExp('/(?:search|place|dir)/' + num + '(?:,|%2C)\\+?' + num));
+  const view = !m && t.match(new RegExp('@' + num + ',' + num));
   const placeM = t.match(/\/maps\/place\/([^/@?]+)/); const qM = t.match(/[?&](?:q|query)=([^&#]+)/);
   const dec = s => { try{ return decodeURIComponent(s.replace(/\+/g, ' ')); }catch(e){ return s.replace(/\+/g, ' '); } };
   const text2 = placeM ? dec(placeM[1]) : qM ? dec(qM[1]) : (lines[0] || '');
   const parts = /^-?\d/.test(text2) ? { query:'', name:'', town:'' } : splitPlaceText(text2);
   if(m) return { kind:'coords', lat:+m[1], lon:+m[2], name:parts.name || 'Pinned place', via:'link' };
+  if(view) return Object.assign({ kind:'coords', lat:+view[1], lon:+view[2], via:'view' }, parts, { name:parts.name || 'Pinned place' });
   if(/maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/kgs/.test(t)) return Object.assign({ kind:'short', url:t }, parts);
   if(/google\.[a-z.]+\/maps|maps\.google\.|google\.[a-z.]+\/\?q=/.test(t) && parts.query) return Object.assign({ kind:'nameonly' }, parts);
   if(!urlM && parts.query) return Object.assign({ kind:'nameonly' }, parts); // pasted a name or an address
@@ -1386,11 +1395,22 @@ async function resolveLink(){
       const j = await res.json(); if(seq !== linkSeq) return;
       const r2 = j && j.url ? parseMaps(j.url) : { kind:'unknown' };
       const parts = j && j.q ? splitPlaceText(j.q) : r2;
-      if(r2.kind === 'coords') r = Object.assign(r2, { via:'helper', name:r2.name !== 'Pinned place' ? r2.name : (parts.name || r2.name) });
-      else if(j && typeof j.lat === 'number') r = { kind:'coords', lat:j.lat, lon:j.lon, name:parts.name || 'Pinned place', addr:j.address || '', via:'helper' };
+      // The name: from the link if it has one, else from the reader's search text, else what was pasted with it.
+      const name = [r2.name, parts.name, r.name].find(n => n && n !== 'Pinned place') || 'Pinned place';
+      const geo = j && typeof j.lat === 'number' ? { kind:'coords', lat:j.lat, lon:j.lon, name, addr:j.address || '', via:'helper' } : null;
+      if(r2.kind === 'coords' && r2.via === 'link') r = Object.assign(r2, { via:'helper', name });
+      else if(r2.kind === 'coords') r = geo && nearKm(geo, r2) < 30 ? geo : Object.assign(r2, { name, query:parts.query || r2.query || r.query || '' });
+      else if(geo) r = geo;
       else if(parts && parts.query) r = Object.assign({ kind:'nameonly' }, parts);
       else r = { kind:'helperfail', detail:j && j.error };
     }catch(e){ if(seq !== linkSeq) return; r = { kind:'helperfail' }; }
+  }
+  // Only the map's centre is known: search for the place by name and use it if it is nearby.
+  if(r.kind === 'coords' && r.via === 'view' && r.query){
+    S.linkRes = { kind:'loading' }; paintLink();
+    const hit = await findFromText(r);
+    if(seq !== linkSeq) return;
+    if(hit && nearKm(hit, r) < 30) r = { kind:'coords', lat:hit.lat, lon:hit.lon, name:r.name, addr:hit.sub, found:hit.label, via:'name' };
   }
   if(r.kind === 'nameonly'){
     S.linkRes = { kind:'loading' }; paintLink();
@@ -1404,7 +1424,7 @@ function linkResHTML(){
   const r = S.linkRes || { kind:'empty' };
   if(r.kind === 'empty') return `<p class="sub">In Google Maps, tap Share, then Copy link, and paste it here. Short and full links both work.</p>`;
   if(r.kind === 'loading') return `<p class="sub">Reading the link…</p>`;
-  if(r.kind === 'coords') return `<div class="result ok">${I('check')}<div><span class="num">${r.lat.toFixed(5)}, ${r.lon.toFixed(5)}</span>${r.found && r.found !== r.name ? ` <span>${esc(r.found)}</span>` : ''}${r.addr ? `<br><span>${esc(r.addr)}</span>` : ''}<br><span>${r.via === 'helper' ? 'Found through your short-link reader.' : r.via === 'name' ? 'The link had no exact location, so the pin comes from a search. Check it on the map after adding.' : 'The location was read straight from the link.'}</span></div></div>
+  if(r.kind === 'coords') return `<div class="result ok">${I('check')}<div><span class="num">${r.lat.toFixed(5)}, ${r.lon.toFixed(5)}</span>${r.found && r.found !== r.name ? ` <span>${esc(r.found)}</span>` : ''}${r.addr ? `<br><span>${esc(r.addr)}</span>` : ''}<br><span>${r.via === 'helper' ? 'Found through your short-link reader.' : r.via === 'name' ? 'The link had no exact location, so the pin comes from a search. Check it on the map after adding.' : r.via === 'view' ? 'The link only shows the area of the map, so the pin is roughly there. Check it on the map after adding.' : 'The location was read straight from the link.'}</span></div></div>
     <div class="field"><label for="lname">Name</label><input id="lname" class="input" data-in="lname" value="${esc(r.name)}"></div>`;
   if(r.kind === 'nohelper') return `<div class="result warn">${I('alert')}<div><b>Short links need the short-link reader</b><span>Set it up once in Settings. For now, search by name, or add it without a location and drop a pin.</span></div></div>`;
   if(r.kind === 'helperfail') return `<div class="result warn">${I('alert')}<div><b>The short-link reader didn't answer</b><span>${r.detail ? esc(r.detail) + '. ' : ''}Check the reader in Settings, or search by name for now.</span></div></div>`;
@@ -1436,17 +1456,18 @@ async function ghPut(path, data, sha, msg){ const j = await gh('/contents/' + pa
 async function pushTrip(id, sha, msg){ const m = syncMeta(id); const v = m.v || 0; const t = library.trips[id]; m.sha = await ghPut(`trips/${id}.json`, t, sha, msg + ' ' + (t.tripName || 'a trip')); m.dirty = (m.v || 0) !== v; }
 async function ghDelete(path, sha, msg){ await gh('/contents/' + path, { method:'DELETE', body:JSON.stringify({ message:msg, sha }) }); }
 const sameContent = (a, b) => JSON.stringify({ n:a.tripName, d:a.days, e:a.expenses, c:a.cities }) === JSON.stringify({ n:b.tripName, d:b.days, e:b.expenses, c:b.cities });
-function keepCopy(t){ const c = JSON.parse(JSON.stringify(t)); c.id = uid(); c.tripName = (t.tripName || 'Untitled trip') + ' (older copy)'; library.trips[c.id] = c; syncMeta(c.id).dirty = true; return c; }
+function keepCopy(t){ const c = JSON.parse(JSON.stringify(t)); c.id = uid(); c.tripName = (t.tripName || 'Untitled trip') + ' (older copy)'; c.olderCopy = true; library.trips[c.id] = c; syncMeta(c.id).dirty = true; return c; }
 async function syncSettings(){
   const r = await ghGet('settings.json'); const remote = r ? r.data : {};
-  const keys = ['googleApiKey','cartoApiKey','helperUrl'];
   let changedLocal = false;
-  // Keys changed on this device win; otherwise a key saved from another device is taken up here.
-  if(!sync.settingsDirty && r) keys.forEach(k => { if(typeof remote[k] === 'string' && remote[k] && remote[k] !== library[k]){ library[k] = remote[k]; changedLocal = true; } });
+  // Keys changed on this device win; otherwise what another device saved is taken up here, a removed key
+  // included. On this device's first sync an empty remote value doesn't wipe a key it already has.
+  const synced = !!sync.settingsSha;
+  if(!sync.settingsDirty && r) SHARED_KEYS.forEach(k => { if(typeof remote[k] === 'string' && (remote[k] || synced) && remote[k] !== library[k]){ library[k] = remote[k]; changedLocal = true; } });
   const usage = Object.assign({}, remote.usage || {}); if(library.usage[dev.id]) usage[dev.id] = library.usage[dev.id];
   Object.keys(usage).forEach(k => { if(k !== dev.id) library.usage[k] = usage[k]; });
-  const out = { googleApiKey:library.googleApiKey, cartoApiKey:library.cartoApiKey, helperUrl:library.helperUrl, usage };
-  if(!r || JSON.stringify(out) !== JSON.stringify({ googleApiKey:remote.googleApiKey, cartoApiKey:remote.cartoApiKey, helperUrl:remote.helperUrl, usage:remote.usage || {} })){
+  const out = Object.assign(sharedOf(library), { usage });
+  if(!r || JSON.stringify(out) !== JSON.stringify(Object.assign(sharedOf(remote), { usage:remote.usage || {} }))){
     sync.settingsSha = await ghPut('settings.json', out, r && r.sha, 'Update settings');
   } else sync.settingsSha = r.sha;
   sync.settingsDirty = false;
@@ -1459,7 +1480,7 @@ async function syncNow(){
   if(!navigator.onLine){ S.syncState = 'offline'; paintSync(); return; }
   syncing = true; S.syncState = 'saving'; paintSync();
   saveNow();
-  const before = JSON.stringify([library.trips, library.googleApiKey, library.helperUrl, library.cartoApiKey]);
+  const before = JSON.stringify([library.trips, sharedOf(library)]);
   try{
     // GitHub answers "not found" for a private repo the token can't see, so check the repo itself first.
     const info = await gh('');
@@ -1496,7 +1517,7 @@ async function syncNow(){
       const twin = Object.values(downloaded).find(d => d.createdAt === t.createdAt && d.tripName === t.tripName);
       if(twin){
         if(sameContent(twin, t)){ delete library.trips[id]; delete sync.meta[id]; if(library.activeTripId === id) library.activeTripId = twin.id; continue; }
-        if(t.updatedAt < twin.updatedAt){ t.tripName = (t.tripName || 'Untitled trip') + ' (older copy)'; }
+        if(t.updatedAt < twin.updatedAt){ t.tripName = (t.tripName || 'Untitled trip') + ' (older copy)'; t.olderCopy = true; }
         else {
           // This device's copy is newer: it takes the synced trip's place, the synced one is kept as a copy.
           keepCopy(twin);
@@ -1527,7 +1548,7 @@ async function syncNow(){
     syncing = false; saveSync(); saveNow();
     // Only redraw when something arrived from another device, and never under someone's typing.
     const typing = document.activeElement && document.activeElement.matches('input, textarea, select');
-    const arrived = before !== JSON.stringify([library.trips, library.googleApiKey, library.helperUrl, library.cartoApiKey]);
+    const arrived = before !== JSON.stringify([library.trips, sharedOf(library)]);
     const bannerChanged = !!document.querySelector('.banner') !== !!syncBanner();
     if((arrived || bannerChanged) && !typing && !S.dialog && !drag) render();
     else paintSync();
@@ -1872,8 +1893,7 @@ function nextUp(i){
   const d = T().days[i]; const now = today().toTimeString().slice(0, 5);
   const timed = planOf(d).filter(e => e.t).map(e => ({ t:e.t, txt: e.kind === 'step' ? e.d : e.p.name })).sort((a, b) => a.t.localeCompare(b.t));
   const next = timed.find(x => x.t >= now);
-  const h = d.places.find(p => p.type === 'hotel');
-  return `<section class="nextup" aria-label="Next up">${next ? `<span class="t">${next.t}</span><div class="what"><span>Next up, ${untilText(next.t, now)}</span><b>${esc(next.txt)}</b></div>` : `<span class="t">${now}</span><div class="what"><span>Nothing else timed today</span></div>`}${h ? `<button type="button" class="btn" data-act="dialog" data-d="taxi">${I('bed','sm')}Hotel address for the driver</button>` : ''}</section>`;
+  return `<section class="nextup" aria-label="Next up">${next ? `<span class="t">${next.t}</span><div class="what"><span>Next up, ${untilText(next.t, now)}</span><b>${esc(next.txt)}</b></div>` : `<span class="t">${now}</span><div class="what"><span>Nothing else timed today</span></div>`}</section>`;
 }
 function scrItinerary(){
   const t = T();
@@ -2018,7 +2038,7 @@ function scrSettings(){
       <p class="state ${library.helperUrl ? 'ok' : 'warn'}">${I(library.helperUrl ? 'check' : 'alert','sm')}${library.helperUrl ? 'Connected' : 'Not set up'}</p>
       <div class="chips"><button type="button" class="btn" data-act="dialog" data-d="helper">${library.helperUrl ? 'Change it' : 'Set it up'}</button>${library.helperUrl ? '<button type="button" class="btn btn--quiet" data-act="delhelper">Disconnect</button>' : ''}</div></section>
     <section class="set box" aria-labelledby="h-look"><h2 id="h-look">Appearance</h2><p>Automatic follows this device's light or dark setting.</p>
-      <div class="seg" role="group" aria-label="Appearance"><button type="button" data-act="theme" data-v="auto" aria-pressed="${dev.theme === 'auto'}">Automatic</button><button type="button" data-act="theme" data-v="light" aria-pressed="${dev.theme === 'light'}">Light</button><button type="button" data-act="theme" data-v="dark" aria-pressed="${dev.theme === 'dark'}">Dark</button></div><h3 style="margin-top:var(--space-sm)">Colour in dark mode</h3><div class="seg accentpick" role="group" aria-label="Colour in dark mode">${[['onyx','Onyx & indigo','linear-gradient(135deg, oklch(20% 0.01 285) 40%, oklch(72% 0.13 283) 40% 75%, oklch(84% 0.09 165) 75%)'],['orange','Orange','oklch(76% 0.15 58)'],['pink','Bubblegum','oklch(79% 0.15 350)'],['lime','Signal lime','oklch(90% 0.2 126)'],['dawn','First light','oklch(86% 0.075 42)']].map(([v, l, c]) => `<button type="button" data-act="accent" data-v="${v}" aria-pressed="${dev.accent === v}"><span class="swatch" style="background:${c}"></span>${l}</button>`).join('')}</div></section>
+      <div class="seg" role="group" aria-label="Appearance"><button type="button" data-act="theme" data-v="auto" aria-pressed="${dev.theme === 'auto'}">Automatic</button><button type="button" data-act="theme" data-v="light" aria-pressed="${dev.theme === 'light'}">Light</button><button type="button" data-act="theme" data-v="dark" aria-pressed="${dev.theme === 'dark'}">Dark</button></div></section>
     <section class="set box" aria-labelledby="h-size"><h2 id="h-size">Text size on this device</h2><p>The iPad and the computer each keep their own size.</p>
       <div class="chips" style="align-items:center"><button type="button" class="btn" data-act="sz" data-d="-1" aria-label="Smaller text">Smaller</button><span class="num" style="min-width:4rem;text-align:center">${Math.round(dev.scale * 100)}%</span><button type="button" class="btn" data-act="sz" data-d="1" aria-label="Larger text">Larger</button></div></section>
     <section class="set box" aria-labelledby="h-bk"><h2 id="h-bk">Backups</h2><p>${sync.token ? 'Sync already keeps every version. ' : ''}A downloaded backup is an extra copy you keep yourself, for example in Google Drive. Keys and tokens are never in it.</p>
@@ -2029,7 +2049,7 @@ function scrSettings(){
 }
 
 /* ===== dialogs ===== */
-const HELPER_SCRIPT = "// Milo & Miles short-link reader. Opens a Google Maps short link and finds where the place is.\nfunction doGet(e) {\n  var u = String((e && e.parameter && e.parameter.u) || '').trim();\n  if (!/^https:\\/\\/(maps\\.app\\.goo\\.gl|goo\\.gl\\/maps|g\\.co\\/kgs)\\//.test(u)) return out({ error: 'Not a Google Maps short link' });\n  var url = u;\n  for (var i = 0; i < 5 && /^https:\\/\\/(maps\\.app\\.goo\\.gl|goo\\.gl|g\\.co)\\//.test(url); i++) {\n    var r = UrlFetchApp.fetch(url, { followRedirects: false, muteHttpExceptions: true });\n    var h = r.getHeaders();\n    var next = h['Location'] || h['location'];\n    if (!next) break;\n    url = next;\n  }\n  var res = { url: url };\n  if (/!3d-?\\d|@-?\\d+\\.\\d+,/.test(url)) return out(res);\n  var m = url.match(/[?&](?:q|query)=([^&#]+)/) || url.match(/\\/maps\\/place\\/([^\\/@?]+)/);\n  if (m) {\n    res.q = decodeURIComponent(m[1].replace(/\\+/g, ' '));\n    try {\n      var g = Maps.newGeocoder().setLanguage('en').geocode(res.q);\n      if (g.status === 'OK' && g.results.length) {\n        var loc = g.results[0].geometry.location;\n        res.lat = loc.lat; res.lon = loc.lng; res.address = g.results[0].formatted_address;\n      }\n    } catch (err) { res.geocodeError = String(err); }\n  }\n  return out(res);\n}\nfunction out(o) {\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n";
+const HELPER_SCRIPT = "// Milo & Miles short-link reader. Opens a Google Maps short link and finds where the place is.\nfunction doGet(e) {\n  var u = String((e && e.parameter && e.parameter.u) || '').trim();\n  if (!/^https?:\\/\\/(maps\\.app\\.goo\\.gl|goo\\.gl\\/maps|g\\.co\\/kgs)\\//.test(u)) return out({ error: 'Not a Google Maps short link' });\n  var url = u.replace(/^http:/, 'https:');\n  for (var i = 0; i < 5 && /^https:\\/\\/(maps\\.app\\.goo\\.gl|goo\\.gl|g\\.co)\\//.test(url); i++) {\n    var r = UrlFetchApp.fetch(url, { followRedirects: false, muteHttpExceptions: true });\n    var h = r.getHeaders();\n    var next = h['Location'] || h['location'];\n    if (!next) break;\n    url = next;\n  }\n  var res = { url: url };\n  // !3d\u2026!4d\u2026 is the place itself. @lat,lon is only the middle of the map, so the name is looked up as well.\n  if (/!3d-?\\d/.test(url)) return out(res);\n  var m = url.match(/[?&](?:q|query)=([^&#]+)/) || url.match(/\\/maps\\/place\\/([^\\/@?]+)/);\n  if (m) {\n    res.q = decodeURIComponent(m[1].replace(/\\+/g, ' '));\n    try {\n      var g = Maps.newGeocoder().setLanguage('en').geocode(res.q);\n      if (g.status === 'OK' && g.results.length) {\n        var loc = g.results[0].geometry.location;\n        res.lat = loc.lat; res.lon = loc.lng; res.address = g.results[0].formatted_address;\n      }\n    } catch (err) { res.geocodeError = String(err); }\n  }\n  return out(res);\n}\nfunction out(o) {\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n";
 function dialogHTML(){
   const k = S.dialog; if(!k) return '';
   const box = (title, body) => `<div class="overlay" data-act="closebg"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-h"><div class="dialog-h"><h2 id="dlg-h">${title}</h2><button type="button" class="iconbtn" data-act="close" aria-label="Close">${I('x')}</button></div>${body}</div></div>`;
@@ -2045,7 +2065,6 @@ function dialogHTML(){
       <div><button type="button" class="btn btn--primary" data-act="savepast">Add to my map</button></div>`);
   }
   if(k === 'newtrip'){ const n = S.newTrip; return box('New trip', `<div class="field"><label for="ntname">Trip name</label><input id="ntname" class="input" data-nt="name" value="${esc(n.name)}" placeholder="Hokkaido in winter"></div><div class="grid2"><div class="field"><label for="ntfrom">First day</label><input id="ntfrom" type="date" class="input" data-nt="from" value="${esc(n.from)}"></div><div class="field"><label for="ntto">Last day (optional)</label><input id="ntto" type="date" class="input" data-nt="to" value="${esc(n.to)}"></div></div><p class="sub">Every day from the first to the last is set up for you. You can add or remove days later.</p>${S.addErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.addErr)}</p>` : ''}<div><button type="button" class="btn btn--primary" data-act="createtrip">Create the trip</button></div>`); }
-  if(k === 'taxi'){ const t = T(); const di = tripDayIndex(t); const h = t && t.days[di > -1 ? di : S.day] && t.days[di > -1 ? di : S.day].places.find(p => p.type === 'hotel'); if(!h) return ''; return box('For the driver', `<p class="bigtext">${esc(h.name)}</p>${h.address ? `<p class="bigtext">${esc(h.address)}</p>` : ''}<p class="sub">Set large so you can hold the screen up to a driver.</p>`); }
   if(k === 'token') return box('Connect GitHub', `<p>Trips are saved as files in a private repo on your GitHub account. It takes a few minutes, once:</p>
     <ol class="steps"><li>On GitHub, <a href="https://github.com/new?name=Trip-Tracker-data&visibility=private" target="_blank" rel="noopener">create a new repo</a> named Trip-Tracker-data. Choose <b>Private</b> and tick <b>Add a README file</b>.</li><li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub, Settings, Fine-grained tokens</a>. Under Repository access pick only Trip-Tracker-data. Under Permissions set Contents to Read and write.</li><li>Copy the token and paste it below. Do this on each device; the token never leaves the device.</li></ol>
     <div class="field"><label for="trepo">Repo</label><input id="trepo" class="input num" value="${esc(sync.repo)}" autocomplete="off" spellcheck="false"></div>
@@ -2234,14 +2253,17 @@ function drawMarkers(){
     // Zoomed in, or with "Every place" picked: every stop with its trip-wide number.
     const centres = dayCentres(t);
     centres.forEach(c => all.push(...c.pts));
-    // After tapping a day marker, its places stay shown at that zoom; zooming out past it brings the day markers back.
-    shown = S.tripShow || (z >= (S.placesZoom ?? ZOOM_PLACES) ? 'places' : 'days');
+    // "Every place" always shows every stop. Otherwise the zoom decides: day markers when zoomed out, every
+    // stop once you zoom in past S.placesZoom. Tapping "Days" fits the whole trip and sets that point one
+    // step closer than the fit; tapping a day marker sets it to that day's zoom, so its places appear.
+    if(S.daysPick){ S.daysPick = false; S.placesZoom = Math.max(ZOOM_PLACES, Math.min(15, all.length > 1 ? fitZoom(all, MAP.el) : 14) + 1); }
+    shown = S.tripShow === 'places' ? 'places' : (z >= (S.placesZoom ?? ZOOM_PLACES) ? 'places' : 'days');
     if(shown === 'days'){
       const groups = [];
       centres.forEach(c => { const px = worldPx(c.lat, c.lon, z); const g = groups.find(g => Math.hypot(g.px[0] - px[0], g.px[1] - px[1]) < 64); if(g) g.m.push(c); else groups.push({ px, m:[c] }); });
       groups.forEach(g => {
         const label = dayRange(g.m.map(c => c.i)); const lat = g.m.reduce((a, c) => a + c.lat, 0) / g.m.length, lon = g.m.reduce((a, c) => a + c.lon, 0) / g.m.length;
-        marks.push({ lat, lon, html:`<span class="lpin bubble">${label}</span>`, size:30, w:24 + label.length * 7.5, title:`${label}. Show its places`, z:200, onClick:() => { const pts = g.m.flatMap(c => c.pts); const fz = Math.min(16, fitZoom(pts, MAPS.trip.el)); S.placesZoom = Math.min(ZOOM_PLACES, fz); MAPS.trip.view = 'manual'; MAPS.trip.fit(pts, 16); drawMarkers(); } });
+        marks.push({ lat, lon, html:`<span class="lpin bubble">${label}</span>`, size:30, w:24 + label.length * 7.5, title:`${label}. Show its places`, z:200, onClick:() => { S.tripShow = null; const pts = g.m.flatMap(c => c.pts); const fz = Math.min(16, fitZoom(pts, MAPS.trip.el)); S.placesZoom = Math.min(ZOOM_PLACES, fz); MAPS.trip.view = 'manual'; MAPS.trip.fit(pts, 16); drawMarkers(); } });
       });
       route = centres.map(c => [c.lat, c.lon]);
     } else {
@@ -2312,8 +2334,7 @@ function applyPrefs(){
   const r = document.documentElement;
   r.style.setProperty('--scale', dev.scale);
   if(dev.theme === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', dev.theme);
-  if(dev.accent === 'orange') r.removeAttribute('data-accent'); else r.setAttribute('data-accent', dev.accent);
-  const m = document.querySelector('meta[name="theme-color"]'); if(m) m.content = isDark() ? '#1a1d24' : '#f8fafb';
+  const m = document.querySelector('meta[name="theme-color"]'); if(m) m.content = isDark() ? '#101010' : '#f8fafb';
 }
 function render(){
   applyPrefs();
@@ -2391,7 +2412,7 @@ function saveExpense(){
   S.editing = null; S.draft = Object.assign(blankDraft(t, d.cat), { date:d.date, trip:t.id }); changed(); render();
 }
 function confirmBox(title, body, yes, fn){ S.confirm = { title, body, yes, fn }; S.dialog = 'confirm'; render(); }
-function openTrip(id, screen = 'overview'){ library.activeTripId = id; S.day = 0; S.mapMode = 'day'; S.mapFocus = S.mapPopup = S.picking = null; S.editing = null; S.draft = null; S.editDay = false; S.screen = screen; saveSoon(); window.scrollTo(0, 0); }
+function openTrip(id, screen = 'overview'){ library.activeTripId = id; S.day = 0; S.mapMode = 'day'; S.tripShow = S.placesZoom = null; S.daysPick = false; S.mapFocus = S.mapPopup = S.picking = null; S.editing = null; S.draft = null; S.editDay = false; S.screen = screen; saveSoon(); window.scrollTo(0, 0); }
 function deleteTrip(id){
   const t = library.trips[id]; if(!t) return;
   const m = sync.meta[id]; if(m && m.sha) sync.deleted[id] = m.sha;
@@ -2433,7 +2454,6 @@ document.addEventListener('click', e => {
     }
     case 'delhelper': library.helperUrl = ''; settingsChanged(); break;
     case 'theme': dev.theme = el.dataset.v; saveDev(); break;
-    case 'accent': dev.accent = el.dataset.v; dev.accentPicked = true; if(!isDark()) dev.theme = 'dark'; saveDev(); break;
     case 'showkey': S.showKey = !S.showKey; break;
     case 'sz': dev.scale = Math.max(.8, Math.min(1.5, +(dev.scale + .1 * el.dataset.d).toFixed(1))); saveDev(); break;
     case 'print': window.print(); return;
@@ -2445,7 +2465,7 @@ document.addEventListener('click', e => {
     case 'fpfit': fitFoot(); return;
     case 'fpworld': worldFoot(); return;
     case 'mapfull': S.mapFull = !S.mapFull; if(MAPS.trip) MAPS.trip.view = ''; break;
-    case 'tripshow': S.tripShow = el.dataset.v; S.placesZoom = null; if(MAPS.trip) MAPS.trip.view = ''; break;
+    case 'tripshow': S.tripShow = el.dataset.v === 'places' ? 'places' : null; S.daysPick = el.dataset.v === 'days'; S.placesZoom = null; if(MAPS.trip) MAPS.trip.view = ''; break;
     case 'opentrip': openTrip(el.dataset.id); break;
     case 'createtrip': {
       const n = S.newTrip; if(!n.name.trim()){ S.addErr = 'Give the trip a name first.'; break; }

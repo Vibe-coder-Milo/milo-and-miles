@@ -7,6 +7,7 @@ Live: https://vibe-coder-milo.github.io/milo-and-miles/
 ## Files
 
 - `index.html` is the whole app (HTML, CSS and JavaScript in one file; Leaflet comes from cdnjs).
+- `src/` holds the readable sources; `python3 src/build.py` turns them into `index.html`.
 - `sw.js` lets the app open without internet once it has been opened online.
 - `manifest.webmanifest` lets you add it to the iPad home screen.
 

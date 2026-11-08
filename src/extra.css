@@ -1,0 +1,160 @@
+
+/* ===== live map (Leaflet) ===== */
+.mapcol .tmapwrap { position: relative; aspect-ratio: 16 / 10; border-radius: 8px; overflow: hidden; background: var(--color-map-sea); }
+@media (min-width: 64.01rem) { .mapcol .tmapwrap { aspect-ratio: auto; } }
+.lmap { position: absolute; inset: 0; background: var(--color-map-sea); font-family: var(--font-body); }
+.lmap.picking, .lmap.picking .leaflet-grab, .lmap.picking .leaflet-interactive { cursor: crosshair; }
+.lpin-wrap { background: none; border: 0; }
+.lpin { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; background: var(--cat, var(--color-ink-2)); color: var(--color-card); font: 600 13px/1 var(--font-body); font-variant-numeric: tabular-nums; border: 2px solid var(--color-card); box-shadow: 0 1px 4px oklch(0% 0 0 / 0.35); }
+.lpin.hotel { border-radius: 6px; }
+.lpin.small { border-width: 1.5px; box-shadow: 0 0 0 1px oklch(0% 0 0 / 0.2); }
+.lpin.focus { outline: 3px solid var(--color-accent); outline-offset: 2px; }
+.leaflet-marker-icon:focus-visible { outline: none; }
+.leaflet-marker-icon:focus-visible .lpin { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+.lroute { stroke: var(--color-ink-2); fill: none; }
+.leaflet-container { font: inherit; font-size: var(--text-xs); }
+.leaflet-bar a, .leaflet-bar a:hover { background: var(--color-card); color: var(--color-ink); border-bottom-color: var(--color-rule); width: 34px; height: 34px; line-height: 34px; }
+.leaflet-bar { border: 1px solid var(--color-rule) !important; box-shadow: var(--shadow-card) !important; }
+.leaflet-control-attribution { background: color-mix(in oklab, var(--color-card) 85%, transparent) !important; color: var(--color-muted); }
+.leaflet-control-attribution a { color: var(--color-ink-2); }
+.mapoff { position: absolute; inset: 0; display: grid; place-items: center; padding: var(--space-lg); text-align: center; }
+
+.item-name .row-open { min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: left; }
+
+/* ===== app extras ===== */
+.wm-lab.t { transform: translate(-50%, calc(-100% - 10px)); }
+.mapnote { display: flex; flex-direction: column; gap: var(--space-md); }
+.steps { margin: 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: var(--space-xs); }
+.steps a { color: var(--color-ink); text-decoration-color: var(--color-accent); }
+.codebox { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--text-xs); line-height: 1.5; white-space: pre; overflow: auto; }
+.dialog details > summary { display: inline-flex; align-items: center; min-height: 44px; cursor: pointer; color: var(--color-ink); }
+.dialog details[open] { display: flex; flex-direction: column; gap: var(--space-sm); }
+a.btn { text-decoration: none; }
+.tab:disabled { opacity: 0.45; cursor: not-allowed; }
+
+
+/* ===== colours: one colour (the accent) for every stop; hotels and what's coming up get the second colour ===== */
+:root { --color-visited: var(--color-accent); --color-upcoming: oklch(62% 0.16 45); --color-mark-2: var(--color-ink-2); --color-mark-2-ink: var(--color-paper); --color-home: oklch(53% 0.18 8); }
+/*@dark*/
+:dark { --color-upcoming: var(--color-ink); --color-mark-2: oklch(85% 0.12 168); --color-mark-2-ink: oklch(20% 0.04 168); --color-home: oklch(74% 0.15 2); }
+/*@end*/
+.c-air, .c-sight, .c-attraction, .c-food, .c-transport, .c-activity, .c-misc { --cat: var(--color-accent); }
+.c-hotel { --cat: var(--color-mark-2); }
+.badge.c-attraction, .badge.c-food, .badge.c-transport, .badge.c-activity, .badge.c-air { color: var(--color-accent-ink); }
+.badge.c-hotel { color: var(--color-mark-2-ink); }
+.keydot { display: none; }
+.key { background: var(--color-visited); }
+.key.up { background: transparent; border: 2px solid var(--color-upcoming); }
+.key.home { background: var(--color-home); }
+
+/* ===== map pins ===== */
+.lpin { background: var(--cat, var(--color-accent)); color: var(--color-accent-ink); }
+.lpin.hotel { --cat: var(--color-mark-2); color: var(--color-mark-2-ink); font-size: 12px; }
+.lpin.bubble { width: auto; min-width: 100%; padding: 0 10px; border-radius: 999px; font-size: 13px; white-space: nowrap; box-shadow: 0 2px 8px oklch(0% 0 0 / 0.35); }
+.daykey { display: flex; flex-wrap: wrap; gap: var(--space-2xs) var(--space-xs); margin: 0; padding: 0; list-style: none; }
+.daykey button { display: inline-flex; align-items: center; min-height: 36px; padding: 0 var(--space-sm); border: 1px solid var(--color-rule); border-radius: var(--radius-pill); background: none; color: var(--color-ink-2); font-size: var(--text-sm); cursor: pointer; }
+.daykey button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+@media (hover: hover) { .daykey button:hover { border-color: var(--color-ink); color: var(--color-ink); } }
+
+/* ===== home: footprint map, every place you've been lit up ===== */
+.worldfig { gap: var(--space-lg); }
+.fp-card { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: var(--space-lg) 0; border: 1px solid var(--color-rule); border-radius: var(--radius-card); background: var(--color-card); }
+.fp-stat { display: flex; flex-direction: column; gap: var(--space-2xs); min-width: 0; padding-inline: var(--space-lg); border-left: 1px solid var(--color-rule); }
+.fp-stat:first-child { border-left: 0; }
+.fp-num { display: flex; align-items: baseline; gap: var(--space-xs); margin: 0; font-variant-numeric: tabular-nums; }
+.fp-num b { font-size: 2.25rem; line-height: 1.05; font-weight: 600; letter-spacing: -0.02em; color: var(--color-ink); }
+.fp-stat.main .fp-num b { color: var(--color-visited); }
+.fp-num span { font-size: var(--text-lg); color: var(--color-muted); }
+.fp-bar { height: 5px; margin-top: var(--space-2xs); border-radius: 3px; background: var(--color-paper-3); overflow: hidden; }
+.fp-bar span { display: block; height: 100%; border-radius: 3px; background: var(--color-visited); }
+.fp-legend { justify-content: flex-end; margin-bottom: calc(var(--space-sm) * -1); }
+@media (max-width: 52rem) {
+  .fp-card { grid-template-columns: repeat(6, minmax(0, 1fr)); row-gap: var(--space-lg); }
+  .fp-stat.main { grid-column: span 3; }
+  .fp-stat:not(.main) { grid-column: span 2; }
+  .fp-stat:nth-child(3) { border-left: 0; }
+}
+@media (max-width: 40rem) { .fp-stat { padding-inline: var(--space-md); } .fp-stat .wide { display: none; } .fp-num b { font-size: 1.9rem; } }
+.fp-map { position: relative; aspect-ratio: 2 / 1; border-radius: 8px; overflow: hidden; background: var(--color-map-sea); touch-action: pan-y; -webkit-user-select: none; user-select: none; cursor: grab; }
+.fp-map:active { cursor: grabbing; }
+@media (max-width: 40rem) { .fp-map { aspect-ratio: 4 / 3.6; } }
+.fp-svgslot, #fpsvg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#fplabs { position: absolute; inset: 0; pointer-events: none; }
+.fp-sea { fill: var(--color-map-sea); }
+.fp-u { fill: var(--color-map-land); stroke: var(--color-map-land); stroke-width: 0.6; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.fp-map.z2 .fp-u { stroke: color-mix(in oklab, var(--color-map-edge) 70%, var(--color-map-land)); }
+.fp-u.v { fill: var(--color-visited); stroke: var(--color-visited); cursor: pointer; }
+.fp-u.u { fill: color-mix(in oklab, var(--color-upcoming) 60%, var(--color-map-land)); stroke: color-mix(in oklab, var(--color-upcoming) 60%, var(--color-map-land)); cursor: pointer; }
+.fp-map.z2 .fp-u.v, .fp-map.z2 .fp-u.u { stroke: var(--color-map-land); }
+.fp-u.hl { stroke: var(--color-ink) !important; stroke-width: 2; }
+.fp-b { fill: none; stroke: var(--color-map-edge); stroke-width: 0.9; vector-effect: non-scaling-stroke; stroke-linejoin: round; pointer-events: none; }
+@media (hover: hover) { .fp-u.v:hover, .fp-u.u:hover { filter: brightness(1.12); } }
+.fp-lab { position: absolute; transform: translate(-50%, -50%); font-size: 11px; line-height: 1.2; white-space: nowrap; color: var(--color-muted); text-shadow: 0 0 3px var(--color-map-land), 0 0 2px var(--color-map-land); }
+.fp-lab.c { font-size: 12px; font-weight: 600; color: var(--color-ink-2); letter-spacing: 0.01em; }
+.fp-lab.v, .fp-lab.u { padding: 1px 6px; border-radius: 4px; font-weight: 600; text-shadow: none; box-shadow: 0 1px 3px oklch(0% 0 0 / 0.3); }
+.fp-lab.v { background: var(--color-visited); color: var(--color-accent-ink); }
+.fp-lab.u { background: var(--color-upcoming); color: var(--color-now-ink); }
+.fp-map .wm-zoom { position: absolute; right: var(--space-xs); bottom: var(--space-xs); display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--space-2xs); }
+.fp-map .wm-zoom .iconbtn { width: 40px; height: 40px; background: var(--color-card); border: 1px solid var(--color-rule); border-radius: var(--radius-pill); }
+.fp-map .wm-reset { min-height: 40px; background: var(--color-card); font-size: var(--text-sm); }
+@media (max-width: 40rem) { .fp-map .wm-reset { min-height: 36px; padding: 0 var(--space-xs); } }
+.hcap { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2xs) var(--space-md); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-card); background: var(--color-paper-2); }
+.hcap .iconbtn { margin-left: auto; }
+
+/* ===== trip map panel: on Overview, and full screen ===== */
+.ovmap { display: flex; flex-direction: column; gap: var(--space-md); }
+.mapbox { position: relative; }
+.ovmap .tmapwrap { position: relative; aspect-ratio: 16 / 8; border-radius: 8px; overflow: hidden; background: var(--color-map-sea); }
+@media (max-width: 40rem) { .ovmap .tmapwrap { aspect-ratio: 4 / 3.4; } }
+.mapfullbtn { position: absolute; top: var(--space-xs); right: var(--space-xs); z-index: 500; width: 40px; height: 40px; background: var(--color-card); border: 1px solid var(--color-rule); border-radius: var(--radius-pill); box-shadow: var(--shadow-card); }
+.maptop { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }
+.mapfull { position: fixed !important; inset: 0; z-index: var(--z-modal); height: 100dvh !important; max-height: none !important; margin: 0; border: 0; border-radius: 0; display: flex; flex-direction: column; gap: var(--space-sm); padding: max(var(--space-md), env(safe-area-inset-top)) var(--space-md) max(var(--space-md), env(safe-area-inset-bottom)); overflow-y: auto; background: var(--color-section); }
+.mapfull > .mapbox { flex: 1 0 auto; display: flex; flex-direction: column; min-height: calc(100dvh - 190px); }
+.mapfull .tmapwrap { position: relative; flex: 1 1 auto; aspect-ratio: auto !important; min-height: calc(100dvh - 190px); }
+body.noscroll { overflow: hidden; }
+
+/* ===== map tiles: OpenStreetMap is muted so it reads as a quiet backdrop ===== */
+.osm-tiles { filter: grayscale(0.85) brightness(1.04) contrast(0.92); }
+.gmap-pin { position: absolute; cursor: pointer; }
+.gmap-pin:focus-visible { outline: none; }
+.gmap-pin:focus-visible .lpin { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+
+/* text on the 'now' colour */
+:root { --color-now-ink: var(--color-accent-ink); }
+.tab .today { color: var(--color-now-ink); }
+
+/* ===== dark colour: Onyx & indigo, two darks and one bright =====
+   Dark 1, onyx (#101010): the page and the top bar.
+   Dark 2, midnight indigo: every panel, card, badge and the land on the maps, kept deep so it reads as night blue, not purple.
+   The one bright, tropical mint (#88ffc0): main buttons, today and next up, the current tab, map pins and the places you've lit up.
+   Icons use a dusty lavender and hotels show in white so nothing else competes with the mint. */
+/*@dark*/
+:dark { --color-page: #101010; --color-bar: #101010; --color-section: oklch(20% 0.045 283); --section-edge: oklch(31% 0.06 283); --section-shadow: 0 1px 0 oklch(38% 0.06 283 / 0.45) inset, 0 12px 30px -14px oklch(0% 0 0 / 0.8); --color-card: oklch(24% 0.055 283); --color-card-edge: oklch(34% 0.065 283); --color-paper: oklch(17% 0.035 283); --color-paper-2: oklch(26% 0.055 283); --color-paper-3: oklch(31% 0.065 283); --color-ink: oklch(96% 0.008 283); --color-ink-2: oklch(88% 0.02 283); --color-muted: oklch(77% 0.035 283); --color-pencil: oklch(77% 0.035 283); --color-rule: oklch(31% 0.05 283); --color-edge: oklch(50% 0.06 283); --color-accent: #88ffc0; --color-accent-strong: #b0ffd6; --color-accent-ink: #101010; --color-accent-wash: oklch(28% 0.05 175); --color-now: #88ffc0; --color-now-ink: #101010; --color-success: #88ffc0; --color-focus: #88ffc0; --color-visited: #88ffc0; --color-upcoming: oklch(66% 0.075 172); --color-mark-2: oklch(92% 0.015 283); --color-mark-2-ink: #101010; --color-error: oklch(76% 0.12 25); --color-error-wash: oklch(26% 0.05 20); --color-warn: oklch(85% 0.1 80); --color-warn-wash: oklch(27% 0.04 70); --color-map-sea: oklch(16.5% 0.035 283); --color-map-land: oklch(27% 0.05 283); --color-map-edge: oklch(37% 0.06 283); --color-map-arc: rgb(136 255 192 / 0.8); --color-overlay: oklch(8% 0.02 283 / 0.75); --shadow-card: 0 0 0 1px oklch(31% 0.05 283), 0 12px 32px -12px oklch(0% 0 0 / 0.7); --nextup-bg: oklch(24% 0.055 283); --nextup-fg: oklch(96% 0.008 283); --nextup-sub: oklch(84% 0.03 283); --nextup-edge: #88ffc0; --color-drop: oklch(28% 0.05 175); --color-home: oklch(96% 0.008 283); --badge-bg: oklch(32% 0.065 283); --badge-ink: oklch(90% 0.03 283); --badge-hotel-bg: oklch(32% 0.065 283); --badge-hotel-ink: oklch(90% 0.03 283); --soft-ic: oklch(80% 0.07 283); }
+:dark .btn--primary { background: #88ffc0; border-color: #88ffc0; color: #101010; font-weight: 600; }
+:dark .btn--primary .ic { color: #101010; }
+:dark .btn:not(.btn--primary):not(.btn--danger), :dark .input, :dark .item-tools select, :dark .btn--danger { border-color: oklch(44% 0.06 283); }
+:dark .seg button[aria-pressed="true"] { background: oklch(34% 0.07 283); color: var(--color-ink); box-shadow: inset 0 0 0 1px oklch(44% 0.08 283); }
+:dark .nextup { border: 1px solid var(--nextup-edge); }
+:dark .fp-card { background: var(--color-card); }
+:dark .fp-lab.v, :dark .fp-lab.u, :dark .tab .today { color: #101010; }
+:dark .tab .today { background: var(--color-now); }
+:dark .box > .sechead .ic, :dark .wordmark .ic { color: var(--soft-ic); }
+:dark .todayband { background: var(--color-section); border-color: var(--section-edge); }
+:dark .lpin { color: #101010; }
+@media (hover: hover) { :dark .btn--primary:hover:not(:disabled) { background: #b0ffd6; border-color: #b0ffd6; color: #101010; } }
+/*@end*/
+
+/* OpenStreetMap tiles have no dark style: darken them to match the dark theme */
+/*@dark*/
+:dark .osm-tiles { filter: grayscale(0.9) invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); }
+/*@end*/
+
+/* ===== print (Save as PDF from Overview) ===== */
+@media print {
+  :root { --scale: 0.85; }
+  html, body { background: #fff !important; color: #000; }
+  .bar, .banner, .btn, .handle, .ov-move, .ovkey .sub, .toast, #live, .overlay, .daymove, .iconbtn { display: none !important; }
+  .box, .summary { box-shadow: none !important; border: 1px solid #ccc !important; break-inside: avoid; }
+  .ov-day { break-inside: avoid; }
+  .wrap { max-width: none; padding: 0; }
+}
