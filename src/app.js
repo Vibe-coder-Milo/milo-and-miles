@@ -298,10 +298,27 @@ function planOf(d){
 }
 function numbering(t){ const m = {}; t.days.forEach(d => planOf(d).forEach(e => { if(e.kind === 'place') m[e.p.id] = e.n; })); return m; }
 function hotelDays(t, name){ return t.days.map((d, i) => d.places.some(p => p.type === 'hotel' && p.name === name) ? i + 1 : null).filter(Boolean); }
-function stayText(t, name){
-  const ds = hotelDays(t, name); const n = ds.length; if(!n) return '';
-  const a = t.days[ds[0] - 1].date, l = t.days[ds[n - 1] - 1].date;
-  return `${n} ${n === 1 ? 'night' : 'nights'}` + (okDate(a) && okDate(l) ? `, ${dShort(a)} to ${dShort(addDaysISO(l, 1))}` : '');
+// A hotel stay is the unbroken run of nights with the same hotel. Returns [first night, check-out day]
+// as day indexes (check-out can be one past the last day), or null if that day has no such hotel.
+const hasHotel = (t, j, name) => !!(t.days[j] && t.days[j].places.some(p => p.type === 'hotel' && p.name === name));
+function stayRun(t, name, di){
+  if(!hasHotel(t, di, name)) return null;
+  let a = di, b = di + 1; while(hasHotel(t, a - 1, name)) a--; while(hasHotel(t, b, name)) b++;
+  return [a, b];
+}
+// Makes the hotel sit on exactly the nights a .. b-1, taking it off the nights of `run` outside that.
+function setStay(t, name, run, a, b, base){
+  if(run) for(let j = run[0]; j < run[1]; j++) if(j < a || j >= b) t.days[j].places = t.days[j].places.filter(p => !(p.type === 'hotel' && p.name === name));
+  for(let j = a; j < b; j++){ const ps = t.days[j].places; if(!ps.some(p => p.type === 'hotel' && p.name === name)) ps.splice(ps.filter(p => p.type === 'flight').length, 0, Object.assign({}, base, { id:uid(), type:'hotel', name })); }
+}
+// The day you check out: the day after the last night (past the trip's end if need be).
+function checkoutDate(t, b){ return b < t.days.length ? t.days[b].date : (okDate(t.days[t.days.length - 1].date) ? addDaysISO(t.days[t.days.length - 1].date, 1) : ''); }
+// "3 nights, 3 Dec to 6 Dec" for the stay that includes day `di` (or the first stay with that hotel).
+function stayText(t, name, di){
+  const first = t.days.findIndex(d => d.places.some(p => p.type === 'hotel' && p.name === name));
+  const run = stayRun(t, name, di != null && hasHotel(t, di, name) ? di : first); if(!run) return '';
+  const n = run[1] - run[0], a = t.days[run[0]].date, c = checkoutDate(t, run[1]);
+  return `${n} ${n === 1 ? 'night' : 'nights'}` + (okDate(a) && okDate(c) ? `, ${dShort(a)} to ${dShort(c)}` : '');
 }
 function dayList(nums){ return nums.length > 2 && nums[nums.length - 1] - nums[0] === nums.length - 1 ? `Days ${nums[0]} to ${nums[nums.length - 1]}` : (nums.length > 1 ? 'Days ' : 'Day ') + nums.join(' and '); }
 const placeIcon = p => p.type === 'flight' ? 'plane' : p.type === 'hotel' ? 'bed' : p.category === 'food' ? 'bowl' : 'pin';

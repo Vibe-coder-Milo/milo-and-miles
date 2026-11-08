@@ -117,7 +117,7 @@ function moveSelect(id, attrs, i){ const t = T(); return `<div class="item-tools
 function itemHTML(p, i, pi, t = null, n = null){
   const trip = T(); const timed = t !== null;
   const flightSub = [p.departTime ? 'Departs ' + p.departTime : '', p.arriveTime ? 'arrives ' + p.arriveTime : ''].filter(Boolean).join(', ');
-  const sub = p.type === 'flight' ? (flightSub ? flightSub[0].toUpperCase() + flightSub.slice(1) : 'Times not set') : p.type === 'hotel' ? `${stayText(trip, p.name)}${p.address ? '. ' + p.address : ''}` : p.address;
+  const sub = p.type === 'flight' ? (flightSub ? flightSub[0].toUpperCase() + flightSub.slice(1) : 'Times not set') : p.type === 'hotel' ? `${stayText(trip, p.name, i)}${p.address ? '. ' + p.address : ''}` : p.address;
   const cls = p.type === 'activity' ? 'c-' + p.category : p.type === 'flight' ? 'c-air' : 'c-hotel';
   const badge = n != null ? `<span class="badge ${cls}">${n}</span>` : `<span class="badge ${cls}">${I(placeIcon(p),'sm')}</span>`;
   const editing = S.editItem === p.id;
@@ -126,7 +126,8 @@ function itemHTML(p, i, pi, t = null, n = null){
   const timeField = p.type === 'activity' ? `<div class="field" style="max-width:12rem"><label for="pt${esc(p.id)}">Time (optional)</label><input id="pt${esc(p.id)}" type="time" class="input num" data-in="ptime" data-id="${esc(p.id)}" value="${esc(p.time || '')}"></div>`
     : p.type === 'flight' ? `<div class="grid2"><div class="field"><label for="fd${esc(p.id)}">Departs</label><input id="fd${esc(p.id)}" type="time" class="input num" data-in="pdep" data-id="${esc(p.id)}" value="${esc(p.departTime || '')}"></div><div class="field"><label for="fa${esc(p.id)}">Arrives</label><input id="fa${esc(p.id)}" type="time" class="input num" data-in="parr" data-id="${esc(p.id)}" value="${esc(p.arriveTime || '')}"></div></div>` : '';
   const kindField = p.type === 'activity' ? `<div class="seg" role="group" aria-label="Type"><button type="button" data-act="pcat" data-id="${esc(p.id)}" data-c="attraction" aria-pressed="${p.category === 'attraction'}">Sight</button><button type="button" data-act="pcat" data-id="${esc(p.id)}" data-c="food" aria-pressed="${p.category === 'food'}">Food</button></div>` : '';
-  const edit = editing ? `<div class="item-edit">${kindField}<div class="field"><label for="pn${esc(p.id)}">Name</label><input id="pn${esc(p.id)}" class="input" data-in="pname" data-id="${esc(p.id)}" value="${esc(p.name)}"></div>${timeField}<div class="field"><label for="nt${esc(p.id)}">${p.type === 'flight' ? 'Booking details' : 'Note'}</label><textarea id="nt${esc(p.id)}" class="input" rows="2" data-in="pnote" data-id="${esc(p.id)}" placeholder="${p.type === 'flight' ? 'Booking reference, seats, terminal' : 'Why you picked it, what to order'}">${esc(p.note)}</textarea></div>${move}<div class="chips"><button type="button" class="btn" data-act="doneitem">Done</button>${p.type !== 'flight' && p.lat != null ? `<button type="button" class="btn btn--quiet" data-act="pick" data-id="${esc(p.id)}">Move the pin</button>` : ''}</div></div>` : '';
+  const stayEdit = editing && p.type === 'hotel' ? (r => r ? stayPickers(trip, r[0], r[1], ['si' + p.id, 'so' + p.id], [`data-in="stayin" data-id="${esc(p.id)}"`, `data-in="stayout" data-id="${esc(p.id)}"`]) : '')(stayRun(trip, p.name, i)) : '';
+  const edit = editing ? `<div class="item-edit">${kindField}<div class="field"><label for="pn${esc(p.id)}">Name</label><input id="pn${esc(p.id)}" class="input" data-in="pname" data-id="${esc(p.id)}" value="${esc(p.name)}"></div>${timeField}<div class="field"><label for="nt${esc(p.id)}">${p.type === 'flight' ? 'Booking details' : 'Note'}</label><textarea id="nt${esc(p.id)}" class="input" rows="2" data-in="pnote" data-id="${esc(p.id)}" placeholder="${p.type === 'flight' ? 'Booking reference, seats, terminal' : p.type === 'hotel' ? 'Room type, check-in time, breakfast' : 'Why you picked it, what to order'}">${esc(p.note)}</textarea></div>${p.type === 'hotel' ? stayEdit : move}<div class="chips"><button type="button" class="btn" data-act="doneitem">Done</button>${p.type !== 'flight' && p.lat != null ? `<button type="button" class="btn btn--quiet" data-act="pick" data-id="${esc(p.id)}">Move the pin</button>` : ''}</div></div>` : '';
   return `<li class="item ${timed ? 'timed' : ''}" ${p.type === 'activity' ? `data-drag-item="p:${esc(i)}:${esc(pi)}"` : ''}>
     ${timed ? `<span class="pt">${esc(t || '')}</span>` : ''}${p.type === 'activity' ? `<button type="button" class="handle" data-drag="it" data-what="p" data-day="${esc(i)}" data-idx="${esc(pi)}" aria-label="Move ${esc(p.name)}: drag, or use arrow keys">${I('grip')}</button>` : '<span></span>'}${badge}
     <div class="item-main"><div class="item-name">${n != null ? `<span class="cat-ic ${cls}">${I(placeIcon(p),'sm')}</span>` : ''}${p.lat != null ? `<button type="button" class="row-open" data-act="showpin" data-id="${esc(p.id)}" aria-label="Show ${esc(p.name)} on the map">${esc(p.name)}</button>` : esc(p.name)}</div>${sub ? `<div class="item-sub">${esc(sub)}</div>` : ''}
@@ -153,7 +154,7 @@ function tripMapPanel(where){
   const groups = t.days.map((d, j) => { const o = d.places.filter(p => p.type !== 'flight' && p.lat != null); return o.length ? `<optgroup label="${esc(dayLabel(d, j).replace(/, \d+ \w+,/, ','))}">${o.map(p => `<option value="${esc(p.id)}" ${S.mapFocus === p.id ? 'selected' : ''}>${p.type === 'hotel' ? esc(p.name) + ' (hotel)' : nums[p.id] + '. ' + esc(p.name)}</option>`).join('')}</optgroup>` : ''; }).join('');
   const unplaced = ov ? [] : t.days[i].places.filter(p => p.lat == null && p.type !== 'flight');
   let popup = '';
-  if(S.mapPopup){ const f = findPlace(S.mapPopup); if(f){ const p = f.p; const di = t.days.indexOf(f.d); popup = `<div class="popup"><div class="top"><b>${p.type === 'hotel' ? '' : (nums[p.id] || '') + '. '}${esc(p.name)}</b><button type="button" class="iconbtn" data-act="closepop" aria-label="Close details">${I('x','sm')}</button></div><span class="sub">${p.type === 'hotel' ? 'Hotel, ' + dayList(hotelDays(t, p.name)) : 'Day ' + (di + 1) + (f.d.city ? ', ' + esc(f.d.city) : '') + (p.time ? ', ' + p.time : '')}</span>${ov || di !== S.day ? `<div><button type="button" class="link" data-act="day" data-i="${esc(di)}">Open Day ${di + 1}</button></div>` : ''}${p.address ? `<span class="sub">${esc(p.address)}</span>` : ''}${p.note ? `<p>${esc(p.note)}</p>` : ''}<div class="chips"><a class="link" href="${esc(gmapsHref(p))}" target="_blank" rel="noopener">Open in Google Maps</a></div></div>`; } }
+  if(S.mapPopup){ const f = findPlace(S.mapPopup); if(f){ const p = f.p; const di = t.days.indexOf(f.d); popup = `<div class="popup"><div class="top"><b>${p.type === 'hotel' ? '' : (nums[p.id] || '') + '. '}${esc(p.name)}</b><button type="button" class="iconbtn" data-act="closepop" aria-label="Close details">${I('x','sm')}</button></div><span class="sub">${p.type === 'hotel' ? 'Hotel, ' + dayList((r => r ? Array.from({ length:r[1] - r[0] }, (_, k) => r[0] + k + 1) : hotelDays(t, p.name))(stayRun(t, p.name, di))) : 'Day ' + (di + 1) + (f.d.city ? ', ' + esc(f.d.city) : '') + (p.time ? ', ' + p.time : '')}</span>${ov || di !== S.day ? `<div><button type="button" class="link" data-act="day" data-i="${esc(di)}">Open Day ${di + 1}</button></div>` : ''}${p.address ? `<span class="sub">${esc(p.address)}</span>` : ''}${p.note ? `<p>${esc(p.note)}</p>` : ''}<div class="chips"><a class="link" href="${esc(gmapsHref(p))}" target="_blank" rel="noopener">Open in Google Maps</a></div></div>`; } }
   const picking = S.picking ? findPlace(S.picking) : null;
   S.lastMap = { filter, focus:S.mapFocus, picking:!!picking, curDay:i };
   const full = S.mapFull;
@@ -341,17 +342,20 @@ function stayRange(trip, di){
   const b = Math.max(a + 1, Math.min(n, S.hTo ?? a + 1));
   return [a, b];
 }
-function stayPickHTML(trip, di){
-  const [a, b] = stayRange(trip, di); const n = trip.days.length;
-  const dayName = j => { const d = trip.days[j]; return `Day ${j + 1}${okDate(d.date) ? ', ' + dShort(d.date) : ''}`; };
+// Check-in and check-out pickers (the add form, and a hotel's edit form). The check-out list starts the
+// day after check-in and ends with the day after the trip.
+function stayPickers(trip, a, b, ids, attrs){
+  const n = trip.days.length;
+  const dayName = j => { const d = trip.days[j]; return `Day ${j + 1}${okDate(d.date) ? ', ' + dShort(d.date) : ''}${cityName(d.city) ? ', ' + cityName(d.city) : ''}`; };
   const outName = j => j < n ? dayName(j) : (okDate(trip.days[n - 1].date) ? `${dShort(addDaysISO(trip.days[n - 1].date, 1))}, after the trip` : 'The day after the trip');
-  const ins = trip.days.map((d, j) => `<option value="${esc(j)}" ${j === a ? 'selected' : ''}>${esc(dayName(j) + (d.city ? ', ' + cityName(d.city) : ''))}</option>`).join('');
+  const ins = trip.days.map((d, j) => `<option value="${esc(j)}" ${j === a ? 'selected' : ''}>${esc(dayName(j))}</option>`).join('');
   const outs = []; for(let j = a + 1; j <= n; j++) outs.push(`<option value="${esc(j)}" ${j === b ? 'selected' : ''}>${esc(outName(j))}</option>`);
-  const nights = b - a; const ad = trip.days[a].date, bd = b < n ? trip.days[b].date : (okDate(trip.days[n - 1].date) ? addDaysISO(trip.days[n - 1].date, 1) : '');
+  const nights = b - a, ad = trip.days[a].date, bd = checkoutDate(trip, b);
   const when = okDate(ad) && okDate(bd) ? `, ${dShort(ad)} to ${dShort(bd)}` : `, Day ${a + 1} to ${b < n ? 'Day ' + (b + 1) : 'after the trip'}`;
-  return `<div class="grid2"><div class="field"><label for="hfrom">Check-in</label><select id="hfrom" class="input" data-in="hfrom">${ins}</select></div><div class="field"><label for="hto">Check-out</label><select id="hto" class="input" data-in="hto">${outs.join('')}</select></div></div>
-    <p class="stay-nights" id="staynights" aria-live="polite"><b>${esc(nights)} ${nights === 1 ? 'night' : 'nights'}</b>${esc(when)}</p>`;
+  return `<div class="grid2"><div class="field"><label for="${esc(ids[0])}">Check-in</label><select id="${esc(ids[0])}" class="input" ${attrs[0]}>${ins}</select></div><div class="field"><label for="${esc(ids[1])}">Check-out</label><select id="${esc(ids[1])}" class="input" ${attrs[1]}>${outs.join('')}</select></div></div>
+    <p class="stay-nights" aria-live="polite"><b>${esc(nights)} ${nights === 1 ? 'night' : 'nights'}</b>${esc(when)}</p>`;
 }
+function stayPickHTML(trip, di){ const [a, b] = stayRange(trip, di); return stayPickers(trip, a, b, ['hfrom', 'hto'], ['data-in="hfrom"', 'data-in="hto"']); }
 function addCityHint(){ const t = T(); const di = S.addDay != null ? S.addDay : S.day; const d = t && t.days[di]; return d ? cityName(d.city) : ''; }
 function addPanelHTML(i){
   const trip = T(); const t = S.addType; const di = S.addDay != null ? S.addDay : i; const step = t === 'do' || t === 'move';

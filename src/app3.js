@@ -325,8 +325,11 @@ function addPlace(noPin = false){
     if(cleanGmap(found.gmap)) base.gmap = found.gmap;
     if(cleanPlaceId(found.placeId)) base.placeId = found.placeId;
     if(t === 'hotel'){
-      const [lo, out] = stayRange(trip, di); const hi = out - 1; // the nights from check-in to the night before check-out
-      for(let j = lo; j <= hi; j++){ const ps = trip.days[j].places; ps.splice(ps.filter(p => p.type === 'flight').length, 0, Object.assign({ id:uid(), type:'hotel' }, base)); }
+      const [lo, out] = stayRange(trip, di);
+      // Adding a hotel that is already on some of these nights replaces that stay, so re-adding fixes it.
+      const old = []; for(let j = lo; j < out; j++){ const r = stayRun(trip, base.name, j); if(r && !old.some(x => x[0] === r[0])) old.push(r); }
+      old.forEach(r => setStay(trip, base.name, r, 0, 0, base));
+      setStay(trip, base.name, null, lo, out, base); const hi = out - 1;
       announce(`Added ${found.name} to ${dayList(Array.from({ length:hi - lo + 1 }, (_, k) => lo + k + 1))}`);
     } else {
       day.places.push(Object.assign({ id:uid(), type:'activity', category:S.addCat, time:'' }, base));
@@ -522,7 +525,18 @@ document.addEventListener('click', e => {
       render(); document.querySelector(`.daymove[data-i="${j}"][data-d="${el.dataset.d}"]:not(:disabled)`)?.focus(); return;
     }
     case 'askdelday': { const i = S.day; confirmBox(`Delete Day ${i + 1}?`, 'Everything planned for this day, including its hotel night, flights and notes, will be removed.', 'Delete the day', () => { t.days.splice(i, 1); S.day = Math.max(0, i - 1); S.editDay = false; changed(); announce(`Deleted Day ${i + 1}`); render(); }); } return;
-    case 'delplace': { const f = findPlace(el.dataset.id); f.d.places.splice(f.i, 1); if(S.mapPopup === f.p.id) S.mapPopup = S.mapFocus = null; changed(); undoToast(`Removed ${f.p.name}`, () => { f.d.places.splice(f.i, 0, f.p); changed(); }); } break;
+    case 'delplace': {
+      const f = findPlace(el.dataset.id);
+      if(f.p.type === 'hotel'){
+        // A hotel goes for the whole stay (every night of it), not just this day. Undo puts it all back.
+        const run = stayRun(t, f.p.name, t.days.indexOf(f.d)) || [t.days.indexOf(f.d), t.days.indexOf(f.d) + 1];
+        const gone = []; for(let j = run[0]; j < run[1]; j++){ const ps = t.days[j].places; for(let k = ps.length - 1; k >= 0; k--) if(ps[k].type === 'hotel' && ps[k].name === f.p.name){ gone.push([j, k, ps[k]]); ps.splice(k, 1); } }
+        if(gone.some(([, , p]) => p.id === S.mapPopup)) S.mapPopup = S.mapFocus = null;
+        const n = run[1] - run[0]; changed();
+        undoToast(`Removed ${f.p.name}, ${n} ${n === 1 ? 'night' : 'nights'}`, () => { gone.slice().reverse().forEach(([j, k, p]) => t.days[j].places.splice(k, 0, p)); changed(); });
+        break;
+      }
+      f.d.places.splice(f.i, 1); if(S.mapPopup === f.p.id) S.mapPopup = S.mapFocus = null; changed(); undoToast(`Removed ${f.p.name}`, () => { f.d.places.splice(f.i, 0, f.p); changed(); }); } break;
     case 'undo': { const fn = S.undo; S.undo = null; document.querySelector('.toast')?.remove(); if(fn){ fn(); announce('Restored'); } } break;
     case 'edittime': S.editTime = +el.dataset.k; S.editItem = null; break;
     case 'donetime': S.editTime = null; break;
@@ -618,6 +632,17 @@ document.addEventListener('change', e => {
     case 'aday': S.addDay = +t.value; break;
     case 'hfrom': { S.hFrom = +t.value; if(S.hTo != null && S.hTo <= S.hFrom) S.hTo = S.hFrom + 1; render(); document.getElementById('hfrom')?.focus(); } break;
     case 'hto': S.hTo = +t.value; render(); document.getElementById('hto')?.focus(); break;
+    case 'stayin': case 'stayout': {
+      // Changing a stay from the hotel's edit form: check-in or check-out moves, the nights follow.
+      const f = findPlace(t.dataset.id); if(!f || f.p.type !== 'hotel') break;
+      const di = trip.days.indexOf(f.d); const run = stayRun(trip, f.p.name, di); if(!run) break;
+      let a = run[0], b = run[1]; if(t.dataset.in === 'stayin'){ a = +t.value; if(b <= a) b = a + 1; } else b = Math.max(a + 1, +t.value);
+      const base = Object.assign({}, f.p); delete base.id;
+      setStay(trip, f.p.name, run, a, b, base);
+      if(S.day < a || S.day >= b) S.day = a;
+      const keep = trip.days[S.day].places.find(p => p.type === 'hotel' && p.name === f.p.name); S.editItem = keep ? keep.id : null;
+      changed(); render(); document.getElementById((t.dataset.in === 'stayin' ? 'si' : 'so') + S.editItem)?.focus();
+    } break;
     case 'lcur': trip.currency = t.value; if(S.draft) S.draft.cur = t.value; changed(); render(); break;
     case 'bcur': changeBase(trip, t.value); changed(); render(); break;
     case 'mofrom': trip.start = t.value; changed(); break;
