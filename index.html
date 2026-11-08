@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-p0MmYyhNpEai7Sl9PYbpiSdRg3+iEZPKFYe1pQeorqk=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-a10mIK0kUumKjJ72lXYztIkDOjM+K7UAqpYCNO1HHy0=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Milo &amp; Miles</title>
 <meta name="description" content="Plan each trip day by day: places, hotels, flights, a map and spending.">
@@ -798,6 +798,17 @@ body.noscroll { overflow: hidden; }
   .ov-day { break-inside: avoid; }
   .wrap { max-width: none; padding: 0; }
 }
+
+/* ===== the lock screen, before the app ===== */
+.gate { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: var(--space-xl) var(--space-md); }
+.gate-card { width: 100%; max-width: 30rem; display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-xl) var(--space-lg); }
+.gate-card h1 { font-size: var(--text-3xl); }
+.gate-card p { margin: 0; }
+.gate-brand { display: flex; align-items: center; gap: var(--space-xs); font-family: var(--font-display); font-size: var(--text-lg); color: var(--color-ink); }
+.gate-brand .ic { width: 22px; height: 22px; color: var(--color-accent); }
+.gate .field { margin: 0; }
+.gate-main { min-width: 11rem; }
+.gate-foot { margin-top: var(--space-xs); }
 </style>
 </head>
 <body>
@@ -1031,16 +1042,21 @@ function migrateLibrary(lib){
   if(!lib.trips[lib.activeTripId]) lib.activeTripId = Object.keys(lib.trips)[0] || null;
   return lib;
 }
-const T = () => (library.activeTripId && library.trips[library.activeTripId]) || null;
+const T = () => (library && library.activeTripId && library.trips[library.activeTripId]) || null;
 
 /* ===== saving ===== */
 let saveTimer = null;
 function saveNow(){
   clearTimeout(saveTimer);
+  // With the lock on, everything (trips, keys, token) is saved only inside the scrambled vault.
+  if(vault){ if(vaultKey && library) sealSoon(); return; }
+  if(!library) return;
   let ok = true;
-  // With the passcode lock on, the keys are kept only in the scrambled vault, never in the plain library.
-  try{ localStorage.setItem(LS_KEY, JSON.stringify(vaultOn() ? Object.assign({}, library, BLANK_SHARED) : library)); }catch(e){ ok = false; }
-  if(vaultKey) sealSoon();
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(library)); }catch(e){ ok = false; }
+  setSaveFail(!ok);
+}
+function setSaveFail(fail){
+  const ok = !fail;
   if(ok !== !S.saveFail) return;
   S.saveFail = !ok; render();
 }
@@ -1048,6 +1064,8 @@ function saveSoon(){ clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 30
 // Call after any change to a trip. Marks it for sync and saves on this device.
 function changed(t = T()){
   if(t){ t.updatedAt = new Date().toISOString(); const m = syncMeta(t.id); m.dirty = true; m.v = (m.v || 0) + 1; }
+  // The "needs syncing" mark is saved straight away, so an edit still syncs if the app closes first.
+  if(sync.token) saveSync();
   saveSoon(); syncSoon();
 }
 function settingsChanged(){ sync.settingsDirty = true; saveSync(); saveSoon(); syncSoon(); }
@@ -1135,7 +1153,7 @@ const S = {
   addType:'activity', addCat:'attraction', addMode:'search', q:'', results:null, searching:false, picked:null, link:'', linkRes:null,
   addDay:null, hFrom:null, hTo:null, fName:'', fDep:'', fArr:'', addNote:'', wiki:null, sTime:'', sWhat:'',
   draft:null, editing:null, editDay:false, scrollDay:false, editTime:null, undo:null, editItem:null, expErr:null, addErr:null,
-  hlCity:null, confirm:null, lockErr:null, lockBusy:false, afterUnlock:null, pastForm:{ name:'', from:'', to:'', cities:'' }, newTrip:{ name:'', from:'', to:'' }, saveFail:false,
+  hlCity:null, confirm:null, gate:null, lockBusy:false, bioAvail:false, bioErr:null, pastForm:{ name:'', from:'', to:'', cities:'' }, newTrip:{ name:'', from:'', to:'' }, saveFail:false,
 };
 
 /* ===== Google Places (needs the key in Settings) and free search fallbacks ===== */
@@ -1474,71 +1492,154 @@ function paintLink(){ const el = document.getElementById('alinkres'); if(el) el.
 
 /* ===== GitHub sync ===== */
 const sync = Object.assign({ token:'', repo:DATA_REPO_DEFAULT, expires:'', meta:{}, deleted:{}, settingsSha:'', settingsDirty:false, lastSync:'', status:'', error:'' }, readJSON(LS_SYNC) || {});
-function saveSync(){ writeJSON(LS_SYNC, vaultOn() ? Object.assign({}, sync, { token:'' }) : sync); if(vaultKey) sealSoon(); }
+function saveSync(){ writeJSON(LS_SYNC, vault ? Object.assign({}, sync, { token:'' }) : sync); if(vaultKey) sealSoon(); }
 
-/* ===== passcode lock =====
-   Optional, per device. The Google key, the CARTO key, the short-link reader address and the GitHub token
-   are encrypted with a key made from the passcode (PBKDF2, 600,000 rounds, then AES-GCM), and only that
-   scrambled copy is stored. Another page on the same github.io address, or anyone reading the browser's
-   storage, gets only the scrambled copy. The passcode itself is never stored. The unscrambling key lives
-   in memory while the app is open and is gone when the page closes or "Lock now" is pressed.
-   Trips themselves are not scrambled: they stay readable so the app works offline without a passcode. */
+/* ===== the lock: a passcode, and optionally a passkey, to open the app =====
+   Optional per device, offered the first time the app opens there. With it on, the whole library (trips,
+   keys, the short-link reader address) and the GitHub token are stored only encrypted (AES-GCM) with a
+   random vault key. Nothing readable is left in the browser's storage, so another page on the same
+   github.io address, or anyone reading the storage, gets only scrambled data.
+   The vault key is stored twice, each copy locked a different way:
+   - with the passcode (PBKDF2, 600,000 rounds). The passcode is never stored.
+   - optionally with a passkey (Touch ID, Face ID, Windows Hello, or a phone) through the WebAuthn PRF
+     extension, which hands back a secret only after the fingerprint, face or device PIN check.
+     A plain passkey sign-in would only prove who you are to a server, and there is none here, so the
+     check could simply be skipped. The PRF secret is what actually unlocks.
+   While the app is open the vault key and the data are in memory only; "Lock now" reloads the page. */
 const LS_VAULT = 'trip-tracker-vault-v1', VAULT_ROUNDS = 600000, PASS_MIN = 8;
-const BLANK_SHARED = Object.fromEntries(SHARED_KEYS.map(k => [k, '']));
-let vault = (v => v && typeof v.salt === 'string' && typeof v.data === 'string' ? v : null)(readJSON(LS_VAULT));
+const okBox = b => !!b && typeof b.iv === 'string' && typeof b.data === 'string';
+let vault = (v => v && typeof v.salt === 'string' && okBox(v) && (!(v.v >= 2) || okBox(v.pw)) ? v : null)(readJSON(LS_VAULT));
 let vaultKey = null, sealChain = Promise.resolve(), sealTimer = null, unlockFails = 0, unlockWait = 0;
 function vaultOn(){ return !!vault; }
 function isLocked(){ return !!vault && !vaultKey; }
-const toB64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+function bioOn(){ return !!(vault && vault.bio && okBox(vault.bio) && vault.bio.cred); }
+const toB64 = buf => { const a = new Uint8Array(buf); let s = ''; for(let i = 0; i < a.length; i += 0x8000) s += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(s); };
 const fromB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const rand = n => crypto.getRandomValues(new Uint8Array(n));
 async function keyFromPass(pass, salt, rounds){
   const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass.normalize('NFC')), 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:rounds, hash:'SHA-256' }, base, { name:'AES-GCM', length:256 }, false, ['encrypt', 'decrypt']);
 }
-// Writes the current keys and token into the vault, scrambled with a fresh random IV each time.
+async function keyFromSecret(bytes){
+  const base = await crypto.subtle.importKey('raw', bytes, 'HKDF', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name:'HKDF', hash:'SHA-256', salt:new Uint8Array(32), info:new TextEncoder().encode('milo-miles vault') }, base, { name:'AES-GCM', length:256 }, false, ['encrypt', 'decrypt']);
+}
+const useKey = raw => crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']);
+async function boxUp(key, bytes){ const iv = rand(12); return { iv:toB64(iv), data:toB64(await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, bytes)) }; }
+async function unbox(key, b){ return new Uint8Array(await crypto.subtle.decrypt({ name:'AES-GCM', iv:fromB64(b.iv) }, key, fromB64(b.data))); }
+const saveVault = () => writeJSON(LS_VAULT, vault);
+// Writes the library and token into the vault, scrambled with a fresh random IV each time.
 function seal(){
   sealChain = sealChain.then(async () => {
-    if(!vault || !vaultKey) return;
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const plain = new TextEncoder().encode(JSON.stringify(Object.assign(sharedOf(library), { token:sync.token })));
-    const data = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, vaultKey, plain);
-    vault = { v:1, salt:vault.salt, rounds:vault.rounds, iv:toB64(iv), data:toB64(data) }; writeJSON(LS_VAULT, vault);
-  }).catch(e => console.error('Could not save the locked keys', e));
+    if(!vault || !vaultKey || !library) return;
+    const plain = new TextEncoder().encode(JSON.stringify({ lib:library, token:sync.token }));
+    Object.assign(vault, await boxUp(vaultKey, plain)); setSaveFail(!saveVault());
+  }).catch(e => console.error('Could not save the locked data', e));
   return sealChain;
 }
 function sealSoon(){ clearTimeout(sealTimer); sealTimer = setTimeout(seal, 50); }
-// The old Trip Tracker kept its keys in its own storage. With the lock on, those plain copies go.
-function scrubLegacyKeys(){ const old = readJSON(LS_LEGACY); if(old && (old.googleApiKey || old.cartoApiKey)){ old.googleApiKey = ''; old.cartoApiKey = ''; writeJSON(LS_LEGACY, old); } }
+// Readable copies go once everything is in the vault: this app's library and the old Trip Tracker's
+// storage (its trips were brought in when Milo & Miles first opened).
+function dropPlainCopies(){ try{ localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_LEGACY); }catch(e){} saveSync(); }
+async function newVault(passKey, salt){
+  const raw = rand(32);
+  vault = { v:3, salt:toB64(salt), rounds:VAULT_ROUNDS, pw:await boxUp(passKey, raw), iv:'', data:'' };
+  vaultKey = await useKey(raw); raw.fill(0);
+}
 async function lockOn(pass){
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  vaultKey = await keyFromPass(pass, salt, VAULT_ROUNDS);
-  vault = { v:1, salt:toB64(salt), rounds:VAULT_ROUNDS, iv:'', data:'' };
-  await seal(); saveNow(); saveSync(); scrubLegacyKeys();
+  const salt = rand(16);
+  await newVault(await keyFromPass(pass, salt, VAULT_ROUNDS), salt);
+  await seal(); if(!vault.data) throw new Error('not saved'); dropPlainCopies();
 }
-async function unlock(pass){
-  if(Date.now() < unlockWait) throw Object.assign(new Error('wait'), { wait:true });
-  let secrets;
-  try{
-    const key = await keyFromPass(pass, fromB64(vault.salt), vault.rounds || VAULT_ROUNDS);
-    secrets = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name:'AES-GCM', iv:fromB64(vault.iv) }, key, fromB64(vault.data))));
-    vaultKey = key;
-  }catch(e){
-    // A wrong passcode fails the AES-GCM check. Each wrong try makes the next one wait longer.
-    unlockFails++; if(unlockFails >= 3) unlockWait = Date.now() + Math.min(300, 5 * 2 ** (unlockFails - 3)) * 1000;
-    throw Object.assign(new Error('wrong'), { wrong:true });
-  }
+function wrongTry(){
+  // Each wrong try after the third makes the next one wait longer.
+  unlockFails++; if(unlockFails >= 3) unlockWait = Date.now() + Math.min(300, 5 * 2 ** (unlockFails - 3)) * 1000;
+  return Object.assign(new Error('wrong'), { wrong:true });
+}
+const notYet = () => { if(Date.now() < unlockWait) throw Object.assign(new Error('wait'), { wait:true }); };
+// Opens what the vault holds. Earlier versions held only the keys and token, with the trips readable
+// beside it; those are moved into the vault now.
+async function openPayload(p){
   unlockFails = 0; unlockWait = 0;
-  SHARED_KEYS.forEach(k => { library[k] = cleanShared(k, secrets[k]); });
-  sync.token = typeof secrets.token === 'string' ? secrets.token : '';
+  if(vault.v === 3){ library = migrateLibrary(p.lib); sync.token = typeof p.token === 'string' ? p.token : ''; return; }
+  library = migrateLibrary(readJSON(LS_KEY));
+  SHARED_KEYS.forEach(k => { library[k] = cleanShared(k, p[k]); }); sync.token = typeof p.token === 'string' ? p.token : '';
+  vault.v = 3; await seal(); if(vault.data) dropPlainCopies();
 }
-function lockNow(){
-  vaultKey = null; Object.assign(library, BLANK_SHARED); sync.token = '';
-  clearTimeout(syncTimer); S.syncState = ''; googleMapsLoadingPromise = null;
+async function rawFromPass(pass){
+  notYet();
+  const passKey = await keyFromPass(pass, fromB64(vault.salt), vault.rounds || VAULT_ROUNDS);
+  try{ return { raw:await unbox(passKey, vault.pw), passKey }; }catch(e){ throw wrongTry(); }
 }
-async function lockOff(){ await sealChain; vault = null; vaultKey = null; try{ localStorage.removeItem(LS_VAULT); }catch(e){} saveNow(); saveSync(); }
-// Forgotten passcode: the scrambled keys are thrown away. Trips stay. Reconnect GitHub on this device and
-// the Google key comes back from the private data repo.
-function lockReset(){ vault = null; vaultKey = null; try{ localStorage.removeItem(LS_VAULT); }catch(e){} Object.assign(library, BLANK_SHARED); sync.token = ''; saveNow(); saveSync(); }
+const readPayload = async () => JSON.parse(new TextDecoder().decode(await unbox(vaultKey, vault)));
+async function unlock(pass){
+  notYet();
+  if(!(vault.v >= 2)){
+    // First version: the keys were locked straight with the passcode.
+    const passKey = await keyFromPass(pass, fromB64(vault.salt), vault.rounds || VAULT_ROUNDS);
+    let p; try{ p = JSON.parse(new TextDecoder().decode(await unbox(passKey, vault))); }catch(e){ throw wrongTry(); }
+    await newVault(passKey, fromB64(vault.salt)); vault.v = 1; await openPayload(p); return;
+  }
+  const { raw } = await rawFromPass(pass);
+  vaultKey = await useKey(raw); raw.fill(0);
+  await openPayload(await readPayload());
+}
+async function changePass(cur, next){
+  const { raw } = await rawFromPass(cur);
+  const salt = rand(16); const pw = await boxUp(await keyFromPass(next, salt, VAULT_ROUNDS), raw); raw.fill(0);
+  await sealChain; Object.assign(vault, { salt:toB64(salt), rounds:VAULT_ROUNDS, pw }); saveVault();
+}
+
+// --- passkey: fingerprint, face or device PIN (WebAuthn with the PRF extension) ---
+async function bioAvailable(){
+  try{
+    if(!window.PublicKeyCredential || !window.isSecureContext) return false;
+    if(PublicKeyCredential.getClientCapabilities){ const c = await PublicKeyCredential.getClientCapabilities(); if(c && c['extension:prf'] === false) return false; }
+    return true;
+  }catch(e){ return false; }
+}
+// Asks for the passkey check and returns its secret for this vault.
+async function bioSecret(credId, psalt){
+  const got = await navigator.credentials.get({ publicKey:{ challenge:rand(32), rpId:location.hostname, timeout:60000, userVerification:'required',
+    allowCredentials:[{ type:'public-key', id:credId }], extensions:{ prf:{ eval:{ first:psalt } } } } });
+  const r = got && got.getClientExtensionResults().prf;
+  if(!r || !r.results || !r.results.first) throw Object.assign(new Error('no prf'), { noprf:true });
+  return new Uint8Array(r.results.first);
+}
+async function bioTurnOn(pass){
+  const { raw } = await rawFromPass(pass);
+  const psalt = rand(32);
+  const made = await navigator.credentials.create({ publicKey:{
+    rp:{ name:'Milo & Miles', id:location.hostname }, user:{ id:rand(16), name:'Milo & Miles lock', displayName:'Milo & Miles lock' },
+    challenge:rand(32), pubKeyCredParams:[{ type:'public-key', alg:-7 }, { type:'public-key', alg:-257 }], timeout:60000,
+    // No attachment limit: the browser offers this device's Touch ID, Face ID or Windows Hello, a phone (by QR code) or a security key.
+    authenticatorSelection:{ residentKey:'preferred', userVerification:'required' },
+    extensions:{ prf:{ eval:{ first:psalt } } } } });
+  const ext = made.getClientExtensionResults().prf;
+  if(!ext || ext.enabled === false) throw Object.assign(new Error('no prf'), { noprf:true });
+  const credId = new Uint8Array(made.rawId);
+  // Some devices give the secret straight away; others need one more check.
+  const secret = ext.results && ext.results.first ? new Uint8Array(ext.results.first) : await bioSecret(credId, psalt);
+  vault.bio = Object.assign({ cred:toB64(credId), psalt:toB64(psalt) }, await boxUp(await keyFromSecret(secret), raw));
+  raw.fill(0); secret.fill(0); await sealChain; saveVault();
+}
+async function bioUnlock(){
+  let raw;
+  try{ const secret = await bioSecret(fromB64(vault.bio.cred), fromB64(vault.bio.psalt)); raw = await unbox(await keyFromSecret(secret), vault.bio); secret.fill(0); }
+  catch(e){ throw Object.assign(new Error('bio'), { bio:true, cancelled:e && e.name === 'NotAllowedError', noprf:e && e.noprf }); }
+  vaultKey = await useKey(raw); raw.fill(0);
+  await openPayload(await readPayload());
+}
+function bioTurnOff(){ if(vault){ delete vault.bio; saveVault(); } }
+// Lock now: the latest changes are sealed (and synced, if waiting), then the page reloads so nothing readable stays in memory.
+async function lockNow(){
+  clearTimeout(saveTimer); clearTimeout(sealTimer); await seal();
+  if(sync.token && navigator.onLine && Object.values(sync.meta).some(m => m.dirty)) await Promise.race([syncNow(), sleep(5000)]); // send unsynced edits first
+  await seal(); location.reload();
+}
+// Forgotten passcode: this device's vault and trips are deleted. With sync, they come back from GitHub
+// after reconnecting with the token; the Google key comes back from the private repo too.
+function lockReset(){ try{ [LS_VAULT, LS_KEY, LS_LEGACY].forEach(k => localStorage.removeItem(k)); }catch(e){} vault = null; vaultKey = null; sync.token = ''; sync.meta = {}; sync.deleted = {}; saveSync(); delete dev.lock; saveDev(); location.reload(); }
 function syncMeta(id){ return sync.meta[id] || (sync.meta[id] = { sha:'', dirty:true }); }
 let syncTimer = null, syncing = false, syncAgain = false;
 function syncSoon(ms = 60000){ if(!sync.token) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, ms); if(S.syncState !== 'saving'){ S.syncState = 'pending'; paintSync(); } }
@@ -2119,16 +2220,42 @@ function scrBudget(){
 }
 
 /* ===== Settings ===== */
+function bioSecHTML(){
+  const err = S.bioErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.bioErr)}</p>` : '';
+  if(bioOn()) return `<p class="state ok">${I('check','sm')}On. Open the app with your passkey (fingerprint, face or device PIN), or with the passcode.</p>${err}
+      <div class="chips"><button type="button" class="btn btn--quiet" data-act="bioff">Turn off the passkey</button></div>`;
+  if(!S.bioAvail) return `<p class="sub">This browser doesn't offer passkeys that can unlock. It works in Safari 18 or later (iPadOS 18, iOS 18, macOS 15) and in recent Chrome or Edge.</p>`;
+  return `<p>Open the app with a passkey instead of typing: Touch ID or Face ID on the iPad or a Mac, Windows Hello on a Windows laptop, or your phone if the laptop has neither (the browser shows a QR code). Type your passcode once to turn it on.</p>
+      <div class="field"><label for="bp">Passcode</label><input id="bp" type="password" class="input" autocomplete="current-password"></div>${err}
+      <div class="chips"><button type="button" class="btn btn--primary" data-act="bioon" ${S.lockBusy ? 'disabled' : ''}>${S.lockBusy ? 'Waiting for the check…' : 'Turn on the passkey'}</button></div>`;
+}
 function lockSecHTML(){
-  if(isLocked()) return `<p class="state warn">${I('lock','sm')}Locked</p><p>Your keys and GitHub token are scrambled on this device. Unlock to sync and to use Google search and maps.</p>
-      <div class="chips"><button type="button" class="btn btn--primary" data-act="dialog" data-d="unlock">Unlock</button></div>`;
-  if(vaultOn()) return `<p class="state ok">${I('lock','sm')}On, unlocked for now</p><p>Your keys and GitHub token are stored scrambled on this device. You type the passcode each time you open the app.</p>
-      <div class="chips"><button type="button" class="btn" data-act="locknow">Lock now</button><button type="button" class="btn btn--quiet" data-act="asklockoff">Turn the lock off</button></div>`;
-  return `<p>Scrambles your Google key, map key, short-link reader address and GitHub token on this device, so no other page or app can read them. You type the passcode each time you open the app. Your trips stay readable, so the app still works without it.</p>
-      <div class="grid2"><div class="field"><label for="lp1">New passcode</label><input id="lp1" type="password" class="input" autocomplete="new-password" minlength="${PASS_MIN}" aria-describedby="lp-help"></div><div class="field"><label for="lp2">Type it again</label><input id="lp2" type="password" class="input" autocomplete="new-password"></div></div>
-      <p class="help" id="lp-help">At least ${PASS_MIN} characters. Three short words make a strong one that's easy to type.</p>
-      ${S.lockErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.lockErr)}</p>` : ''}
-      <div class="chips"><button type="button" class="btn btn--primary" data-act="lockon" ${S.lockBusy ? 'disabled' : ''}>${S.lockBusy ? 'Turning it on…' : 'Turn on the lock'}</button></div>`;
+  if(!vaultOn()) return `<p>This device opens Milo & Miles without a lock. With one, the app asks for a passcode or passkey when it opens, and your trips, keys and GitHub token are stored scrambled.</p>
+      <div class="chips"><button type="button" class="btn btn--primary" data-act="gsetupopen">Set up the lock</button></div>`;
+  return `<p class="state ok">${I('lock','sm')}On</p><p>The app asks for your passcode or passkey each time it opens. Your trips, keys and GitHub token are stored scrambled on this device.</p>
+      <div class="chips"><button type="button" class="btn" data-act="locknow">Lock now</button><button type="button" class="btn" data-act="dialog" data-d="chpass">Change the passcode</button></div>
+      <h3>Passkey</h3>${bioSecHTML()}`;
+}
+/* ===== the lock screen, shown before the app ===== */
+function gateHTML(){
+  const err = S.addErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.addErr)}</p>` : '';
+  const busy = S.lockBusy ? 'disabled' : '';
+  const head = (h, p) => `<div class="gate-brand">${I('plane')}<span>Milo &amp; Miles</span></div><h1 id="gate-h">${h}</h1>${p ? `<p>${p}</p>` : ''}`;
+  let body;
+  if(S.gate === 'unlock') body = head('Welcome back', bioOn() ? '' : 'Type your passcode to open your trips.')
+    + (bioOn() ? `<div class="chips"><button type="button" class="btn btn--primary gate-main" data-act="gbio" ${busy}>${I('lock','sm')}Unlock with your passkey</button></div><p class="sub">Or type your passcode:</p>` : '')
+    + `<div class="field"><label for="upass">Passcode</label><input id="upass" type="password" class="input" autocomplete="current-password" ${busy}></div>${err}
+      <div class="chips"><button type="button" class="btn ${bioOn() ? '' : 'btn--primary gate-main'}" data-act="gunlock" ${busy}>${S.lockBusy ? 'Unlocking…' : 'Unlock'}</button></div>
+      <p class="sub gate-foot">Forgot it? <button type="button" class="link" data-act="gforgot">Start again on this device</button></p>`;
+  else if(S.gate === 'setup') body = head('Lock the app', 'Choose a passcode. Milo &amp; Miles asks for it each time it opens on this device, and your trips, keys and GitHub token are stored scrambled until then.')
+    + `<div class="field"><label for="lp1">Passcode</label><input id="lp1" type="password" class="input" autocomplete="new-password" aria-describedby="lp-help" ${busy}></div>
+      <div class="field"><label for="lp2">Type it again</label><input id="lp2" type="password" class="input" autocomplete="new-password" ${busy}></div>
+      <p class="help" id="lp-help">At least ${PASS_MIN} characters. Three short words make a strong one that's easy to type. It can't be recovered, so keep it somewhere safe.</p>${err}
+      <div class="chips"><button type="button" class="btn btn--primary gate-main" data-act="gsetup" ${busy}>${S.lockBusy ? 'Locking…' : 'Lock the app'}</button></div>
+      <p class="sub gate-foot"><button type="button" class="link" data-act="gskip">Not now</button>. You can set it up later in Settings.</p>`;
+  else body = head('Add a passkey?', 'Then you can open the app with Touch ID, Face ID or Windows Hello, or with your phone, instead of typing the passcode. The passcode still works too.')
+    + `${err}<div class="chips"><button type="button" class="btn btn--primary gate-main" data-act="gbioon" ${busy}>${S.lockBusy ? 'Waiting for the check…' : 'Add a passkey'}</button><button type="button" class="btn" data-act="gdone" ${busy}>Skip</button></div>`;
+  return `<main class="gate" id="main"><section class="gate-card box" aria-labelledby="gate-h">${body}</section></main>${S.dialog === 'confirm' ? dialogHTML() : ''}`;
 }
 function scrSettings(){
   const t = T(); const sy = syncInfo(); const dl = tokenDaysLeft(); const key = gkey();
@@ -2181,11 +2308,12 @@ function dialogHTML(){
       <div><button type="button" class="btn btn--primary" data-act="savepast">Add to my map</button></div>`);
   }
   if(k === 'newtrip'){ const n = S.newTrip; return box('New trip', `<div class="field"><label for="ntname">Trip name</label><input id="ntname" class="input" data-nt="name" value="${esc(n.name)}" placeholder="Hokkaido in winter"></div><div class="grid2"><div class="field"><label for="ntfrom">First day</label><input id="ntfrom" type="date" class="input" data-nt="from" value="${esc(n.from)}"></div><div class="field"><label for="ntto">Last day (optional)</label><input id="ntto" type="date" class="input" data-nt="to" value="${esc(n.to)}"></div></div><p class="sub">Every day from the first to the last is set up for you. You can add or remove days later.</p>${S.addErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.addErr)}</p>` : ''}<div><button type="button" class="btn btn--primary" data-act="createtrip">Create the trip</button></div>`); }
-  if(k === 'unlock') return box('Unlock', `<p>Type your passcode to sync and to use your Google key on this device.</p>
-    <div class="field"><label for="upass">Passcode</label><input id="upass" type="password" class="input" autocomplete="current-password" ${S.lockBusy ? 'disabled' : ''}></div>
+  if(k === 'chpass') return box('Change the passcode', `<div class="field"><label for="cp0">Current passcode</label><input id="cp0" type="password" class="input" autocomplete="current-password"></div>
+    <div class="field"><label for="cp1">New passcode</label><input id="cp1" type="password" class="input" autocomplete="new-password"></div>
+    <div class="field"><label for="cp2">Type it again</label><input id="cp2" type="password" class="input" autocomplete="new-password"></div>
+    <p class="help">At least ${PASS_MIN} characters. Your passkey keeps working.</p>
     ${S.addErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.addErr)}</p>` : ''}
-    <div class="chips"><button type="button" class="btn btn--primary" data-act="unlock" ${S.lockBusy ? 'disabled' : ''}>${S.lockBusy ? 'Unlocking…' : 'Unlock'}</button><button type="button" class="btn" data-act="close">Not now</button></div>
-    <p class="sub">Forgot it? <button type="button" class="link" data-act="asklockreset">Start again without the lock</button>. Your trips stay. You'll paste your GitHub token again, and the Google key comes back from your private repo.</p>`);
+    <div class="chips"><button type="button" class="btn btn--primary" data-act="chpass" ${S.lockBusy ? 'disabled' : ''}>${S.lockBusy ? 'Saving…' : 'Change it'}</button></div>`);
   if(k === 'token') return box('Connect GitHub', `<p>Trips are saved as files in a private repo on your GitHub account. It takes a few minutes, once:</p>
     <ol class="steps"><li>On GitHub, <a href="https://github.com/new?name=Trip-Tracker-data&visibility=private" target="_blank" rel="noopener">create a new repo</a> named Trip-Tracker-data. Choose <b>Private</b> and tick <b>Add a README file</b>.</li><li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub, Settings, Fine-grained tokens</a>. Under Repository access pick only Trip-Tracker-data. Under Permissions set Contents to Read and write.</li><li>Copy the token and paste it below. Do this on each device; the token never leaves the device.</li></ol>
     <div class="field"><label for="trepo">Repo</label><input id="trepo" class="input num" value="${esc(sync.repo)}" autocomplete="off" spellcheck="false"></div>
@@ -2459,6 +2587,7 @@ function applyPrefs(){
 }
 function render(){
   applyPrefs();
+  if(S.gate){ app.innerHTML = gateHTML(); document.title = 'Milo & Miles'; if(!document.activeElement || document.activeElement === document.body) document.querySelector('.gate input, .gate .gate-main')?.focus(); return; }
   if(!T() && S.screen !== 'settings') S.screen = 'home';
   const scr = { home:scrHome, overview:scrOverview, itinerary:scrItinerary, budget:scrBudget, settings:scrSettings }[S.screen]();
   Object.values(MAPS).forEach(M => { if(M && M.el.parentNode) M.el.remove(); });
@@ -2532,29 +2661,51 @@ function saveExpense(){
   announce(`${S.editing ? 'Saved' : 'Added'} ${e.desc}, ${fmt(e.currency, expTotal(e))}`);
   S.editing = null; S.draft = Object.assign(blankDraft(t, d.cat), { date:d.date, trip:t.id }); changed(); render();
 }
-async function doUnlock(){
-  if(S.lockBusy) return;
-  const pass = (document.getElementById('upass') || {}).value || '';
+/* ===== the lock screen's actions ===== */
+let pendingPass = ''; // between "Lock the app" and "Add a passkey" only, then cleared
+const val = id => (document.getElementById(id) || {}).value || '';
+const busy = on => { S.lockBusy = on; render(); };
+function lockErrText(e){ return e.wait ? `Too many wrong tries. Wait ${Math.max(1, Math.ceil((unlockWait - Date.now()) / 1000))} seconds, then try again.` : e.wrong ? 'That passcode isn\'t right.' : 'Something went wrong in this browser. Try again.'; }
+async function gateUnlock(){
+  if(S.lockBusy) return; const pass = val('upass');
   if(!pass){ S.addErr = 'Type your passcode.'; render(); document.getElementById('upass')?.focus(); return; }
-  S.lockBusy = true; S.addErr = null; render();
-  try{
-    await unlock(pass);
-    S.lockBusy = false; S.dialog = S.afterUnlock || null; S.afterUnlock = null; render(); announce('Unlocked');
-    if(sync.token) syncNow();
-  }catch(e){
-    S.lockBusy = false;
-    S.addErr = e.wait ? `Too many wrong tries. Wait ${Math.ceil((unlockWait - Date.now()) / 1000)} seconds, then try again.` : e.wrong ? 'That passcode isn\'t right.' : 'Could not unlock on this browser.';
-    render(); document.getElementById('upass')?.focus();
-  }
+  S.addErr = null; busy(true);
+  try{ await unlock(pass); S.lockBusy = false; startApp(); announce('Unlocked'); }
+  catch(e){ S.addErr = lockErrText(e); busy(false); document.getElementById('upass')?.focus(); }
 }
-async function doLockOn(){
-  if(S.lockBusy) return;
-  const a = (document.getElementById('lp1') || {}).value || '', b = (document.getElementById('lp2') || {}).value || '';
-  S.lockErr = a.length < PASS_MIN ? `Use at least ${PASS_MIN} characters.` : a !== b ? 'The two passcodes are different. Type them again.' : null;
-  if(S.lockErr){ render(); return; }
-  S.lockBusy = true; render();
-  try{ await lockOn(a); S.lockBusy = false; render(); toast('Passcode lock on. You\'ll type it each time you open the app'); }
-  catch(e){ S.lockBusy = false; S.lockErr = 'Could not turn the lock on in this browser.'; render(); }
+async function gateBio(){
+  if(S.lockBusy) return; S.addErr = null; busy(true);
+  try{ await bioUnlock(); S.lockBusy = false; startApp(); announce('Unlocked'); }
+  catch(e){ S.addErr = e.cancelled ? 'The passkey check was cancelled. Try again, or type your passcode.' : e.noprf ? 'This browser can\'t unlock with a passkey. Type your passcode.' : 'The passkey didn\'t unlock it. Type your passcode.'; busy(false); }
+}
+async function gateSetup(){
+  if(S.lockBusy) return; const a = val('lp1'), b = val('lp2');
+  S.addErr = a.length < PASS_MIN ? `Use at least ${PASS_MIN} characters.` : a !== b ? 'The two passcodes are different. Type them again.' : null;
+  if(S.addErr){ render(); return; }
+  busy(true);
+  try{ await lockOn(a); dev.lock = 'on'; saveDev(); S.lockBusy = false; if(S.bioAvail){ pendingPass = a; S.gate = 'passkey'; render(); } else startApp(); }
+  catch(e){ S.addErr = 'Could not lock the app in this browser.'; busy(false); }
+}
+function bioErrText(e){ return e.wrong ? 'That passcode isn\'t right.' : e.wait ? 'Too many wrong tries. Wait a little, then try again.' : e.noprf ? 'This browser can make passkeys but can\'t unlock with them yet. It works in Safari 18 or later and in recent Chrome or Edge. You can delete the "Milo & Miles lock" passkey it just made.' : e && e.name === 'NotAllowedError' ? 'The passkey check was cancelled.' : 'Could not add a passkey in this browser.'; }
+async function gateBioOn(){
+  if(S.lockBusy) return; S.addErr = null; busy(true);
+  try{ await bioTurnOn(pendingPass); pendingPass = ''; S.lockBusy = false; startApp(); toast('Passkey added'); }
+  catch(e){ S.addErr = bioErrText(e); busy(false); }
+}
+async function doBioOn(){
+  if(S.lockBusy) return; const pass = val('bp');
+  if(!pass){ S.bioErr = 'Type your passcode first.'; render(); return; }
+  S.bioErr = null; busy(true);
+  try{ await bioTurnOn(pass); busy(false); toast('Passkey on'); }
+  catch(e){ S.bioErr = bioErrText(e); busy(false); }
+}
+async function doChangePass(){
+  if(S.lockBusy) return; const c = val('cp0'), a = val('cp1'), b = val('cp2');
+  S.addErr = a.length < PASS_MIN ? `Use at least ${PASS_MIN} characters for the new passcode.` : a !== b ? 'The two new passcodes are different.' : null;
+  if(S.addErr){ render(); return; }
+  busy(true);
+  try{ await changePass(c, a); S.lockBusy = false; S.dialog = null; render(); toast('Passcode changed'); }
+  catch(e){ S.addErr = lockErrText(e); busy(false); }
 }
 function confirmBox(title, body, yes, fn){ S.confirm = { title, body, yes, fn }; S.dialog = 'confirm'; render(); }
 function openTrip(id, screen = 'overview'){ library.activeTripId = id; S.day = 0; S.mapMode = 'day'; S.tripShow = S.placesZoom = null; S.daysPick = false; S.mapFocus = S.mapPopup = S.picking = null; S.editing = null; S.draft = null; S.editDay = false; S.screen = screen; saveSoon(); window.scrollTo(0, 0); }
@@ -2574,7 +2725,7 @@ document.addEventListener('click', e => {
   switch(a){
     case 'gotoday': { const h = findTodayTrip(); if(h){ openTrip(h.t.id, 'itinerary'); S.day = h.i; } } break;
     case 'nav': S.screen = el.dataset.to; S.dialog = null; S.picking = null; S.mapFull = false; S.mapFocus = S.mapPopup = null; window.scrollTo(0, 0); break;
-    case 'syncbtn': if(isLocked()){ S.dialog = 'unlock'; S.addErr = null; break; } if(sync.token){ syncNow(); return; } S.screen = 'settings'; window.scrollTo(0, 0); break;
+    case 'syncbtn': if(sync.token){ syncNow(); return; } S.screen = 'settings'; window.scrollTo(0, 0); break;
     case 'syncnow': syncNow(); return;
     case 'savetoken': {
       const tok = document.getElementById('tok').value.trim(); const repo = document.getElementById('trepo').value.trim().replace(/^https:\/\/github\.com\//, '').replace(/\.git$|\/$/g, '');
@@ -2607,14 +2758,19 @@ document.addEventListener('click', e => {
     case 'sz': dev.scale = Math.max(.8, Math.min(1.5, +(dev.scale + .1 * el.dataset.d).toFixed(1))); saveDev(); break;
     case 'print': window.print(); return;
     case 'dialog':
-      // With the lock on and locked, keys and sync can't be changed until it is unlocked.
-      if(isLocked() && ['key', 'token', 'helper'].includes(el.dataset.d)){ S.afterUnlock = el.dataset.d; S.dialog = 'unlock'; S.addErr = null; break; }
       S.dialog = el.dataset.d; S.addErr = null; if(el.dataset.d === 'add'){ resetAdd(); } break;
-    case 'unlock': doUnlock(); return;
-    case 'lockon': doLockOn(); return;
-    case 'locknow': lockNow(); S.dialog = null; toast('Locked. Your keys and token are scrambled again'); break;
-    case 'asklockoff': confirmBox('Turn the passcode lock off?', 'Your keys and GitHub token will be stored on this device without scrambling again.', 'Turn it off', () => { lockOff().then(() => { toast('Passcode lock off'); render(); }); }); return;
-    case 'asklockreset': confirmBox('Start again without the lock?', 'The scrambled keys and GitHub token on this device are deleted. Your trips stay. Reconnect GitHub with your token afterwards, and the Google key comes back from your private repo.', 'Delete the scrambled keys', () => { lockReset(); toast('Lock removed. Reconnect GitHub in Settings'); S.screen = 'settings'; render(); }); return;
+    case 'gunlock': gateUnlock(); return;
+    case 'gbio': gateBio(); return;
+    case 'gsetup': gateSetup(); return;
+    case 'gbioon': gateBioOn(); return;
+    case 'gdone': pendingPass = ''; startApp(); return;
+    case 'gskip': dev.lock = 'skipped'; saveDev(); startApp(); return;
+    case 'gsetupopen': S.gate = 'setup'; S.addErr = null; break;
+    case 'gforgot': confirmBox('Start again on this device?', 'Without the passcode, the scrambled trips, keys and token on this device can\'t be opened, so they are deleted. If you sync with GitHub, connect again with your token and your trips and Google key come back. Trips that never synced are lost.', 'Delete and start again', () => { lockReset(); }); return;
+    case 'bioon': doBioOn(); return;
+    case 'bioff': confirmBox('Turn off the passkey?', 'You\'ll type the passcode to open the app. To remove the passkey itself, delete "Milo & Miles lock" in the Passwords app or your browser\'s passkeys.', 'Turn it off', () => { bioTurnOff(); S.bioErr = null; toast('Passkey off'); render(); }); return;
+    case 'chpass': doChangePass(); return;
+    case 'locknow': lockNow(); return;
     case 'close': case 'closebg': S.dialog = null; S.addErr = null; break;
     case 'confirmyes': { const fn = S.confirm.fn; S.dialog = null; fn(); } break;
     case 'fpu': { const k = el.dataset.k; if(S.fp && S.fp.lit[k]){ S.hlRegion = S.hlRegion === k ? null : k; break; } return; }
@@ -2776,8 +2932,10 @@ document.addEventListener('change', e => {
 });
 document.addEventListener('keydown', e => {
   if(e.key === 'Escape' && (S.dialog || S.picking || S.mapFull)){ if(S.dialog || S.picking){ S.dialog = null; S.picking = null; S.addErr = null; } else S.mapFull = false; render(); return; }
-  if(e.key === 'Enter' && e.target.id === 'upass'){ e.preventDefault(); doUnlock(); return; }
-  if(e.key === 'Enter' && (e.target.id === 'lp1' || e.target.id === 'lp2')){ e.preventDefault(); doLockOn(); return; }
+  if(e.key === 'Enter' && e.target.id === 'upass'){ e.preventDefault(); gateUnlock(); return; }
+  if(e.key === 'Enter' && (e.target.id === 'lp1' || e.target.id === 'lp2')){ e.preventDefault(); gateSetup(); return; }
+  if(e.key === 'Enter' && /^cp[012]$/.test(e.target.id)){ e.preventDefault(); doChangePass(); return; }
+  if(e.key === 'Enter' && e.target.id === 'bp'){ e.preventDefault(); doBioOn(); return; }
   if(e.key === 'Enter' && e.target.id === 'aq'){ e.preventDefault(); const first = document.querySelector('#ares .results button'); if(first && !S.picked) first.click(); return; }
   const h = e.target.closest && e.target.closest('.handle[data-drag]');
   if(!h || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
@@ -2841,15 +2999,19 @@ document.addEventListener('pointerup', () => {
 document.addEventListener('pointercancel', () => { if(drag){ drag.ghost?.remove(); clearMarks(); drag.srcEl.classList.remove('src'); drag = null; } });
 
 /* ===== start ===== */
-loadLibrary();
-(() => {
+// With the lock on, the lock screen comes first and the library is only opened by the passcode or passkey.
+// Without it, the first open on a device offers to set it up ("Not now" is remembered on the device).
+function startApp(){
+  S.gate = null; S.addErr = null; S.dialog = null;
   const hit = findTodayTrip();
   if(hit){ library.activeTripId = hit.t.id; S.screen = 'itinerary'; S.day = hit.i; }
   else S.screen = 'home';
-})();
-if(isLocked()) S.dialog = 'unlock';
-render();
-saveNow();
+  window.scrollTo(0, 0); render(); saveNow();
+  if(sync.token) setTimeout(syncNow, 600);
+}
+if(vaultOn()){ S.gate = 'unlock'; render(); }
+else { loadLibrary(); if(dev.lock === 'skipped' || dev.lock === 'on') startApp(); else { S.gate = 'setup'; render(); } }
+bioAvailable().then(v => { S.bioAvail = v; if(S.screen === 'settings' || S.gate) render(); });
 window.addEventListener('pagehide', saveNow);
 document.addEventListener('visibilitychange', () => {
   if(document.visibilityState === 'hidden'){ saveNow(); if(sync.token && Object.values(sync.meta).some(m => m.dirty)) syncNow(); }
@@ -2859,7 +3021,6 @@ window.addEventListener('online', () => { if(sync.token) syncNow(); });
 window.addEventListener('offline', () => { if(sync.token){ S.syncState = 'offline'; paintSync(); } });
 window.addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz = setTimeout(() => { Object.values(MAPS).forEach(M => { if(M && M.el.isConnected) M.resize(); }); }, 150); });
 setInterval(() => { if(document.visibilityState === 'visible' && !S.dialog && !document.activeElement.matches('input, textarea, select')) paintSync(); }, 60000);
-if(sync.token) setTimeout(syncNow, 600);
 if('serviceWorker' in navigator && (location.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(location.hostname))) navigator.serviceWorker.register('sw.js').catch(() => {});
 
 </script>

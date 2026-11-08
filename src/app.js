@@ -191,16 +191,21 @@ function migrateLibrary(lib){
   if(!lib.trips[lib.activeTripId]) lib.activeTripId = Object.keys(lib.trips)[0] || null;
   return lib;
 }
-const T = () => (library.activeTripId && library.trips[library.activeTripId]) || null;
+const T = () => (library && library.activeTripId && library.trips[library.activeTripId]) || null;
 
 /* ===== saving ===== */
 let saveTimer = null;
 function saveNow(){
   clearTimeout(saveTimer);
+  // With the lock on, everything (trips, keys, token) is saved only inside the scrambled vault.
+  if(vault){ if(vaultKey && library) sealSoon(); return; }
+  if(!library) return;
   let ok = true;
-  // With the passcode lock on, the keys are kept only in the scrambled vault, never in the plain library.
-  try{ localStorage.setItem(LS_KEY, JSON.stringify(vaultOn() ? Object.assign({}, library, BLANK_SHARED) : library)); }catch(e){ ok = false; }
-  if(vaultKey) sealSoon();
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(library)); }catch(e){ ok = false; }
+  setSaveFail(!ok);
+}
+function setSaveFail(fail){
+  const ok = !fail;
   if(ok !== !S.saveFail) return;
   S.saveFail = !ok; render();
 }
@@ -208,6 +213,8 @@ function saveSoon(){ clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 30
 // Call after any change to a trip. Marks it for sync and saves on this device.
 function changed(t = T()){
   if(t){ t.updatedAt = new Date().toISOString(); const m = syncMeta(t.id); m.dirty = true; m.v = (m.v || 0) + 1; }
+  // The "needs syncing" mark is saved straight away, so an edit still syncs if the app closes first.
+  if(sync.token) saveSync();
   saveSoon(); syncSoon();
 }
 function settingsChanged(){ sync.settingsDirty = true; saveSync(); saveSoon(); syncSoon(); }
@@ -295,7 +302,7 @@ const S = {
   addType:'activity', addCat:'attraction', addMode:'search', q:'', results:null, searching:false, picked:null, link:'', linkRes:null,
   addDay:null, hFrom:null, hTo:null, fName:'', fDep:'', fArr:'', addNote:'', wiki:null, sTime:'', sWhat:'',
   draft:null, editing:null, editDay:false, scrollDay:false, editTime:null, undo:null, editItem:null, expErr:null, addErr:null,
-  hlCity:null, confirm:null, lockErr:null, lockBusy:false, afterUnlock:null, pastForm:{ name:'', from:'', to:'', cities:'' }, newTrip:{ name:'', from:'', to:'' }, saveFail:false,
+  hlCity:null, confirm:null, gate:null, lockBusy:false, bioAvail:false, bioErr:null, pastForm:{ name:'', from:'', to:'', cities:'' }, newTrip:{ name:'', from:'', to:'' }, saveFail:false,
 };
 
 /* ===== Google Places (needs the key in Settings) and free search fallbacks ===== */
@@ -634,71 +641,154 @@ function paintLink(){ const el = document.getElementById('alinkres'); if(el) el.
 
 /* ===== GitHub sync ===== */
 const sync = Object.assign({ token:'', repo:DATA_REPO_DEFAULT, expires:'', meta:{}, deleted:{}, settingsSha:'', settingsDirty:false, lastSync:'', status:'', error:'' }, readJSON(LS_SYNC) || {});
-function saveSync(){ writeJSON(LS_SYNC, vaultOn() ? Object.assign({}, sync, { token:'' }) : sync); if(vaultKey) sealSoon(); }
+function saveSync(){ writeJSON(LS_SYNC, vault ? Object.assign({}, sync, { token:'' }) : sync); if(vaultKey) sealSoon(); }
 
-/* ===== passcode lock =====
-   Optional, per device. The Google key, the CARTO key, the short-link reader address and the GitHub token
-   are encrypted with a key made from the passcode (PBKDF2, 600,000 rounds, then AES-GCM), and only that
-   scrambled copy is stored. Another page on the same github.io address, or anyone reading the browser's
-   storage, gets only the scrambled copy. The passcode itself is never stored. The unscrambling key lives
-   in memory while the app is open and is gone when the page closes or "Lock now" is pressed.
-   Trips themselves are not scrambled: they stay readable so the app works offline without a passcode. */
+/* ===== the lock: a passcode, and optionally a passkey, to open the app =====
+   Optional per device, offered the first time the app opens there. With it on, the whole library (trips,
+   keys, the short-link reader address) and the GitHub token are stored only encrypted (AES-GCM) with a
+   random vault key. Nothing readable is left in the browser's storage, so another page on the same
+   github.io address, or anyone reading the storage, gets only scrambled data.
+   The vault key is stored twice, each copy locked a different way:
+   - with the passcode (PBKDF2, 600,000 rounds). The passcode is never stored.
+   - optionally with a passkey (Touch ID, Face ID, Windows Hello, or a phone) through the WebAuthn PRF
+     extension, which hands back a secret only after the fingerprint, face or device PIN check.
+     A plain passkey sign-in would only prove who you are to a server, and there is none here, so the
+     check could simply be skipped. The PRF secret is what actually unlocks.
+   While the app is open the vault key and the data are in memory only; "Lock now" reloads the page. */
 const LS_VAULT = 'trip-tracker-vault-v1', VAULT_ROUNDS = 600000, PASS_MIN = 8;
-const BLANK_SHARED = Object.fromEntries(SHARED_KEYS.map(k => [k, '']));
-let vault = (v => v && typeof v.salt === 'string' && typeof v.data === 'string' ? v : null)(readJSON(LS_VAULT));
+const okBox = b => !!b && typeof b.iv === 'string' && typeof b.data === 'string';
+let vault = (v => v && typeof v.salt === 'string' && okBox(v) && (!(v.v >= 2) || okBox(v.pw)) ? v : null)(readJSON(LS_VAULT));
 let vaultKey = null, sealChain = Promise.resolve(), sealTimer = null, unlockFails = 0, unlockWait = 0;
 function vaultOn(){ return !!vault; }
 function isLocked(){ return !!vault && !vaultKey; }
-const toB64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+function bioOn(){ return !!(vault && vault.bio && okBox(vault.bio) && vault.bio.cred); }
+const toB64 = buf => { const a = new Uint8Array(buf); let s = ''; for(let i = 0; i < a.length; i += 0x8000) s += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(s); };
 const fromB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const rand = n => crypto.getRandomValues(new Uint8Array(n));
 async function keyFromPass(pass, salt, rounds){
   const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass.normalize('NFC')), 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:rounds, hash:'SHA-256' }, base, { name:'AES-GCM', length:256 }, false, ['encrypt', 'decrypt']);
 }
-// Writes the current keys and token into the vault, scrambled with a fresh random IV each time.
+async function keyFromSecret(bytes){
+  const base = await crypto.subtle.importKey('raw', bytes, 'HKDF', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name:'HKDF', hash:'SHA-256', salt:new Uint8Array(32), info:new TextEncoder().encode('milo-miles vault') }, base, { name:'AES-GCM', length:256 }, false, ['encrypt', 'decrypt']);
+}
+const useKey = raw => crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']);
+async function boxUp(key, bytes){ const iv = rand(12); return { iv:toB64(iv), data:toB64(await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, bytes)) }; }
+async function unbox(key, b){ return new Uint8Array(await crypto.subtle.decrypt({ name:'AES-GCM', iv:fromB64(b.iv) }, key, fromB64(b.data))); }
+const saveVault = () => writeJSON(LS_VAULT, vault);
+// Writes the library and token into the vault, scrambled with a fresh random IV each time.
 function seal(){
   sealChain = sealChain.then(async () => {
-    if(!vault || !vaultKey) return;
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const plain = new TextEncoder().encode(JSON.stringify(Object.assign(sharedOf(library), { token:sync.token })));
-    const data = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, vaultKey, plain);
-    vault = { v:1, salt:vault.salt, rounds:vault.rounds, iv:toB64(iv), data:toB64(data) }; writeJSON(LS_VAULT, vault);
-  }).catch(e => console.error('Could not save the locked keys', e));
+    if(!vault || !vaultKey || !library) return;
+    const plain = new TextEncoder().encode(JSON.stringify({ lib:library, token:sync.token }));
+    Object.assign(vault, await boxUp(vaultKey, plain)); setSaveFail(!saveVault());
+  }).catch(e => console.error('Could not save the locked data', e));
   return sealChain;
 }
 function sealSoon(){ clearTimeout(sealTimer); sealTimer = setTimeout(seal, 50); }
-// The old Trip Tracker kept its keys in its own storage. With the lock on, those plain copies go.
-function scrubLegacyKeys(){ const old = readJSON(LS_LEGACY); if(old && (old.googleApiKey || old.cartoApiKey)){ old.googleApiKey = ''; old.cartoApiKey = ''; writeJSON(LS_LEGACY, old); } }
+// Readable copies go once everything is in the vault: this app's library and the old Trip Tracker's
+// storage (its trips were brought in when Milo & Miles first opened).
+function dropPlainCopies(){ try{ localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_LEGACY); }catch(e){} saveSync(); }
+async function newVault(passKey, salt){
+  const raw = rand(32);
+  vault = { v:3, salt:toB64(salt), rounds:VAULT_ROUNDS, pw:await boxUp(passKey, raw), iv:'', data:'' };
+  vaultKey = await useKey(raw); raw.fill(0);
+}
 async function lockOn(pass){
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  vaultKey = await keyFromPass(pass, salt, VAULT_ROUNDS);
-  vault = { v:1, salt:toB64(salt), rounds:VAULT_ROUNDS, iv:'', data:'' };
-  await seal(); saveNow(); saveSync(); scrubLegacyKeys();
+  const salt = rand(16);
+  await newVault(await keyFromPass(pass, salt, VAULT_ROUNDS), salt);
+  await seal(); if(!vault.data) throw new Error('not saved'); dropPlainCopies();
 }
-async function unlock(pass){
-  if(Date.now() < unlockWait) throw Object.assign(new Error('wait'), { wait:true });
-  let secrets;
-  try{
-    const key = await keyFromPass(pass, fromB64(vault.salt), vault.rounds || VAULT_ROUNDS);
-    secrets = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name:'AES-GCM', iv:fromB64(vault.iv) }, key, fromB64(vault.data))));
-    vaultKey = key;
-  }catch(e){
-    // A wrong passcode fails the AES-GCM check. Each wrong try makes the next one wait longer.
-    unlockFails++; if(unlockFails >= 3) unlockWait = Date.now() + Math.min(300, 5 * 2 ** (unlockFails - 3)) * 1000;
-    throw Object.assign(new Error('wrong'), { wrong:true });
-  }
+function wrongTry(){
+  // Each wrong try after the third makes the next one wait longer.
+  unlockFails++; if(unlockFails >= 3) unlockWait = Date.now() + Math.min(300, 5 * 2 ** (unlockFails - 3)) * 1000;
+  return Object.assign(new Error('wrong'), { wrong:true });
+}
+const notYet = () => { if(Date.now() < unlockWait) throw Object.assign(new Error('wait'), { wait:true }); };
+// Opens what the vault holds. Earlier versions held only the keys and token, with the trips readable
+// beside it; those are moved into the vault now.
+async function openPayload(p){
   unlockFails = 0; unlockWait = 0;
-  SHARED_KEYS.forEach(k => { library[k] = cleanShared(k, secrets[k]); });
-  sync.token = typeof secrets.token === 'string' ? secrets.token : '';
+  if(vault.v === 3){ library = migrateLibrary(p.lib); sync.token = typeof p.token === 'string' ? p.token : ''; return; }
+  library = migrateLibrary(readJSON(LS_KEY));
+  SHARED_KEYS.forEach(k => { library[k] = cleanShared(k, p[k]); }); sync.token = typeof p.token === 'string' ? p.token : '';
+  vault.v = 3; await seal(); if(vault.data) dropPlainCopies();
 }
-function lockNow(){
-  vaultKey = null; Object.assign(library, BLANK_SHARED); sync.token = '';
-  clearTimeout(syncTimer); S.syncState = ''; googleMapsLoadingPromise = null;
+async function rawFromPass(pass){
+  notYet();
+  const passKey = await keyFromPass(pass, fromB64(vault.salt), vault.rounds || VAULT_ROUNDS);
+  try{ return { raw:await unbox(passKey, vault.pw), passKey }; }catch(e){ throw wrongTry(); }
 }
-async function lockOff(){ await sealChain; vault = null; vaultKey = null; try{ localStorage.removeItem(LS_VAULT); }catch(e){} saveNow(); saveSync(); }
-// Forgotten passcode: the scrambled keys are thrown away. Trips stay. Reconnect GitHub on this device and
-// the Google key comes back from the private data repo.
-function lockReset(){ vault = null; vaultKey = null; try{ localStorage.removeItem(LS_VAULT); }catch(e){} Object.assign(library, BLANK_SHARED); sync.token = ''; saveNow(); saveSync(); }
+const readPayload = async () => JSON.parse(new TextDecoder().decode(await unbox(vaultKey, vault)));
+async function unlock(pass){
+  notYet();
+  if(!(vault.v >= 2)){
+    // First version: the keys were locked straight with the passcode.
+    const passKey = await keyFromPass(pass, fromB64(vault.salt), vault.rounds || VAULT_ROUNDS);
+    let p; try{ p = JSON.parse(new TextDecoder().decode(await unbox(passKey, vault))); }catch(e){ throw wrongTry(); }
+    await newVault(passKey, fromB64(vault.salt)); vault.v = 1; await openPayload(p); return;
+  }
+  const { raw } = await rawFromPass(pass);
+  vaultKey = await useKey(raw); raw.fill(0);
+  await openPayload(await readPayload());
+}
+async function changePass(cur, next){
+  const { raw } = await rawFromPass(cur);
+  const salt = rand(16); const pw = await boxUp(await keyFromPass(next, salt, VAULT_ROUNDS), raw); raw.fill(0);
+  await sealChain; Object.assign(vault, { salt:toB64(salt), rounds:VAULT_ROUNDS, pw }); saveVault();
+}
+
+// --- passkey: fingerprint, face or device PIN (WebAuthn with the PRF extension) ---
+async function bioAvailable(){
+  try{
+    if(!window.PublicKeyCredential || !window.isSecureContext) return false;
+    if(PublicKeyCredential.getClientCapabilities){ const c = await PublicKeyCredential.getClientCapabilities(); if(c && c['extension:prf'] === false) return false; }
+    return true;
+  }catch(e){ return false; }
+}
+// Asks for the passkey check and returns its secret for this vault.
+async function bioSecret(credId, psalt){
+  const got = await navigator.credentials.get({ publicKey:{ challenge:rand(32), rpId:location.hostname, timeout:60000, userVerification:'required',
+    allowCredentials:[{ type:'public-key', id:credId }], extensions:{ prf:{ eval:{ first:psalt } } } } });
+  const r = got && got.getClientExtensionResults().prf;
+  if(!r || !r.results || !r.results.first) throw Object.assign(new Error('no prf'), { noprf:true });
+  return new Uint8Array(r.results.first);
+}
+async function bioTurnOn(pass){
+  const { raw } = await rawFromPass(pass);
+  const psalt = rand(32);
+  const made = await navigator.credentials.create({ publicKey:{
+    rp:{ name:'Milo & Miles', id:location.hostname }, user:{ id:rand(16), name:'Milo & Miles lock', displayName:'Milo & Miles lock' },
+    challenge:rand(32), pubKeyCredParams:[{ type:'public-key', alg:-7 }, { type:'public-key', alg:-257 }], timeout:60000,
+    // No attachment limit: the browser offers this device's Touch ID, Face ID or Windows Hello, a phone (by QR code) or a security key.
+    authenticatorSelection:{ residentKey:'preferred', userVerification:'required' },
+    extensions:{ prf:{ eval:{ first:psalt } } } } });
+  const ext = made.getClientExtensionResults().prf;
+  if(!ext || ext.enabled === false) throw Object.assign(new Error('no prf'), { noprf:true });
+  const credId = new Uint8Array(made.rawId);
+  // Some devices give the secret straight away; others need one more check.
+  const secret = ext.results && ext.results.first ? new Uint8Array(ext.results.first) : await bioSecret(credId, psalt);
+  vault.bio = Object.assign({ cred:toB64(credId), psalt:toB64(psalt) }, await boxUp(await keyFromSecret(secret), raw));
+  raw.fill(0); secret.fill(0); await sealChain; saveVault();
+}
+async function bioUnlock(){
+  let raw;
+  try{ const secret = await bioSecret(fromB64(vault.bio.cred), fromB64(vault.bio.psalt)); raw = await unbox(await keyFromSecret(secret), vault.bio); secret.fill(0); }
+  catch(e){ throw Object.assign(new Error('bio'), { bio:true, cancelled:e && e.name === 'NotAllowedError', noprf:e && e.noprf }); }
+  vaultKey = await useKey(raw); raw.fill(0);
+  await openPayload(await readPayload());
+}
+function bioTurnOff(){ if(vault){ delete vault.bio; saveVault(); } }
+// Lock now: the latest changes are sealed (and synced, if waiting), then the page reloads so nothing readable stays in memory.
+async function lockNow(){
+  clearTimeout(saveTimer); clearTimeout(sealTimer); await seal();
+  if(sync.token && navigator.onLine && Object.values(sync.meta).some(m => m.dirty)) await Promise.race([syncNow(), sleep(5000)]); // send unsynced edits first
+  await seal(); location.reload();
+}
+// Forgotten passcode: this device's vault and trips are deleted. With sync, they come back from GitHub
+// after reconnecting with the token; the Google key comes back from the private repo too.
+function lockReset(){ try{ [LS_VAULT, LS_KEY, LS_LEGACY].forEach(k => localStorage.removeItem(k)); }catch(e){} vault = null; vaultKey = null; sync.token = ''; sync.meta = {}; sync.deleted = {}; saveSync(); delete dev.lock; saveDev(); location.reload(); }
 function syncMeta(id){ return sync.meta[id] || (sync.meta[id] = { sha:'', dirty:true }); }
 let syncTimer = null, syncing = false, syncAgain = false;
 function syncSoon(ms = 60000){ if(!sync.token) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, ms); if(S.syncState !== 'saving'){ S.syncState = 'pending'; paintSync(); } }

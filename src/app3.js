@@ -247,6 +247,7 @@ function applyPrefs(){
 }
 function render(){
   applyPrefs();
+  if(S.gate){ app.innerHTML = gateHTML(); document.title = 'Milo & Miles'; if(!document.activeElement || document.activeElement === document.body) document.querySelector('.gate input, .gate .gate-main')?.focus(); return; }
   if(!T() && S.screen !== 'settings') S.screen = 'home';
   const scr = { home:scrHome, overview:scrOverview, itinerary:scrItinerary, budget:scrBudget, settings:scrSettings }[S.screen]();
   Object.values(MAPS).forEach(M => { if(M && M.el.parentNode) M.el.remove(); });
@@ -320,29 +321,51 @@ function saveExpense(){
   announce(`${S.editing ? 'Saved' : 'Added'} ${e.desc}, ${fmt(e.currency, expTotal(e))}`);
   S.editing = null; S.draft = Object.assign(blankDraft(t, d.cat), { date:d.date, trip:t.id }); changed(); render();
 }
-async function doUnlock(){
-  if(S.lockBusy) return;
-  const pass = (document.getElementById('upass') || {}).value || '';
+/* ===== the lock screen's actions ===== */
+let pendingPass = ''; // between "Lock the app" and "Add a passkey" only, then cleared
+const val = id => (document.getElementById(id) || {}).value || '';
+const busy = on => { S.lockBusy = on; render(); };
+function lockErrText(e){ return e.wait ? `Too many wrong tries. Wait ${Math.max(1, Math.ceil((unlockWait - Date.now()) / 1000))} seconds, then try again.` : e.wrong ? 'That passcode isn\'t right.' : 'Something went wrong in this browser. Try again.'; }
+async function gateUnlock(){
+  if(S.lockBusy) return; const pass = val('upass');
   if(!pass){ S.addErr = 'Type your passcode.'; render(); document.getElementById('upass')?.focus(); return; }
-  S.lockBusy = true; S.addErr = null; render();
-  try{
-    await unlock(pass);
-    S.lockBusy = false; S.dialog = S.afterUnlock || null; S.afterUnlock = null; render(); announce('Unlocked');
-    if(sync.token) syncNow();
-  }catch(e){
-    S.lockBusy = false;
-    S.addErr = e.wait ? `Too many wrong tries. Wait ${Math.ceil((unlockWait - Date.now()) / 1000)} seconds, then try again.` : e.wrong ? 'That passcode isn\'t right.' : 'Could not unlock on this browser.';
-    render(); document.getElementById('upass')?.focus();
-  }
+  S.addErr = null; busy(true);
+  try{ await unlock(pass); S.lockBusy = false; startApp(); announce('Unlocked'); }
+  catch(e){ S.addErr = lockErrText(e); busy(false); document.getElementById('upass')?.focus(); }
 }
-async function doLockOn(){
-  if(S.lockBusy) return;
-  const a = (document.getElementById('lp1') || {}).value || '', b = (document.getElementById('lp2') || {}).value || '';
-  S.lockErr = a.length < PASS_MIN ? `Use at least ${PASS_MIN} characters.` : a !== b ? 'The two passcodes are different. Type them again.' : null;
-  if(S.lockErr){ render(); return; }
-  S.lockBusy = true; render();
-  try{ await lockOn(a); S.lockBusy = false; render(); toast('Passcode lock on. You\'ll type it each time you open the app'); }
-  catch(e){ S.lockBusy = false; S.lockErr = 'Could not turn the lock on in this browser.'; render(); }
+async function gateBio(){
+  if(S.lockBusy) return; S.addErr = null; busy(true);
+  try{ await bioUnlock(); S.lockBusy = false; startApp(); announce('Unlocked'); }
+  catch(e){ S.addErr = e.cancelled ? 'The passkey check was cancelled. Try again, or type your passcode.' : e.noprf ? 'This browser can\'t unlock with a passkey. Type your passcode.' : 'The passkey didn\'t unlock it. Type your passcode.'; busy(false); }
+}
+async function gateSetup(){
+  if(S.lockBusy) return; const a = val('lp1'), b = val('lp2');
+  S.addErr = a.length < PASS_MIN ? `Use at least ${PASS_MIN} characters.` : a !== b ? 'The two passcodes are different. Type them again.' : null;
+  if(S.addErr){ render(); return; }
+  busy(true);
+  try{ await lockOn(a); dev.lock = 'on'; saveDev(); S.lockBusy = false; if(S.bioAvail){ pendingPass = a; S.gate = 'passkey'; render(); } else startApp(); }
+  catch(e){ S.addErr = 'Could not lock the app in this browser.'; busy(false); }
+}
+function bioErrText(e){ return e.wrong ? 'That passcode isn\'t right.' : e.wait ? 'Too many wrong tries. Wait a little, then try again.' : e.noprf ? 'This browser can make passkeys but can\'t unlock with them yet. It works in Safari 18 or later and in recent Chrome or Edge. You can delete the "Milo & Miles lock" passkey it just made.' : e && e.name === 'NotAllowedError' ? 'The passkey check was cancelled.' : 'Could not add a passkey in this browser.'; }
+async function gateBioOn(){
+  if(S.lockBusy) return; S.addErr = null; busy(true);
+  try{ await bioTurnOn(pendingPass); pendingPass = ''; S.lockBusy = false; startApp(); toast('Passkey added'); }
+  catch(e){ S.addErr = bioErrText(e); busy(false); }
+}
+async function doBioOn(){
+  if(S.lockBusy) return; const pass = val('bp');
+  if(!pass){ S.bioErr = 'Type your passcode first.'; render(); return; }
+  S.bioErr = null; busy(true);
+  try{ await bioTurnOn(pass); busy(false); toast('Passkey on'); }
+  catch(e){ S.bioErr = bioErrText(e); busy(false); }
+}
+async function doChangePass(){
+  if(S.lockBusy) return; const c = val('cp0'), a = val('cp1'), b = val('cp2');
+  S.addErr = a.length < PASS_MIN ? `Use at least ${PASS_MIN} characters for the new passcode.` : a !== b ? 'The two new passcodes are different.' : null;
+  if(S.addErr){ render(); return; }
+  busy(true);
+  try{ await changePass(c, a); S.lockBusy = false; S.dialog = null; render(); toast('Passcode changed'); }
+  catch(e){ S.addErr = lockErrText(e); busy(false); }
 }
 function confirmBox(title, body, yes, fn){ S.confirm = { title, body, yes, fn }; S.dialog = 'confirm'; render(); }
 function openTrip(id, screen = 'overview'){ library.activeTripId = id; S.day = 0; S.mapMode = 'day'; S.tripShow = S.placesZoom = null; S.daysPick = false; S.mapFocus = S.mapPopup = S.picking = null; S.editing = null; S.draft = null; S.editDay = false; S.screen = screen; saveSoon(); window.scrollTo(0, 0); }
@@ -362,7 +385,7 @@ document.addEventListener('click', e => {
   switch(a){
     case 'gotoday': { const h = findTodayTrip(); if(h){ openTrip(h.t.id, 'itinerary'); S.day = h.i; } } break;
     case 'nav': S.screen = el.dataset.to; S.dialog = null; S.picking = null; S.mapFull = false; S.mapFocus = S.mapPopup = null; window.scrollTo(0, 0); break;
-    case 'syncbtn': if(isLocked()){ S.dialog = 'unlock'; S.addErr = null; break; } if(sync.token){ syncNow(); return; } S.screen = 'settings'; window.scrollTo(0, 0); break;
+    case 'syncbtn': if(sync.token){ syncNow(); return; } S.screen = 'settings'; window.scrollTo(0, 0); break;
     case 'syncnow': syncNow(); return;
     case 'savetoken': {
       const tok = document.getElementById('tok').value.trim(); const repo = document.getElementById('trepo').value.trim().replace(/^https:\/\/github\.com\//, '').replace(/\.git$|\/$/g, '');
@@ -395,14 +418,19 @@ document.addEventListener('click', e => {
     case 'sz': dev.scale = Math.max(.8, Math.min(1.5, +(dev.scale + .1 * el.dataset.d).toFixed(1))); saveDev(); break;
     case 'print': window.print(); return;
     case 'dialog':
-      // With the lock on and locked, keys and sync can't be changed until it is unlocked.
-      if(isLocked() && ['key', 'token', 'helper'].includes(el.dataset.d)){ S.afterUnlock = el.dataset.d; S.dialog = 'unlock'; S.addErr = null; break; }
       S.dialog = el.dataset.d; S.addErr = null; if(el.dataset.d === 'add'){ resetAdd(); } break;
-    case 'unlock': doUnlock(); return;
-    case 'lockon': doLockOn(); return;
-    case 'locknow': lockNow(); S.dialog = null; toast('Locked. Your keys and token are scrambled again'); break;
-    case 'asklockoff': confirmBox('Turn the passcode lock off?', 'Your keys and GitHub token will be stored on this device without scrambling again.', 'Turn it off', () => { lockOff().then(() => { toast('Passcode lock off'); render(); }); }); return;
-    case 'asklockreset': confirmBox('Start again without the lock?', 'The scrambled keys and GitHub token on this device are deleted. Your trips stay. Reconnect GitHub with your token afterwards, and the Google key comes back from your private repo.', 'Delete the scrambled keys', () => { lockReset(); toast('Lock removed. Reconnect GitHub in Settings'); S.screen = 'settings'; render(); }); return;
+    case 'gunlock': gateUnlock(); return;
+    case 'gbio': gateBio(); return;
+    case 'gsetup': gateSetup(); return;
+    case 'gbioon': gateBioOn(); return;
+    case 'gdone': pendingPass = ''; startApp(); return;
+    case 'gskip': dev.lock = 'skipped'; saveDev(); startApp(); return;
+    case 'gsetupopen': S.gate = 'setup'; S.addErr = null; break;
+    case 'gforgot': confirmBox('Start again on this device?', 'Without the passcode, the scrambled trips, keys and token on this device can\'t be opened, so they are deleted. If you sync with GitHub, connect again with your token and your trips and Google key come back. Trips that never synced are lost.', 'Delete and start again', () => { lockReset(); }); return;
+    case 'bioon': doBioOn(); return;
+    case 'bioff': confirmBox('Turn off the passkey?', 'You\'ll type the passcode to open the app. To remove the passkey itself, delete "Milo & Miles lock" in the Passwords app or your browser\'s passkeys.', 'Turn it off', () => { bioTurnOff(); S.bioErr = null; toast('Passkey off'); render(); }); return;
+    case 'chpass': doChangePass(); return;
+    case 'locknow': lockNow(); return;
     case 'close': case 'closebg': S.dialog = null; S.addErr = null; break;
     case 'confirmyes': { const fn = S.confirm.fn; S.dialog = null; fn(); } break;
     case 'fpu': { const k = el.dataset.k; if(S.fp && S.fp.lit[k]){ S.hlRegion = S.hlRegion === k ? null : k; break; } return; }
@@ -564,8 +592,10 @@ document.addEventListener('change', e => {
 });
 document.addEventListener('keydown', e => {
   if(e.key === 'Escape' && (S.dialog || S.picking || S.mapFull)){ if(S.dialog || S.picking){ S.dialog = null; S.picking = null; S.addErr = null; } else S.mapFull = false; render(); return; }
-  if(e.key === 'Enter' && e.target.id === 'upass'){ e.preventDefault(); doUnlock(); return; }
-  if(e.key === 'Enter' && (e.target.id === 'lp1' || e.target.id === 'lp2')){ e.preventDefault(); doLockOn(); return; }
+  if(e.key === 'Enter' && e.target.id === 'upass'){ e.preventDefault(); gateUnlock(); return; }
+  if(e.key === 'Enter' && (e.target.id === 'lp1' || e.target.id === 'lp2')){ e.preventDefault(); gateSetup(); return; }
+  if(e.key === 'Enter' && /^cp[012]$/.test(e.target.id)){ e.preventDefault(); doChangePass(); return; }
+  if(e.key === 'Enter' && e.target.id === 'bp'){ e.preventDefault(); doBioOn(); return; }
   if(e.key === 'Enter' && e.target.id === 'aq'){ e.preventDefault(); const first = document.querySelector('#ares .results button'); if(first && !S.picked) first.click(); return; }
   const h = e.target.closest && e.target.closest('.handle[data-drag]');
   if(!h || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
@@ -629,15 +659,19 @@ document.addEventListener('pointerup', () => {
 document.addEventListener('pointercancel', () => { if(drag){ drag.ghost?.remove(); clearMarks(); drag.srcEl.classList.remove('src'); drag = null; } });
 
 /* ===== start ===== */
-loadLibrary();
-(() => {
+// With the lock on, the lock screen comes first and the library is only opened by the passcode or passkey.
+// Without it, the first open on a device offers to set it up ("Not now" is remembered on the device).
+function startApp(){
+  S.gate = null; S.addErr = null; S.dialog = null;
   const hit = findTodayTrip();
   if(hit){ library.activeTripId = hit.t.id; S.screen = 'itinerary'; S.day = hit.i; }
   else S.screen = 'home';
-})();
-if(isLocked()) S.dialog = 'unlock';
-render();
-saveNow();
+  window.scrollTo(0, 0); render(); saveNow();
+  if(sync.token) setTimeout(syncNow, 600);
+}
+if(vaultOn()){ S.gate = 'unlock'; render(); }
+else { loadLibrary(); if(dev.lock === 'skipped' || dev.lock === 'on') startApp(); else { S.gate = 'setup'; render(); } }
+bioAvailable().then(v => { S.bioAvail = v; if(S.screen === 'settings' || S.gate) render(); });
 window.addEventListener('pagehide', saveNow);
 document.addEventListener('visibilitychange', () => {
   if(document.visibilityState === 'hidden'){ saveNow(); if(sync.token && Object.values(sync.meta).some(m => m.dirty)) syncNow(); }
@@ -647,5 +681,4 @@ window.addEventListener('online', () => { if(sync.token) syncNow(); });
 window.addEventListener('offline', () => { if(sync.token){ S.syncState = 'offline'; paintSync(); } });
 window.addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz = setTimeout(() => { Object.values(MAPS).forEach(M => { if(M && M.el.isConnected) M.resize(); }); }, 150); });
 setInterval(() => { if(document.visibilityState === 'visible' && !S.dialog && !document.activeElement.matches('input, textarea, select')) paintSync(); }, 60000);
-if(sync.token) setTimeout(syncNow, 600);
 if('serviceWorker' in navigator && (location.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(location.hostname))) navigator.serviceWorker.register('sw.js').catch(() => {});

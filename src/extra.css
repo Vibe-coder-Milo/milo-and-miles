@@ -158,3 +158,14 @@ body.noscroll { overflow: hidden; }
   .ov-day { break-inside: avoid; }
   .wrap { max-width: none; padding: 0; }
 }
+
+/* ===== the lock screen, before the app ===== */
+.gate { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: var(--space-xl) var(--space-md); }
+.gate-card { width: 100%; max-width: 30rem; display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-xl) var(--space-lg); }
+.gate-card h1 { font-size: var(--text-3xl); }
+.gate-card p { margin: 0; }
+.gate-brand { display: flex; align-items: center; gap: var(--space-xs); font-family: var(--font-display); font-size: var(--text-lg); color: var(--color-ink); }
+.gate-brand .ic { width: 22px; height: 22px; color: var(--color-accent); }
+.gate .field { margin: 0; }
+.gate-main { min-width: 11rem; }
+.gate-foot { margin-top: var(--space-xs); }

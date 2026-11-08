@@ -418,16 +418,42 @@ function scrBudget(){
 }
 
 /* ===== Settings ===== */
+function bioSecHTML(){
+  const err = S.bioErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.bioErr)}</p>` : '';
+  if(bioOn()) return `<p class="state ok">${I('check','sm')}On. Open the app with your passkey (fingerprint, face or device PIN), or with the passcode.</p>${err}
+      <div class="chips"><button type="button" class="btn btn--quiet" data-act="bioff">Turn off the passkey</button></div>`;
+  if(!S.bioAvail) return `<p class="sub">This browser doesn't offer passkeys that can unlock. It works in Safari 18 or later (iPadOS 18, iOS 18, macOS 15) and in recent Chrome or Edge.</p>`;
+  return `<p>Open the app with a passkey instead of typing: Touch ID or Face ID on the iPad or a Mac, Windows Hello on a Windows laptop, or your phone if the laptop has neither (the browser shows a QR code). Type your passcode once to turn it on.</p>
+      <div class="field"><label for="bp">Passcode</label><input id="bp" type="password" class="input" autocomplete="current-password"></div>${err}
+      <div class="chips"><button type="button" class="btn btn--primary" data-act="bioon" ${S.lockBusy ? 'disabled' : ''}>${S.lockBusy ? 'Waiting for the check…' : 'Turn on the passkey'}</button></div>`;
+}
 function lockSecHTML(){
-  if(isLocked()) return `<p class="state warn">${I('lock','sm')}Locked</p><p>Your keys and GitHub token are scrambled on this device. Unlock to sync and to use Google search and maps.</p>
-      <div class="chips"><button type="button" class="btn btn--primary" data-act="dialog" data-d="unlock">Unlock</button></div>`;
-  if(vaultOn()) return `<p class="state ok">${I('lock','sm')}On, unlocked for now</p><p>Your keys and GitHub token are stored scrambled on this device. You type the passcode each time you open the app.</p>
-      <div class="chips"><button type="button" class="btn" data-act="locknow">Lock now</button><button type="button" class="btn btn--quiet" data-act="asklockoff">Turn the lock off</button></div>`;
-  return `<p>Scrambles your Google key, map key, short-link reader address and GitHub token on this device, so no other page or app can read them. You type the passcode each time you open the app. Your trips stay readable, so the app still works without it.</p>
-      <div class="grid2"><div class="field"><label for="lp1">New passcode</label><input id="lp1" type="password" class="input" autocomplete="new-password" minlength="${PASS_MIN}" aria-describedby="lp-help"></div><div class="field"><label for="lp2">Type it again</label><input id="lp2" type="password" class="input" autocomplete="new-password"></div></div>
-      <p class="help" id="lp-help">At least ${PASS_MIN} characters. Three short words make a strong one that's easy to type.</p>
-      ${S.lockErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.lockErr)}</p>` : ''}
-      <div class="chips"><button type="button" class="btn btn--primary" data-act="lockon" ${S.lockBusy ? 'disabled' : ''}>${S.lockBusy ? 'Turning it on…' : 'Turn on the lock'}</button></div>`;
+  if(!vaultOn()) return `<p>This device opens Milo & Miles without a lock. With one, the app asks for a passcode or passkey when it opens, and your trips, keys and GitHub token are stored scrambled.</p>
+      <div class="chips"><button type="button" class="btn btn--primary" data-act="gsetupopen">Set up the lock</button></div>`;
+  return `<p class="state ok">${I('lock','sm')}On</p><p>The app asks for your passcode or passkey each time it opens. Your trips, keys and GitHub token are stored scrambled on this device.</p>
+      <div class="chips"><button type="button" class="btn" data-act="locknow">Lock now</button><button type="button" class="btn" data-act="dialog" data-d="chpass">Change the passcode</button></div>
+      <h3>Passkey</h3>${bioSecHTML()}`;
+}
+/* ===== the lock screen, shown before the app ===== */
+function gateHTML(){
+  const err = S.addErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.addErr)}</p>` : '';
+  const busy = S.lockBusy ? 'disabled' : '';
+  const head = (h, p) => `<div class="gate-brand">${I('plane')}<span>Milo &amp; Miles</span></div><h1 id="gate-h">${h}</h1>${p ? `<p>${p}</p>` : ''}`;
+  let body;
+  if(S.gate === 'unlock') body = head('Welcome back', bioOn() ? '' : 'Type your passcode to open your trips.')
+    + (bioOn() ? `<div class="chips"><button type="button" class="btn btn--primary gate-main" data-act="gbio" ${busy}>${I('lock','sm')}Unlock with your passkey</button></div><p class="sub">Or type your passcode:</p>` : '')
+    + `<div class="field"><label for="upass">Passcode</label><input id="upass" type="password" class="input" autocomplete="current-password" ${busy}></div>${err}
+      <div class="chips"><button type="button" class="btn ${bioOn() ? '' : 'btn--primary gate-main'}" data-act="gunlock" ${busy}>${S.lockBusy ? 'Unlocking…' : 'Unlock'}</button></div>
+      <p class="sub gate-foot">Forgot it? <button type="button" class="link" data-act="gforgot">Start again on this device</button></p>`;
+  else if(S.gate === 'setup') body = head('Lock the app', 'Choose a passcode. Milo &amp; Miles asks for it each time it opens on this device, and your trips, keys and GitHub token are stored scrambled until then.')
+    + `<div class="field"><label for="lp1">Passcode</label><input id="lp1" type="password" class="input" autocomplete="new-password" aria-describedby="lp-help" ${busy}></div>
+      <div class="field"><label for="lp2">Type it again</label><input id="lp2" type="password" class="input" autocomplete="new-password" ${busy}></div>
+      <p class="help" id="lp-help">At least ${PASS_MIN} characters. Three short words make a strong one that's easy to type. It can't be recovered, so keep it somewhere safe.</p>${err}
+      <div class="chips"><button type="button" class="btn btn--primary gate-main" data-act="gsetup" ${busy}>${S.lockBusy ? 'Locking…' : 'Lock the app'}</button></div>
+      <p class="sub gate-foot"><button type="button" class="link" data-act="gskip">Not now</button>. You can set it up later in Settings.</p>`;
+  else body = head('Add a passkey?', 'Then you can open the app with Touch ID, Face ID or Windows Hello, or with your phone, instead of typing the passcode. The passcode still works too.')
+    + `${err}<div class="chips"><button type="button" class="btn btn--primary gate-main" data-act="gbioon" ${busy}>${S.lockBusy ? 'Waiting for the check…' : 'Add a passkey'}</button><button type="button" class="btn" data-act="gdone" ${busy}>Skip</button></div>`;
+  return `<main class="gate" id="main"><section class="gate-card box" aria-labelledby="gate-h">${body}</section></main>${S.dialog === 'confirm' ? dialogHTML() : ''}`;
 }
 function scrSettings(){
   const t = T(); const sy = syncInfo(); const dl = tokenDaysLeft(); const key = gkey();
@@ -480,11 +506,12 @@ function dialogHTML(){
       <div><button type="button" class="btn btn--primary" data-act="savepast">Add to my map</button></div>`);
   }
   if(k === 'newtrip'){ const n = S.newTrip; return box('New trip', `<div class="field"><label for="ntname">Trip name</label><input id="ntname" class="input" data-nt="name" value="${esc(n.name)}" placeholder="Hokkaido in winter"></div><div class="grid2"><div class="field"><label for="ntfrom">First day</label><input id="ntfrom" type="date" class="input" data-nt="from" value="${esc(n.from)}"></div><div class="field"><label for="ntto">Last day (optional)</label><input id="ntto" type="date" class="input" data-nt="to" value="${esc(n.to)}"></div></div><p class="sub">Every day from the first to the last is set up for you. You can add or remove days later.</p>${S.addErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.addErr)}</p>` : ''}<div><button type="button" class="btn btn--primary" data-act="createtrip">Create the trip</button></div>`); }
-  if(k === 'unlock') return box('Unlock', `<p>Type your passcode to sync and to use your Google key on this device.</p>
-    <div class="field"><label for="upass">Passcode</label><input id="upass" type="password" class="input" autocomplete="current-password" ${S.lockBusy ? 'disabled' : ''}></div>
+  if(k === 'chpass') return box('Change the passcode', `<div class="field"><label for="cp0">Current passcode</label><input id="cp0" type="password" class="input" autocomplete="current-password"></div>
+    <div class="field"><label for="cp1">New passcode</label><input id="cp1" type="password" class="input" autocomplete="new-password"></div>
+    <div class="field"><label for="cp2">Type it again</label><input id="cp2" type="password" class="input" autocomplete="new-password"></div>
+    <p class="help">At least ${PASS_MIN} characters. Your passkey keeps working.</p>
     ${S.addErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.addErr)}</p>` : ''}
-    <div class="chips"><button type="button" class="btn btn--primary" data-act="unlock" ${S.lockBusy ? 'disabled' : ''}>${S.lockBusy ? 'Unlocking…' : 'Unlock'}</button><button type="button" class="btn" data-act="close">Not now</button></div>
-    <p class="sub">Forgot it? <button type="button" class="link" data-act="asklockreset">Start again without the lock</button>. Your trips stay. You'll paste your GitHub token again, and the Google key comes back from your private repo.</p>`);
+    <div class="chips"><button type="button" class="btn btn--primary" data-act="chpass" ${S.lockBusy ? 'disabled' : ''}>${S.lockBusy ? 'Saving…' : 'Change it'}</button></div>`);
   if(k === 'token') return box('Connect GitHub', `<p>Trips are saved as files in a private repo on your GitHub account. It takes a few minutes, once:</p>
     <ol class="steps"><li>On GitHub, <a href="https://github.com/new?name=Trip-Tracker-data&visibility=private" target="_blank" rel="noopener">create a new repo</a> named Trip-Tracker-data. Choose <b>Private</b> and tick <b>Add a README file</b>.</li><li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub, Settings, Fine-grained tokens</a>. Under Repository access pick only Trip-Tracker-data. Under Permissions set Contents to Read and write.</li><li>Copy the token and paste it below. Do this on each device; the token never leaves the device.</li></ol>
     <div class="field"><label for="trepo">Repo</label><input id="trepo" class="input num" value="${esc(sync.repo)}" autocomplete="off" spellcheck="false"></div>
