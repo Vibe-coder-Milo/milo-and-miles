@@ -1230,7 +1230,7 @@ function scrSettings(){
       <div class="chips"><button type="button" class="btn btn--primary" data-act="syncnow">Sync now</button><button type="button" class="btn" data-act="dialog" data-d="token">${S.sync === 'stopped' || S.sync === 'expiring' ? 'Paste a new token' : 'Change the token'}</button><button type="button" class="btn btn--quiet" data-act="toast" data-m="Opens the data repo's history on GitHub in the real app.">See saved versions</button></div>
       <p class="sub">If you edit a trip on two devices before they sync, the newer edit wins and the older one is kept as a copy.</p></section>
     <section class="set box" aria-labelledby="h-key"><h2 id="h-key">Google Maps key</h2><p>Powers the map and place search. It's saved in your private repo, so you enter it once for every device.</p>
-      <dl class="kv"><dt>Key</dt><dd class="num">${S.showKey ? 'AIzaSyD3x4mpLeK3yF0rM0ckupQx4' : 'Ends in Qx4'} <button type="button" class="link" data-act="showkey">${S.showKey ? 'Hide key' : 'Show key'}</button></dd></dl>
+      <dl class="kv"><dt>Key</dt><dd class="num">${S.showKey ? '(example key)' : 'Ends in Qx4'} <button type="button" class="link" data-act="showkey">${S.showKey ? 'Hide key' : 'Show key'}</button></dd></dl>
       <div class="chips"><button type="button" class="btn" data-act="dialog" data-d="key">Change the key</button></div>
       <p class="sub">Browsers can still read a map key, so in Google Cloud restrict yours to vibe-coder-milo.github.io. That stops other sites from using it.</p>
       <h3>Google's free monthly allowance, all devices</h3>
