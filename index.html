@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-lu1sYk7p3rsi9V7scJBFC6Iv+hsEQC6DrK5YpevVgNM=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-TG30RpIFyI+fv9xbqpG9dWl30X/f6sDEoDMzbcD73mA=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Milo &amp; Miles</title>
 <meta name="description" content="Plan each trip day by day: places, hotels, flights, a map and spending.">
@@ -2287,7 +2287,11 @@ function scrSettings(){
       <p class="state ${library.helperUrl ? 'ok' : 'warn'}">${I(library.helperUrl ? 'check' : 'alert','sm')}${library.helperUrl ? 'Connected' : 'Not set up'}</p>
       <div class="chips"><button type="button" class="btn" data-act="dialog" data-d="helper">${library.helperUrl ? 'Change it' : 'Set it up'}</button>${library.helperUrl ? '<button type="button" class="btn btn--quiet" data-act="delhelper">Disconnect</button>' : ''}</div></section>
     <section class="set box" aria-labelledby="h-look"><h2 id="h-look">Appearance</h2><p>Automatic follows this device's light or dark setting.</p>
-      <div class="seg" role="group" aria-label="Appearance"><button type="button" data-act="theme" data-v="auto" aria-pressed="${dev.theme === 'auto'}">Automatic</button><button type="button" data-act="theme" data-v="light" aria-pressed="${dev.theme === 'light'}">Light</button><button type="button" data-act="theme" data-v="dark" aria-pressed="${dev.theme === 'dark'}">Dark</button></div></section>
+      <div class="seg" role="group" aria-label="Appearance"><button type="button" data-act="theme" data-v="auto" aria-pressed="${dev.theme === 'auto'}">Automatic</button><button type="button" data-act="theme" data-v="light" aria-pressed="${dev.theme === 'light'}">Light</button><button type="button" data-act="theme" data-v="dark" aria-pressed="${dev.theme === 'dark'}">Dark</button></div>
+      <h3 style="margin-top:var(--space-sm)">Map look</h3>
+      <p class="sub">${gkey() ? 'How the Google map looks on this device. It changes straight away.' : 'These are for the Google map, so they need the Google key. Without it the app uses the free map.'}</p>
+      <div class="chips maplook" role="group" aria-label="Map look">${MAP_LOOKS.map(([k, l]) => `<button type="button" class="chip" data-act="maplook" data-v="${esc(k)}" aria-pressed="${mapLook() === k}" ${gkey() ? '' : 'disabled'}>${esc(l)}</button>`).join('')}</div>
+      ${gkey() && T() && T().days.length ? '<div><button type="button" class="link" data-act="maplookgo">See it on the trip map</button></div>' : ''}</section>
     <section class="set box" aria-labelledby="h-size"><h2 id="h-size">Text size on this device</h2><p>The iPad and the computer each keep their own size.</p>
       <div class="chips" style="align-items:center"><button type="button" class="btn" data-act="sz" data-d="-1" aria-label="Smaller text">Smaller</button><span class="num" style="min-width:4rem;text-align:center">${Math.round(dev.scale * 100)}%</span><button type="button" class="btn" data-act="sz" data-d="1" aria-label="Larger text">Larger</button></div></section>
     <section class="set box" aria-labelledby="h-bk"><h2 id="h-bk">Backups</h2><p>${sync.token ? 'Sync already keeps every version. ' : ''}A downloaded backup is an extra copy you keep yourself, for example in Google Drive. Keys and tokens are never in it.</p>
@@ -2403,10 +2407,38 @@ const GSTYLE_DARK = GS_BASE.concat([
   { featureType:'administrative', elementType:'geometry.stroke', stylers:[{ color:'#4a4b56' }] },
   { featureType:'administrative.country', elementType:'labels.text.fill', stylers:[{ color:'#c4c7d0' }] },
 ]);
+// Clean white: a bright map whatever the app's theme. Midnight: the dark map in the app's own indigo.
+const GSTYLE_WHITE = GS_BASE.concat([
+  { elementType:'geometry', stylers:[{ color:'#ffffff' }] }, { featureType:'landscape.man_made', elementType:'geometry', stylers:[{ color:'#f7f7f8' }] },
+  { featureType:'water', elementType:'geometry', stylers:[{ color:'#d4e6f1' }] }, { featureType:'poi.park', elementType:'geometry', stylers:[{ color:'#e3f1e4' }] },
+  { featureType:'road', elementType:'geometry', stylers:[{ color:'#ececef' }] }, { featureType:'road.highway', elementType:'geometry', stylers:[{ color:'#e0e1e6' }] },
+  { featureType:'road', elementType:'geometry.stroke', stylers:[{ visibility:'off' }] }, { featureType:'transit.line', elementType:'geometry', stylers:[{ color:'#dcdde3' }] },
+  { elementType:'labels.text.fill', stylers:[{ color:'#4a505c' }] }, { elementType:'labels.text.stroke', stylers:[{ color:'#ffffff' }] },
+  { featureType:'administrative', elementType:'geometry.stroke', stylers:[{ color:'#c9ccd4' }] },
+]);
+const GSTYLE_MIDNIGHT = GS_BASE.concat([
+  { elementType:'geometry', stylers:[{ color:'#191b2e' }] }, { featureType:'water', elementType:'geometry', stylers:[{ color:'#0f1020' }] },
+  { featureType:'poi.park', elementType:'geometry', stylers:[{ color:'#1b2430' }] }, { featureType:'road', elementType:'geometry', stylers:[{ color:'#272a45' }] },
+  { featureType:'road.highway', elementType:'geometry', stylers:[{ color:'#33365a' }] }, { featureType:'transit.line', elementType:'geometry', stylers:[{ color:'#2a2d4a' }] },
+  { elementType:'labels.text.fill', stylers:[{ color:'#a9abc8' }] }, { elementType:'labels.text.stroke', stylers:[{ color:'#14152a' }] },
+  { featureType:'administrative', elementType:'geometry.stroke', stylers:[{ color:'#4a4d75' }] },
+  { featureType:'administrative.locality', elementType:'labels.text.fill', stylers:[{ color:'#d6d7ee' }] },
+]);
+// The Google map's look, picked per device in Settings. 'auto' is how the map always looked.
+const MAP_LOOKS = [['auto', 'Follow the app'], ['midnight', 'Follow the app, midnight dark'], ['white', 'Clean white'], ['standard', 'Google standard'], ['terrain', 'Terrain'], ['satellite', 'Satellite']];
+const mapLook = () => MAP_LOOKS.some(([k]) => k === dev.mapLook) ? dev.mapLook : 'auto';
+function gLook(dark){
+  const l = mapLook();
+  if(l === 'satellite') return { mapTypeId:'hybrid', styles:null };
+  if(l === 'terrain') return { mapTypeId:'terrain', styles:GS_BASE };
+  if(l === 'standard') return { mapTypeId:'roadmap', styles:GS_BASE };
+  if(l === 'white') return { mapTypeId:'roadmap', styles:GSTYLE_WHITE };
+  return { mapTypeId:'roadmap', styles:dark ? (l === 'midnight' ? GSTYLE_MIDNIGHT : GSTYLE_DARK) : GSTYLE_LIGHT };
+}
 function googleAdapter(el, g, opts){
-  const map = new g.Map(el, { center:{ lat:HOME.lat, lng:HOME.lon }, zoom:4, minZoom:opts.home ? 2 : 0, disableDefaultUI:true, zoomControl:true, clickableIcons:false, gestureHandling:opts.home ? 'cooperative' : 'greedy', keyboardShortcuts:false, styles:GSTYLE_LIGHT });
+  const map = new g.Map(el, Object.assign({ center:{ lat:HOME.lat, lng:HOME.lon }, zoom:4, minZoom:opts.home ? 2 : 0, disableDefaultUI:true, zoomControl:true, clickableIcons:false, gestureHandling:opts.home ? 'cooperative' : 'greedy', keyboardShortcuts:false }, gLook(isDark())));
   trackApiCall('mapLoads');
-  let items = [];
+  let items = [], lookSig = mapLook() + isDark();
   class Pin extends g.OverlayView {
     constructor(lat, lon, o){ super(); this.at = new google.maps.LatLng(lat, lon); this.o = o; }
     onAdd(){
@@ -2422,14 +2454,14 @@ function googleAdapter(el, g, opts){
     onRemove(){ if(this.d) this.d.remove(); }
   }
   return { kind:'google', el,
-    theme: dark => map.setOptions({ styles: dark ? GSTYLE_DARK : GSTYLE_LIGHT }),
+    theme: dark => { const sig = mapLook() + dark; if(sig !== lookSig){ lookSig = sig; map.setOptions(gLook(dark)); } },
     zoom: () => map.getZoom(),
     setView: (lat, lon, z) => { map.setCenter({ lat, lng:lon }); map.setZoom(z); },
     fit: (pts, maxZoom) => { const b = new google.maps.LatLngBounds(); pts.forEach(p => b.extend({ lat:p[0], lng:p[1] })); map.fitBounds(b, 40); google.maps.event.addListenerOnce(map, 'idle', () => { if(map.getZoom() > maxZoom) map.setZoom(maxZoom); }); },
     clear: () => { items.forEach(i => i.setMap(null)); items = []; },
     pin: (lat, lon, o) => { const p = new Pin(lat, lon, o); p.setMap(map); items.push(p); },
     line: (pts, o = {}) => {
-      const color = cssVar(o.color || '--color-ink-2') || '#666';
+      const color = mapLook() === 'satellite' ? '#ffffff' : cssVar(o.color || '--color-ink-2') || '#666'; // white shows on photos
       items.push(new g.Polyline(Object.assign({ map, path:pts.map(p => ({ lat:p[0], lng:p[1] })), clickable:false },
         o.dashed ? { strokeOpacity:0, icons:[{ icon:{ path:'M 0,-1 0,1', strokeOpacity:0.85, strokeColor:color, scale:2 }, offset:'0', repeat:'11px' }] } : { strokeColor:color, strokeOpacity:0.8, strokeWeight:o.weight || 2 })));
     },
@@ -2759,6 +2791,8 @@ document.addEventListener('click', e => {
       return;
     }
     case 'delhelper': library.helperUrl = ''; settingsChanged(); break;
+    case 'maplook': dev.mapLook = el.dataset.v; saveDev(); if(MAPS.trip && MAPS.trip.kind === 'google'){ MAPS.trip.theme(isDark()); MAPS.trip.sig = ''; } break;
+    case 'maplookgo': S.screen = 'itinerary'; S.mapMode = 'trip'; S.mapFocus = S.mapPopup = null; window.scrollTo(0, 0); break;
     case 'delcarto': library.cartoApiKey = ''; MAPS.trip && MAPS.trip.theme && MAPS.trip.theme(isDark()); settingsChanged(); toast('CARTO key removed'); break;
     case 'theme': dev.theme = el.dataset.v; saveDev(); break;
     case 'sz': dev.scale = Math.max(.8, Math.min(1.5, +(dev.scale + .1 * el.dataset.d).toFixed(1))); saveDev(); break;

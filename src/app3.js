@@ -57,10 +57,38 @@ const GSTYLE_DARK = GS_BASE.concat([
   { featureType:'administrative', elementType:'geometry.stroke', stylers:[{ color:'#4a4b56' }] },
   { featureType:'administrative.country', elementType:'labels.text.fill', stylers:[{ color:'#c4c7d0' }] },
 ]);
+// Clean white: a bright map whatever the app's theme. Midnight: the dark map in the app's own indigo.
+const GSTYLE_WHITE = GS_BASE.concat([
+  { elementType:'geometry', stylers:[{ color:'#ffffff' }] }, { featureType:'landscape.man_made', elementType:'geometry', stylers:[{ color:'#f7f7f8' }] },
+  { featureType:'water', elementType:'geometry', stylers:[{ color:'#d4e6f1' }] }, { featureType:'poi.park', elementType:'geometry', stylers:[{ color:'#e3f1e4' }] },
+  { featureType:'road', elementType:'geometry', stylers:[{ color:'#ececef' }] }, { featureType:'road.highway', elementType:'geometry', stylers:[{ color:'#e0e1e6' }] },
+  { featureType:'road', elementType:'geometry.stroke', stylers:[{ visibility:'off' }] }, { featureType:'transit.line', elementType:'geometry', stylers:[{ color:'#dcdde3' }] },
+  { elementType:'labels.text.fill', stylers:[{ color:'#4a505c' }] }, { elementType:'labels.text.stroke', stylers:[{ color:'#ffffff' }] },
+  { featureType:'administrative', elementType:'geometry.stroke', stylers:[{ color:'#c9ccd4' }] },
+]);
+const GSTYLE_MIDNIGHT = GS_BASE.concat([
+  { elementType:'geometry', stylers:[{ color:'#191b2e' }] }, { featureType:'water', elementType:'geometry', stylers:[{ color:'#0f1020' }] },
+  { featureType:'poi.park', elementType:'geometry', stylers:[{ color:'#1b2430' }] }, { featureType:'road', elementType:'geometry', stylers:[{ color:'#272a45' }] },
+  { featureType:'road.highway', elementType:'geometry', stylers:[{ color:'#33365a' }] }, { featureType:'transit.line', elementType:'geometry', stylers:[{ color:'#2a2d4a' }] },
+  { elementType:'labels.text.fill', stylers:[{ color:'#a9abc8' }] }, { elementType:'labels.text.stroke', stylers:[{ color:'#14152a' }] },
+  { featureType:'administrative', elementType:'geometry.stroke', stylers:[{ color:'#4a4d75' }] },
+  { featureType:'administrative.locality', elementType:'labels.text.fill', stylers:[{ color:'#d6d7ee' }] },
+]);
+// The Google map's look, picked per device in Settings. 'auto' is how the map always looked.
+const MAP_LOOKS = [['auto', 'Follow the app'], ['midnight', 'Follow the app, midnight dark'], ['white', 'Clean white'], ['standard', 'Google standard'], ['terrain', 'Terrain'], ['satellite', 'Satellite']];
+const mapLook = () => MAP_LOOKS.some(([k]) => k === dev.mapLook) ? dev.mapLook : 'auto';
+function gLook(dark){
+  const l = mapLook();
+  if(l === 'satellite') return { mapTypeId:'hybrid', styles:null };
+  if(l === 'terrain') return { mapTypeId:'terrain', styles:GS_BASE };
+  if(l === 'standard') return { mapTypeId:'roadmap', styles:GS_BASE };
+  if(l === 'white') return { mapTypeId:'roadmap', styles:GSTYLE_WHITE };
+  return { mapTypeId:'roadmap', styles:dark ? (l === 'midnight' ? GSTYLE_MIDNIGHT : GSTYLE_DARK) : GSTYLE_LIGHT };
+}
 function googleAdapter(el, g, opts){
-  const map = new g.Map(el, { center:{ lat:HOME.lat, lng:HOME.lon }, zoom:4, minZoom:opts.home ? 2 : 0, disableDefaultUI:true, zoomControl:true, clickableIcons:false, gestureHandling:opts.home ? 'cooperative' : 'greedy', keyboardShortcuts:false, styles:GSTYLE_LIGHT });
+  const map = new g.Map(el, Object.assign({ center:{ lat:HOME.lat, lng:HOME.lon }, zoom:4, minZoom:opts.home ? 2 : 0, disableDefaultUI:true, zoomControl:true, clickableIcons:false, gestureHandling:opts.home ? 'cooperative' : 'greedy', keyboardShortcuts:false }, gLook(isDark())));
   trackApiCall('mapLoads');
-  let items = [];
+  let items = [], lookSig = mapLook() + isDark();
   class Pin extends g.OverlayView {
     constructor(lat, lon, o){ super(); this.at = new google.maps.LatLng(lat, lon); this.o = o; }
     onAdd(){
@@ -76,14 +104,14 @@ function googleAdapter(el, g, opts){
     onRemove(){ if(this.d) this.d.remove(); }
   }
   return { kind:'google', el,
-    theme: dark => map.setOptions({ styles: dark ? GSTYLE_DARK : GSTYLE_LIGHT }),
+    theme: dark => { const sig = mapLook() + dark; if(sig !== lookSig){ lookSig = sig; map.setOptions(gLook(dark)); } },
     zoom: () => map.getZoom(),
     setView: (lat, lon, z) => { map.setCenter({ lat, lng:lon }); map.setZoom(z); },
     fit: (pts, maxZoom) => { const b = new google.maps.LatLngBounds(); pts.forEach(p => b.extend({ lat:p[0], lng:p[1] })); map.fitBounds(b, 40); google.maps.event.addListenerOnce(map, 'idle', () => { if(map.getZoom() > maxZoom) map.setZoom(maxZoom); }); },
     clear: () => { items.forEach(i => i.setMap(null)); items = []; },
     pin: (lat, lon, o) => { const p = new Pin(lat, lon, o); p.setMap(map); items.push(p); },
     line: (pts, o = {}) => {
-      const color = cssVar(o.color || '--color-ink-2') || '#666';
+      const color = mapLook() === 'satellite' ? '#ffffff' : cssVar(o.color || '--color-ink-2') || '#666'; // white shows on photos
       items.push(new g.Polyline(Object.assign({ map, path:pts.map(p => ({ lat:p[0], lng:p[1] })), clickable:false },
         o.dashed ? { strokeOpacity:0, icons:[{ icon:{ path:'M 0,-1 0,1', strokeOpacity:0.85, strokeColor:color, scale:2 }, offset:'0', repeat:'11px' }] } : { strokeColor:color, strokeOpacity:0.8, strokeWeight:o.weight || 2 })));
     },
@@ -413,6 +441,8 @@ document.addEventListener('click', e => {
       return;
     }
     case 'delhelper': library.helperUrl = ''; settingsChanged(); break;
+    case 'maplook': dev.mapLook = el.dataset.v; saveDev(); if(MAPS.trip && MAPS.trip.kind === 'google'){ MAPS.trip.theme(isDark()); MAPS.trip.sig = ''; } break;
+    case 'maplookgo': S.screen = 'itinerary'; S.mapMode = 'trip'; S.mapFocus = S.mapPopup = null; window.scrollTo(0, 0); break;
     case 'delcarto': library.cartoApiKey = ''; MAPS.trip && MAPS.trip.theme && MAPS.trip.theme(isDark()); settingsChanged(); toast('CARTO key removed'); break;
     case 'theme': dev.theme = el.dataset.v; saveDev(); break;
     case 'sz': dev.scale = Math.max(.8, Math.min(1.5, +(dev.scale + .1 * el.dataset.d).toFixed(1))); saveDev(); break;
