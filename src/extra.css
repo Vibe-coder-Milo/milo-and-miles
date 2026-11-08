@@ -84,8 +84,9 @@ a.btn { text-decoration: none; }
 .fp-u { fill: var(--color-map-land); stroke: var(--color-map-land); stroke-width: 0.6; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
 .fp-map.z2 .fp-u { stroke: color-mix(in oklab, var(--color-map-edge) 70%, var(--color-map-land)); }
 .fp-u.v { fill: var(--color-visited); stroke: var(--color-visited); cursor: pointer; }
-.fp-u.u { fill: color-mix(in oklab, var(--color-upcoming) 60%, var(--color-map-land)); stroke: color-mix(in oklab, var(--color-upcoming) 60%, var(--color-map-land)); cursor: pointer; }
-.fp-map.z2 .fp-u.v, .fp-map.z2 .fp-u.u { stroke: var(--color-map-land); }
+/* Coming up: outlined with only a light tint, so it can't be mistaken for a lit (visited) place. */
+.fp-u.u { fill: color-mix(in oklab, var(--color-upcoming) 14%, var(--color-map-land)); stroke: var(--color-upcoming); stroke-width: 1.6; cursor: pointer; }
+.fp-map.z2 .fp-u.v { stroke: var(--color-map-land); }
 .fp-u.hl { stroke: var(--color-ink) !important; stroke-width: 2; }
 .fp-b { fill: none; stroke: var(--color-map-edge); stroke-width: 0.9; vector-effect: non-scaling-stroke; stroke-linejoin: round; pointer-events: none; }
 @media (hover: hover) { .fp-u.v:hover, .fp-u.u:hover { filter: brightness(1.12); } }
@@ -93,7 +94,9 @@ a.btn { text-decoration: none; }
 .fp-lab.c { font-size: 12px; font-weight: 600; color: var(--color-ink-2); letter-spacing: 0.01em; }
 .fp-lab.v, .fp-lab.u { padding: 1px 6px; border-radius: 4px; font-weight: 600; text-shadow: none; box-shadow: 0 1px 3px oklch(0% 0 0 / 0.3); }
 .fp-lab.v { background: var(--color-visited); color: var(--color-accent-ink); }
-.fp-lab.u { background: var(--color-upcoming); color: var(--color-now-ink); }
+.fp-lab.u { background: var(--color-card); color: var(--color-ink); box-shadow: inset 0 0 0 1.5px var(--color-upcoming), 0 1px 3px oklch(0% 0 0 / 0.3); }
+.fp-up { display: inline-flex; align-items: center; gap: 6px; margin-top: var(--space-2xs); font-size: var(--text-xs); color: var(--color-muted); }
+.fp-up::before { content: ''; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--color-upcoming); }
 .fp-map .wm-zoom { position: absolute; right: var(--space-xs); bottom: var(--space-xs); display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--space-2xs); }
 .fp-map .wm-zoom .iconbtn { width: 40px; height: 40px; background: var(--color-card); border: 1px solid var(--color-rule); border-radius: var(--radius-pill); }
 .fp-map .wm-reset { min-height: 40px; background: var(--color-card); font-size: var(--text-sm); }
@@ -129,14 +132,14 @@ body.noscroll { overflow: hidden; }
    The one bright, tropical mint (#88ffc0): main buttons, today and next up, the current tab, map pins and the places you've lit up.
    Icons use a dusty lavender and hotels show in white so nothing else competes with the mint. */
 /*@dark*/
-:dark { --color-page: #101010; --color-bar: #101010; --color-section: oklch(20% 0.045 283); --section-edge: oklch(31% 0.06 283); --section-shadow: 0 1px 0 oklch(38% 0.06 283 / 0.45) inset, 0 12px 30px -14px oklch(0% 0 0 / 0.8); --color-card: oklch(24% 0.055 283); --color-card-edge: oklch(34% 0.065 283); --color-paper: oklch(17% 0.035 283); --color-paper-2: oklch(26% 0.055 283); --color-paper-3: oklch(31% 0.065 283); --color-ink: oklch(96% 0.008 283); --color-ink-2: oklch(88% 0.02 283); --color-muted: oklch(77% 0.035 283); --color-pencil: oklch(77% 0.035 283); --color-rule: oklch(31% 0.05 283); --color-edge: oklch(50% 0.06 283); --color-accent: #88ffc0; --color-accent-strong: #b0ffd6; --color-accent-ink: #101010; --color-accent-wash: oklch(28% 0.05 175); --color-now: #88ffc0; --color-now-ink: #101010; --color-success: #88ffc0; --color-focus: #88ffc0; --color-visited: #88ffc0; --color-upcoming: oklch(66% 0.075 172); --color-mark-2: oklch(92% 0.015 283); --color-mark-2-ink: #101010; --color-error: oklch(76% 0.12 25); --color-error-wash: oklch(26% 0.05 20); --color-warn: oklch(85% 0.1 80); --color-warn-wash: oklch(27% 0.04 70); --color-map-sea: oklch(16.5% 0.035 283); --color-map-land: oklch(27% 0.05 283); --color-map-edge: oklch(37% 0.06 283); --color-map-arc: rgb(136 255 192 / 0.8); --color-overlay: oklch(8% 0.02 283 / 0.75); --shadow-card: 0 0 0 1px oklch(31% 0.05 283), 0 12px 32px -12px oklch(0% 0 0 / 0.7); --nextup-bg: oklch(24% 0.055 283); --nextup-fg: oklch(96% 0.008 283); --nextup-sub: oklch(84% 0.03 283); --nextup-edge: #88ffc0; --color-drop: oklch(28% 0.05 175); --color-home: oklch(96% 0.008 283); --badge-bg: oklch(32% 0.065 283); --badge-ink: oklch(90% 0.03 283); --badge-hotel-bg: oklch(32% 0.065 283); --badge-hotel-ink: oklch(90% 0.03 283); --soft-ic: oklch(80% 0.07 283); }
+:dark { --color-page: #101010; --color-bar: #101010; --color-section: oklch(20% 0.045 283); --section-edge: oklch(31% 0.06 283); --section-shadow: 0 1px 0 oklch(38% 0.06 283 / 0.45) inset, 0 12px 30px -14px oklch(0% 0 0 / 0.8); --color-card: oklch(24% 0.055 283); --color-card-edge: oklch(34% 0.065 283); --color-paper: oklch(17% 0.035 283); --color-paper-2: oklch(26% 0.055 283); --color-paper-3: oklch(31% 0.065 283); --color-ink: oklch(96% 0.008 283); --color-ink-2: oklch(88% 0.02 283); --color-muted: oklch(77% 0.035 283); --color-pencil: oklch(77% 0.035 283); --color-rule: oklch(31% 0.05 283); --color-edge: oklch(50% 0.06 283); --color-accent: #88ffc0; --color-accent-strong: #b0ffd6; --color-accent-ink: #101010; --color-accent-wash: oklch(28% 0.05 175); --color-now: #88ffc0; --color-now-ink: #101010; --color-success: #88ffc0; --color-focus: #88ffc0; --color-visited: #88ffc0; --color-upcoming: oklch(84% 0.08 290); --color-mark-2: oklch(92% 0.015 283); --color-mark-2-ink: #101010; --color-error: oklch(76% 0.12 25); --color-error-wash: oklch(26% 0.05 20); --color-warn: oklch(85% 0.1 80); --color-warn-wash: oklch(27% 0.04 70); --color-map-sea: oklch(16.5% 0.035 283); --color-map-land: oklch(27% 0.05 283); --color-map-edge: oklch(37% 0.06 283); --color-map-arc: rgb(136 255 192 / 0.8); --color-overlay: oklch(8% 0.02 283 / 0.75); --shadow-card: 0 0 0 1px oklch(31% 0.05 283), 0 12px 32px -12px oklch(0% 0 0 / 0.7); --nextup-bg: oklch(24% 0.055 283); --nextup-fg: oklch(96% 0.008 283); --nextup-sub: oklch(84% 0.03 283); --nextup-edge: #88ffc0; --color-drop: oklch(28% 0.05 175); --color-home: oklch(96% 0.008 283); --badge-bg: oklch(32% 0.065 283); --badge-ink: oklch(90% 0.03 283); --badge-hotel-bg: oklch(32% 0.065 283); --badge-hotel-ink: oklch(90% 0.03 283); --soft-ic: oklch(80% 0.07 283); }
 :dark .btn--primary { background: #88ffc0; border-color: #88ffc0; color: #101010; font-weight: 600; }
 :dark .btn--primary .ic { color: #101010; }
 :dark .btn:not(.btn--primary):not(.btn--danger), :dark .input, :dark .item-tools select, :dark .btn--danger { border-color: oklch(44% 0.06 283); }
 :dark .seg button[aria-pressed="true"] { background: oklch(34% 0.07 283); color: var(--color-ink); box-shadow: inset 0 0 0 1px oklch(44% 0.08 283); }
 :dark .nextup { border: 1px solid var(--nextup-edge); }
 :dark .fp-card { background: var(--color-card); }
-:dark .fp-lab.v, :dark .fp-lab.u, :dark .tab .today { color: #101010; }
+:dark .fp-lab.v, :dark .tab .today { color: #101010; }
 :dark .tab .today { background: var(--color-now); }
 :dark .box > .sechead .ic, :dark .wordmark .ic { color: var(--soft-ic); }
 :dark .todayband { background: var(--color-section); border-color: var(--section-edge); }

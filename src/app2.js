@@ -181,9 +181,10 @@ function footHTML(){
   const sel = S.hlRegion && fp.lit[S.hlRegion]; wmPrep(); const su = S.hlRegion && WM.byKey[S.hlRegion];
   const cap = sel ? `<div class="hcap"><b>${esc(su.n)}${su.n !== WM.countries[su.cc][0] ? ', ' + esc(WM.countries[su.cc][0]) : ''}</b><span class="sub">${esc(sel.cities.join(', '))}</span>${[...sel.trips].map(t => `<button type="button" class="link" data-act="opentrip" data-id="${esc(t.id)}">${esc(tripLabel(t))}, ${range(tripStart(t), tripEnd(t))}</button>`).join('')}<button type="button" class="iconbtn" data-act="fpu" data-k="${esc(S.hlRegion)}" aria-label="Close">${I('x','sm')}</button></div>` : '';
   const pct = Math.max(fp.countries ? 1.5 : 0, fp.countries / 195 * 100).toFixed(1);
+  const upLine = n => n ? `<span class="fp-up">${esc(n)} coming up</span>` : '';
   return `<div class="fp-card">
-      <div class="fp-stat main"><span class="sub">Countries<span class="wide"> lit up</span></span><p class="fp-num"><b>${fp.countries}</b><span>/ 195</span></p><div class="fp-bar" role="img" aria-label="${fp.countries} of 195 countries"><span style="width:${pct}%"></span></div></div>
-      <div class="fp-stat main"><span class="sub">Regions<span class="wide"> lit up</span></span><p class="fp-num"><b>${fp.regions}</b></p></div>
+      <div class="fp-stat main"><span class="sub">Countries<span class="wide"> lit up</span></span><p class="fp-num"><b>${fp.countries}</b><span>/ 195</span></p><div class="fp-bar" role="img" aria-label="${fp.countries} of 195 countries"><span style="width:${pct}%"></span></div>${upLine(fp.upCountries)}</div>
+      <div class="fp-stat main"><span class="sub">Regions<span class="wide"> lit up</span></span><p class="fp-num"><b>${fp.regions}</b></p>${upLine(fp.upRegions)}</div>
       <div class="fp-stat"><span class="sub">Cities</span><p class="fp-num"><b>${fp.cities}</b></p></div>
       <div class="fp-stat"><span class="sub">Days<span class="wide"> away</span></span><p class="fp-num"><b>${fp.days}</b></p></div>
       <div class="fp-stat"><span class="sub">Trips</span><p class="fp-num"><b>${fp.trips}</b></p></div>

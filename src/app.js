@@ -508,9 +508,11 @@ function footprint(){
     const o = lit[k] || (lit[k] = { past:false, cities:[], trips:new Set() });
     o.past = o.past || c.past; if(!o.cities.includes(c.name)) o.cities.push(c.name); c.trips.forEach(t => o.trips.add(t));
   });
-  const past = Object.keys(lit).filter(k => lit[k].past);
-  const countries = new Set(past.map(k => { const cc = k.split(':')[0]; return COUNTS_AS[cc] || cc; }));
-  return { lit, regions:past.length, countries:countries.size, days, trips, cities:cityNames.size };
+  const ccOf = k => { const cc = k.split(':')[0]; return COUNTS_AS[cc] || cc; };
+  const past = Object.keys(lit).filter(k => lit[k].past), ahead = Object.keys(lit).filter(k => !lit[k].past);
+  const countries = new Set(past.map(ccOf)), aheadCountries = new Set(ahead.map(ccOf).filter(c => !countries.has(c)));
+  // Places only light up once a trip's days there have passed. Planned ones are counted separately.
+  return { lit, regions:past.length, countries:countries.size, upRegions:ahead.length, upCountries:aheadCountries.size, days, trips, cities:cityNames.size };
 }
 
 /* ===== cities on the home map ===== */
