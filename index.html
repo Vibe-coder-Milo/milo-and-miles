@@ -812,6 +812,14 @@ body.noscroll { overflow: hidden; }
 .gate .field { margin: 0; }
 .gate-main { min-width: 11rem; }
 .gate-foot { margin-top: var(--space-xs); }
+
+/* ===== iPad home-screen app: keep the top sharp =====
+   iPadOS 26 blurs the strip along the top of a web app added to the Home Screen, unless a solid bar
+   touches the very top edge. This one is the top bar's own colour, so it can't be seen, and it lets
+   every tap through. It sits just above the top bar and below dialogs and the full-screen map. */
+.topguard { position: fixed; top: 0; left: 0; right: 0; height: calc(env(safe-area-inset-top, 0px) + 3px); background: var(--color-bar); pointer-events: none; z-index: calc(var(--z-sticky-nav) + 1); }
+body:has(.gate) .topguard { background: var(--color-page); }
+@media print { .topguard { display: none; } }
 </style>
 </head>
 <body>
@@ -847,6 +855,7 @@ body.noscroll { overflow: hidden; }
   <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
 </svg>
 
+<div class="topguard" aria-hidden="true"></div>
 <a class="visually-hidden" href="#main">Skip to the page</a>
 <div id="app"></div>
 <input type="file" id="importFile" accept=".json,application/json" hidden>

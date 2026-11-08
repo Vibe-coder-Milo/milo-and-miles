@@ -61,6 +61,7 @@ page = read('head.html').replace('%%CSP%%', CSP) + css + f'''</style>
 <body>
 {svg}
 
+<div class="topguard" aria-hidden="true"></div>
 <a class="visually-hidden" href="#main">Skip to the page</a>
 <div id="app"></div>
 <input type="file" id="importFile" accept=".json,application/json" hidden>
