@@ -320,8 +320,6 @@ function addPlace(noPin = false){
       const r = S.linkRes;
       if(!r || r.kind !== 'coords'){ S.addErr = r && (r.kind === 'notfound' || r.kind === 'nohelper' || r.kind === 'helperfail') ? 'This link has no location the app can read. You can add it without a location and drop a pin later.' : 'Paste a Google Maps link that shows a location first.'; render(); return; }
       found = { name:r.name, addr:r.addr || '', lat:r.lat, lon:r.lon, gmap:linkIn(S.link) };
-      // Added before its address arrived: it's filled in when it does.
-      if(!r.addr && r.addrPending){ const tr = trip, nm = r.name, la = r.lat, lo2 = r.lon; r.addrPending.then(a => { if(!a) return; let hit = false; tr.days.forEach(d => d.places.forEach(p => { if(p.name === nm && p.lat === la && p.lon === lo2 && !p.address){ p.address = a; hit = true; } })); if(hit){ changed(tr); render(); } }); }
     }
     const base = { name:found.name, address:found.addr || '', lat:found.lat, lon:found.lon, note:S.addNote };
     if(cleanGmap(found.gmap)) base.gmap = found.gmap;
@@ -732,7 +730,6 @@ function startApp(){
   else S.screen = 'home';
   window.scrollTo(0, 0); render(); saveNow();
   if(sync.token) setTimeout(syncNow, 600);
-  setTimeout(fillMissingAddresses, 8000);
 }
 if(vaultOn()){ S.gate = 'unlock'; render(); }
 else { loadLibrary(); if(dev.lock === 'skipped' || dev.lock === 'on') startApp(); else { S.gate = 'setup'; render(); } }
