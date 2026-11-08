@@ -325,7 +325,7 @@ function addPlace(noPin = false){
     if(cleanGmap(found.gmap)) base.gmap = found.gmap;
     if(cleanPlaceId(found.placeId)) base.placeId = found.placeId;
     if(t === 'hotel'){
-      const a = S.hFrom ?? di, b = S.hTo ?? di; const lo = Math.min(a, b), hi = Math.max(a, b);
+      const [lo, out] = stayRange(trip, di); const hi = out - 1; // the nights from check-in to the night before check-out
       for(let j = lo; j <= hi; j++){ const ps = trip.days[j].places; ps.splice(ps.filter(p => p.type === 'flight').length, 0, Object.assign({ id:uid(), type:'hotel' }, base)); }
       announce(`Added ${found.name} to ${dayList(Array.from({ length:hi - lo + 1 }, (_, k) => lo + k + 1))}`);
     } else {
@@ -616,8 +616,8 @@ document.addEventListener('change', e => {
     case 'farr': S.fArr = t.value; break;
     case 'stime': S.sTime = t.value; break;
     case 'aday': S.addDay = +t.value; break;
-    case 'hfrom': S.hFrom = +t.value; break;
-    case 'hto': S.hTo = +t.value; break;
+    case 'hfrom': { S.hFrom = +t.value; if(S.hTo != null && S.hTo <= S.hFrom) S.hTo = S.hFrom + 1; render(); document.getElementById('hfrom')?.focus(); } break;
+    case 'hto': S.hTo = +t.value; render(); document.getElementById('hto')?.focus(); break;
     case 'lcur': trip.currency = t.value; if(S.draft) S.draft.cur = t.value; changed(); render(); break;
     case 'bcur': changeBase(trip, t.value); changed(); render(); break;
     case 'mofrom': trip.start = t.value; changed(); break;

@@ -234,3 +234,7 @@ input.input[type="date"]::-webkit-date-and-time-value, input.input[type="time"]:
 :light .headpanel .daystrip { margin-bottom: calc(var(--space-lg) * -1); }
 /*@end*/
 .headpanel { display: flex; flex-direction: column; gap: var(--space-xl); min-width: 0; }
+.stay-nights { margin: 0; color: var(--color-ink-2); }
+.stay-nights b { color: var(--color-ink); }
+/* Map buttons (Leaflet's zoom controls, the full-screen button) stay inside their map, so dialogs cover them. */
+.mapbox, .tmapwrap, .fp-map { isolation: isolate; }

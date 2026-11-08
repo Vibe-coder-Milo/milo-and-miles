@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-C0Cnnq+IKmejpOYU3GQwxqeSXyS+SJLC5NGbVCs03V8=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-zb8Y9wj0COnIpLWhTQ/Szuzw6wfuWSOkawk8n4441iQ=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Milo &amp; Miles</title>
 <meta name="description" content="Plan each trip day by day: places, hotels, flights, a map and spending.">
@@ -893,6 +893,10 @@ input.input[type="date"]::-webkit-date-and-time-value, input.input[type="time"]:
 :root[data-theme="light"] .headpanel { display: flex; flex-direction: column; gap: var(--space-lg); background: var(--color-card); border: 1px solid var(--color-rule); border-radius: 14px; box-shadow: var(--shadow-card, none); padding: var(--space-lg); }
 :root[data-theme="light"] .headpanel .daystrip { margin-bottom: calc(var(--space-lg) * -1); }
 .headpanel { display: flex; flex-direction: column; gap: var(--space-xl); min-width: 0; }
+.stay-nights { margin: 0; color: var(--color-ink-2); }
+.stay-nights b { color: var(--color-ink); }
+/* Map buttons (Leaflet's zoom controls, the full-screen button) stay inside their map, so dialogs cover them. */
+.mapbox, .tmapwrap, .fp-map { isolation: isolate; }
 </style>
 </head>
 <body>
@@ -2259,6 +2263,24 @@ function scrItinerary(){
       ${mapAside()}
     </div></div>`;
 }
+// Hotel stay: pick the check-in day and the check-out day (which can be the day after the trip ends).
+// The hotel is added to each night in between; the line below says how many nights that is.
+function stayRange(trip, di){
+  const n = trip.days.length; const a = Math.max(0, Math.min(n - 1, S.hFrom ?? di));
+  const b = Math.max(a + 1, Math.min(n, S.hTo ?? a + 1));
+  return [a, b];
+}
+function stayPickHTML(trip, di){
+  const [a, b] = stayRange(trip, di); const n = trip.days.length;
+  const dayName = j => { const d = trip.days[j]; return `Day ${j + 1}${okDate(d.date) ? ', ' + dShort(d.date) : ''}`; };
+  const outName = j => j < n ? dayName(j) : (okDate(trip.days[n - 1].date) ? `${dShort(addDaysISO(trip.days[n - 1].date, 1))}, after the trip` : 'The day after the trip');
+  const ins = trip.days.map((d, j) => `<option value="${esc(j)}" ${j === a ? 'selected' : ''}>${esc(dayName(j) + (d.city ? ', ' + cityName(d.city) : ''))}</option>`).join('');
+  const outs = []; for(let j = a + 1; j <= n; j++) outs.push(`<option value="${esc(j)}" ${j === b ? 'selected' : ''}>${esc(outName(j))}</option>`);
+  const nights = b - a; const ad = trip.days[a].date, bd = b < n ? trip.days[b].date : (okDate(trip.days[n - 1].date) ? addDaysISO(trip.days[n - 1].date, 1) : '');
+  const when = okDate(ad) && okDate(bd) ? `, ${dShort(ad)} to ${dShort(bd)}` : `, Day ${a + 1} to ${b < n ? 'Day ' + (b + 1) : 'after the trip'}`;
+  return `<div class="grid2"><div class="field"><label for="hfrom">Check-in</label><select id="hfrom" class="input" data-in="hfrom">${ins}</select></div><div class="field"><label for="hto">Check-out</label><select id="hto" class="input" data-in="hto">${outs.join('')}</select></div></div>
+    <p class="stay-nights" id="staynights" aria-live="polite"><b>${esc(nights)} ${nights === 1 ? 'night' : 'nights'}</b>${esc(when)}</p>`;
+}
 function addCityHint(){ const t = T(); const di = S.addDay != null ? S.addDay : S.day; const d = t && t.days[di]; return d ? cityName(d.city) : ''; }
 function addPanelHTML(i){
   const trip = T(); const t = S.addType; const di = S.addDay != null ? S.addDay : i; const step = t === 'do' || t === 'move';
@@ -2279,7 +2301,7 @@ function addPanelHTML(i){
       : `<div class="field"><label for="alink">Google Maps link</label><textarea id="alink" class="input" rows="2" data-in="alink" placeholder="https://maps.app.goo.gl/">${esc(S.link)}</textarea></div><div id="alinkres">${linkResHTML()}</div>`;
     const cat = t === 'activity' ? `<div class="field"><span class="label" id="lbl-cat">Type</span><div class="chips" role="group" aria-labelledby="lbl-cat"><button type="button" class="chip" data-act="acat" data-c="attraction" aria-pressed="${S.addCat === 'attraction'}"><span class="cat-ic c-sight">${I('pin','sm')}</span>Sight</button><button type="button" class="chip" data-act="acat" data-c="food" aria-pressed="${S.addCat === 'food'}"><span class="cat-ic c-food">${I('bowl','sm')}</span>Food</button></div></div>` : '';
     const days = t === 'hotel'
-      ? `<div class="grid2"><div class="field"><label for="hfrom">First night</label><select id="hfrom" class="input" data-in="hfrom">${dayOpts(S.hFrom ?? di)}</select></div><div class="field"><label for="hto">Last night</label><select id="hto" class="input" data-in="hto">${dayOpts(S.hTo ?? di)}</select></div></div><p class="sub">The hotel is added to every day from the first night to the last.</p>`
+      ? stayPickHTML(trip, di)
       : dayField;
     main = `${cat}${how}${finder}${days}`;
   }
@@ -2798,7 +2820,7 @@ function addPlace(noPin = false){
     if(cleanGmap(found.gmap)) base.gmap = found.gmap;
     if(cleanPlaceId(found.placeId)) base.placeId = found.placeId;
     if(t === 'hotel'){
-      const a = S.hFrom ?? di, b = S.hTo ?? di; const lo = Math.min(a, b), hi = Math.max(a, b);
+      const [lo, out] = stayRange(trip, di); const hi = out - 1; // the nights from check-in to the night before check-out
       for(let j = lo; j <= hi; j++){ const ps = trip.days[j].places; ps.splice(ps.filter(p => p.type === 'flight').length, 0, Object.assign({ id:uid(), type:'hotel' }, base)); }
       announce(`Added ${found.name} to ${dayList(Array.from({ length:hi - lo + 1 }, (_, k) => lo + k + 1))}`);
     } else {
@@ -3089,8 +3111,8 @@ document.addEventListener('change', e => {
     case 'farr': S.fArr = t.value; break;
     case 'stime': S.sTime = t.value; break;
     case 'aday': S.addDay = +t.value; break;
-    case 'hfrom': S.hFrom = +t.value; break;
-    case 'hto': S.hTo = +t.value; break;
+    case 'hfrom': { S.hFrom = +t.value; if(S.hTo != null && S.hTo <= S.hFrom) S.hTo = S.hFrom + 1; render(); document.getElementById('hfrom')?.focus(); } break;
+    case 'hto': S.hTo = +t.value; render(); document.getElementById('hto')?.focus(); break;
     case 'lcur': trip.currency = t.value; if(S.draft) S.draft.cur = t.value; changed(); render(); break;
     case 'bcur': changeBase(trip, t.value); changed(); render(); break;
     case 'mofrom': trip.start = t.value; changed(); break;

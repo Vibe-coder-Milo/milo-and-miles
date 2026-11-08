@@ -334,6 +334,24 @@ function scrItinerary(){
       ${mapAside()}
     </div></div>`;
 }
+// Hotel stay: pick the check-in day and the check-out day (which can be the day after the trip ends).
+// The hotel is added to each night in between; the line below says how many nights that is.
+function stayRange(trip, di){
+  const n = trip.days.length; const a = Math.max(0, Math.min(n - 1, S.hFrom ?? di));
+  const b = Math.max(a + 1, Math.min(n, S.hTo ?? a + 1));
+  return [a, b];
+}
+function stayPickHTML(trip, di){
+  const [a, b] = stayRange(trip, di); const n = trip.days.length;
+  const dayName = j => { const d = trip.days[j]; return `Day ${j + 1}${okDate(d.date) ? ', ' + dShort(d.date) : ''}`; };
+  const outName = j => j < n ? dayName(j) : (okDate(trip.days[n - 1].date) ? `${dShort(addDaysISO(trip.days[n - 1].date, 1))}, after the trip` : 'The day after the trip');
+  const ins = trip.days.map((d, j) => `<option value="${esc(j)}" ${j === a ? 'selected' : ''}>${esc(dayName(j) + (d.city ? ', ' + cityName(d.city) : ''))}</option>`).join('');
+  const outs = []; for(let j = a + 1; j <= n; j++) outs.push(`<option value="${esc(j)}" ${j === b ? 'selected' : ''}>${esc(outName(j))}</option>`);
+  const nights = b - a; const ad = trip.days[a].date, bd = b < n ? trip.days[b].date : (okDate(trip.days[n - 1].date) ? addDaysISO(trip.days[n - 1].date, 1) : '');
+  const when = okDate(ad) && okDate(bd) ? `, ${dShort(ad)} to ${dShort(bd)}` : `, Day ${a + 1} to ${b < n ? 'Day ' + (b + 1) : 'after the trip'}`;
+  return `<div class="grid2"><div class="field"><label for="hfrom">Check-in</label><select id="hfrom" class="input" data-in="hfrom">${ins}</select></div><div class="field"><label for="hto">Check-out</label><select id="hto" class="input" data-in="hto">${outs.join('')}</select></div></div>
+    <p class="stay-nights" id="staynights" aria-live="polite"><b>${esc(nights)} ${nights === 1 ? 'night' : 'nights'}</b>${esc(when)}</p>`;
+}
 function addCityHint(){ const t = T(); const di = S.addDay != null ? S.addDay : S.day; const d = t && t.days[di]; return d ? cityName(d.city) : ''; }
 function addPanelHTML(i){
   const trip = T(); const t = S.addType; const di = S.addDay != null ? S.addDay : i; const step = t === 'do' || t === 'move';
@@ -354,7 +372,7 @@ function addPanelHTML(i){
       : `<div class="field"><label for="alink">Google Maps link</label><textarea id="alink" class="input" rows="2" data-in="alink" placeholder="https://maps.app.goo.gl/">${esc(S.link)}</textarea></div><div id="alinkres">${linkResHTML()}</div>`;
     const cat = t === 'activity' ? `<div class="field"><span class="label" id="lbl-cat">Type</span><div class="chips" role="group" aria-labelledby="lbl-cat"><button type="button" class="chip" data-act="acat" data-c="attraction" aria-pressed="${S.addCat === 'attraction'}"><span class="cat-ic c-sight">${I('pin','sm')}</span>Sight</button><button type="button" class="chip" data-act="acat" data-c="food" aria-pressed="${S.addCat === 'food'}"><span class="cat-ic c-food">${I('bowl','sm')}</span>Food</button></div></div>` : '';
     const days = t === 'hotel'
-      ? `<div class="grid2"><div class="field"><label for="hfrom">First night</label><select id="hfrom" class="input" data-in="hfrom">${dayOpts(S.hFrom ?? di)}</select></div><div class="field"><label for="hto">Last night</label><select id="hto" class="input" data-in="hto">${dayOpts(S.hTo ?? di)}</select></div></div><p class="sub">The hotel is added to every day from the first night to the last.</p>`
+      ? stayPickHTML(trip, di)
       : dayField;
     main = `${cat}${how}${finder}${days}`;
   }
