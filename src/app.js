@@ -235,10 +235,11 @@ function saveNow(){
   try{ localStorage.setItem(LS_KEY, JSON.stringify(library)); }catch(e){ ok = false; }
   setSaveFail(!ok);
 }
+// Redraws only when saving starts or stops failing (to show or hide the warning), never on a normal
+// save: a redraw after every save took the cursor out of the box you were typing in.
 function setSaveFail(fail){
-  const ok = !fail;
-  if(ok !== !S.saveFail) return;
-  S.saveFail = !ok; render();
+  if(!!fail === !!S.saveFail) return;
+  S.saveFail = !!fail; render();
 }
 function saveSoon(){ clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 300); }
 // Call after any change to a trip. Marks it for sync and saves on this device.
