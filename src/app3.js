@@ -300,7 +300,7 @@ function addPlace(noPin = false){
   const trip = T(); const t = S.addType; const di = S.addDay != null ? S.addDay : S.day; const day = trip.days[di];
   if(t === 'do' || t === 'move'){
     if(!S.sWhat.trim()){ S.addErr = t === 'do' ? 'Say what the activity is first.' : 'Add the route or details first.'; render(); return; }
-    day.logistics.push({ time:S.sTime, desc:S.sWhat.trim(), kind: t === 'do' ? 'activity' : 'transport' });
+    day.logistics.push(Object.assign({ time:S.sTime, desc:S.sWhat.trim(), kind: t === 'do' ? 'activity' : 'transport' }, S.addNote.trim() ? { note:S.addNote.trim() } : {}));
     announce(`Added ${S.sWhat.trim()} to Day ${di + 1}`);
   } else if(t === 'flight'){
     if(!S.fName.trim()){ S.addErr = 'Enter the flight name or number first.'; render(); return; }
@@ -598,6 +598,7 @@ document.addEventListener('input', e => {
     case 'dnotes': d.notes = t.value; changed(); break;
     case 'ttime': d.logistics[+t.dataset.k].time = t.value; changed(); break;
     case 'tdesc': d.logistics[+t.dataset.k].desc = t.value; changed(); break;
+    case 'tnote': d.logistics[+t.dataset.k].note = t.value; changed(); break;
     case 'pnote': findPlace(t.dataset.id).p.note = t.value; changed(); break;
     case 'pname': { const f = findPlace(t.dataset.id); const old = f.p.name; f.p.name = t.value; if(f.p.type === 'hotel') trip.days.forEach(dd => dd.places.forEach(p => { if(p.type === 'hotel' && p.name === old) p.name = t.value; })); changed(); } break;
     case 'ptime': findPlace(t.dataset.id).p.time = t.value; changed(); break;

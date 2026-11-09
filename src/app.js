@@ -56,6 +56,15 @@ function gmapsHref(p){
 // into Chinese text, so the link stops at the first character a link can't have.
 const linkIn = text => { const m = String(text || '').match(/https?:\/\/[\x21-\x7e]+/); return m ? cleanGmap(m[0].replace(/^http:/, 'https:').replace(/[)\]】,，。]+$/, '')) : ''; };
 const num0 = v => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+// Notes keep their line breaks, and lines starting with "-", "*" or "•" show as bullet points.
+// Everything is escaped first, so a note can't carry HTML.
+function noteHTML(text){
+  const lines = String(text || '').split(/\r?\n/); let out = '', list = [], para = [];
+  const flushP = () => { if(para.length){ out += `<p>${para.join('<br>')}</p>`; para = []; } };
+  const flushL = () => { if(list.length){ out += `<ul>${list.map(x => `<li>${x}</li>`).join('')}</ul>`; list = []; } };
+  lines.forEach(l => { const m = l.match(/^\s*[-*•·]\s+(.*)$/); if(m){ flushP(); list.push(esc(m[1])); } else if(!l.trim()){ flushP(); flushL(); } else { flushL(); para.push(esc(l)); } });
+  flushP(); flushL(); return out;
+}
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const I = (name, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -152,6 +161,7 @@ function migrateState(t){
       l.time = normalizeTimeForInput(l.time);
       if(typeof l.desc !== 'string') l.desc = String(l.desc || '');
       if(l.kind !== 'activity') l.kind = 'transport';
+      if(l.note !== undefined && typeof l.note !== 'string') l.note = String(l.note || '');
     });
     d.places.forEach(p => {
       p.id = cleanId(p.id, seen);

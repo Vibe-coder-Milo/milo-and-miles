@@ -238,3 +238,7 @@ input.input[type="date"]::-webkit-date-and-time-value, input.input[type="time"]:
 .stay-nights b { color: var(--color-ink); }
 /* Map buttons (Leaflet's zoom controls, the full-screen button) stay inside their map, so dialogs cover them. */
 .mapbox, .tmapwrap, .fp-map { isolation: isolate; }
+
+/* notes: line breaks kept, "-" lines as bullets */
+.notes p { margin: 0; } .notes p + p, .notes ul + p, .notes p + ul { margin-top: var(--space-2xs); }
+.notes ul { margin: 0; padding-left: 1.2em; } .notes li { margin: 0; } .notes li::marker { color: var(--color-muted); }

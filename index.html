@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-P/MvDxTmgqufOJaytV8h1RzmejXwohNmMpgSHPcD6jg=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-hzII241FmCzEdeG8i5pdqpd0RskwbDOTS7bZLgWe8Z8=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Milo &amp; Miles</title>
 <meta name="description" content="Plan each trip day by day: places, hotels, flights, a map and spending.">
@@ -897,6 +897,10 @@ input.input[type="date"]::-webkit-date-and-time-value, input.input[type="time"]:
 .stay-nights b { color: var(--color-ink); }
 /* Map buttons (Leaflet's zoom controls, the full-screen button) stay inside their map, so dialogs cover them. */
 .mapbox, .tmapwrap, .fp-map { isolation: isolate; }
+
+/* notes: line breaks kept, "-" lines as bullets */
+.notes p { margin: 0; } .notes p + p, .notes ul + p, .notes p + ul { margin-top: var(--space-2xs); }
+.notes ul { margin: 0; padding-left: 1.2em; } .notes li { margin: 0; } .notes li::marker { color: var(--color-muted); }
 </style>
 </head>
 <body>
@@ -996,6 +1000,15 @@ function gmapsHref(p){
 // into Chinese text, so the link stops at the first character a link can't have.
 const linkIn = text => { const m = String(text || '').match(/https?:\/\/[\x21-\x7e]+/); return m ? cleanGmap(m[0].replace(/^http:/, 'https:').replace(/[)\]】,，。]+$/, '')) : ''; };
 const num0 = v => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+// Notes keep their line breaks, and lines starting with "-", "*" or "•" show as bullet points.
+// Everything is escaped first, so a note can't carry HTML.
+function noteHTML(text){
+  const lines = String(text || '').split(/\r?\n/); let out = '', list = [], para = [];
+  const flushP = () => { if(para.length){ out += `<p>${para.join('<br>')}</p>`; para = []; } };
+  const flushL = () => { if(list.length){ out += `<ul>${list.map(x => `<li>${x}</li>`).join('')}</ul>`; list = []; } };
+  lines.forEach(l => { const m = l.match(/^\s*[-*•·]\s+(.*)$/); if(m){ flushP(); list.push(esc(m[1])); } else if(!l.trim()){ flushP(); flushL(); } else { flushL(); para.push(esc(l)); } });
+  flushP(); flushL(); return out;
+}
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const I = (name, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -1092,6 +1105,7 @@ function migrateState(t){
       l.time = normalizeTimeForInput(l.time);
       if(typeof l.desc !== 'string') l.desc = String(l.desc || '');
       if(l.kind !== 'activity') l.kind = 'transport';
+      if(l.note !== undefined && typeof l.note !== 'string') l.note = String(l.note || '');
     });
     d.places.forEach(p => {
       p.id = cleanId(p.id, seen);
@@ -2106,7 +2120,7 @@ function scrOverview(){
     const rows = plan.map(e => {
       if(e.kind === 'divider') return '<li class="anytime">Any time</li>';
       const grip = (what, idx, name) => `<button type="button" class="handle" data-drag="ov" data-what="${what}" data-day="${esc(i)}" data-idx="${esc(idx)}" aria-label="Move ${esc(name)}: drag, or use arrow keys (up and down within the day, left and right to another day)">${I('grip')}</button>`;
-      if(e.kind === 'place'){ const p = e.p; return `<li class="ovrow" data-row="p:${esc(i)}:${esc(e.pi)}"><span class="pt">${esc(e.t || '')}</span>${grip('p', e.pi, p.name)}<span class="badge c-${p.category}">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-${p.category}">${I(placeIcon(p),'sm')}</span>${esc(p.name)}</b>${p.note ? `<span class="ovnote">${esc(p.note)}</span>` : ''}</div></li>`; }
+      if(e.kind === 'place'){ const p = e.p; return `<li class="ovrow" data-row="p:${esc(i)}:${esc(e.pi)}"><span class="pt">${esc(e.t || '')}</span>${grip('p', e.pi, p.name)}<span class="badge c-${p.category}">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-${p.category}">${I(placeIcon(p),'sm')}</span>${esc(p.name)}</b>${p.note ? `<div class="ovnote notes">${noteHTML(p.note)}</div>` : ''}</div></li>`; }
       if(e.kind === 'step') return `<li class="ovrow" data-row="s:${esc(i)}:${esc(e.k)}"><span class="pt">${esc(e.t || '')}</span>${grip('s', e.k, e.d || 'this step')}<span class="badge c-${esc(e.sk)}">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-${esc(e.sk)}">${I(STEPIC[e.sk],'sm')}</span>${esc(e.d) || 'No description'}</b></div></li>`;
       const fp = e.p; const lands = e.t && e.t === fp.arriveTime && fp.arriveTime !== fp.departTime;
       return `<li class="ovrow" data-row="f:${esc(i)}:${esc(e.pi)}"><span class="pt">${esc(e.t || '')}</span><span></span><span class="badge c-air">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-air">${I('plane','sm')}</span>${esc(fp.name)}</b><span class="ovnote">${e.t ? `${lands ? 'Lands' : 'Departs'} ${esc(e.t)}` : 'Times not set'}${fp.note ? '. ' + esc(fp.note) : ''}</span></div></li>`;
@@ -2116,7 +2130,7 @@ function scrOverview(){
       <div class="ov-body">
         <h3><button type="button" class="row-open" data-act="day" data-i="${esc(i)}">${esc(d.city) || 'Where to?'}</button></h3>
         ${hotels.length ? `<ul class="facts">${hotels.map(h => `<li><span class="cat-ic c-hotel">${I('bed','sm')}</span>${esc(h)}</li>`).join('')}</ul>` : ''}
-        ${d.notes ? `<p class="ovdaynote">${esc(d.notes)}</p>` : ''}
+        ${d.notes ? `<div class="ovdaynote notes">${noteHTML(d.notes)}</div>` : ''}
         ${plan.length ? `<ol class="ovplan">${rows}</ol>` : '<p class="sub">Nothing planned yet. Drop a place here from another day.</p>'}
       </div>
       <div class="ov-move"><button type="button" class="btn btn--quiet daymove" data-act="moveday" data-i="${esc(i)}" data-d="-1" aria-label="Move Day ${i + 1} earlier" ${i === 0 ? 'disabled' : ''}>${I('up','sm')}<span class="lbl">Earlier</span></button><button type="button" class="btn btn--quiet daymove" data-act="moveday" data-i="${esc(i)}" data-d="1" aria-label="Move Day ${i + 1} later" ${i === t.days.length - 1 ? 'disabled' : ''}>${I('down','sm')}<span class="lbl">Later</span></button></div>
@@ -2151,7 +2165,7 @@ function itemHTML(p, i, pi, t = null, n = null){
   return `<li class="item ${timed ? 'timed' : ''}" ${p.type === 'activity' ? `data-drag-item="p:${esc(i)}:${esc(pi)}"` : ''}>
     ${timed ? `<span class="pt">${esc(t || '')}</span>` : ''}${p.type === 'activity' ? `<button type="button" class="handle" data-drag="it" data-what="p" data-day="${esc(i)}" data-idx="${esc(pi)}" aria-label="Move ${esc(p.name)}: drag, or use arrow keys">${I('grip')}</button>` : '<span></span>'}${badge}
     <div class="item-main"><div class="item-name">${n != null ? `<span class="cat-ic ${cls}">${I(placeIcon(p),'sm')}</span>` : ''}${p.lat != null ? `<button type="button" class="row-open" data-act="showpin" data-id="${esc(p.id)}" aria-label="Show ${esc(p.name)} on the map">${esc(p.name)}</button>` : esc(p.name)}</div>${sub ? `<div class="item-sub">${esc(sub)}</div>` : ''}
-      ${p.note && !editing ? `<p class="item-note">${esc(p.note)}</p>` : ''}
+      ${p.note && !editing ? `<div class="item-note notes">${noteHTML(p.note)}</div>` : ''}
       ${noPin ? `<div class="nomap">${I('alert','sm')}Not on the map yet. <button type="button" class="link" data-act="pick" data-id="${esc(p.id)}">Drop a pin</button></div>` : ''}${edit}</div>
     <span class="item-acts">${editing ? '' : `<button type="button" class="iconbtn" data-act="edititem" data-id="${esc(p.id)}" aria-label="Edit ${esc(p.name)}">${I('pen')}</button>`}<button type="button" class="iconbtn" data-act="delplace" data-id="${esc(p.id)}" aria-label="Remove ${esc(p.name)}">${I('x')}</button></span></li>`;
 }
@@ -2160,8 +2174,8 @@ function stepHTML(e, i){
   const grip = `<button type="button" class="handle" data-drag="it" data-what="s" data-day="${esc(i)}" data-idx="${esc(k)}" aria-label="Move ${esc(s.desc || 'this step')}: drag, or use arrow keys">${I('grip')}</button>`;
   if(S.editTime === k) return `<li class="item timed step editing" data-drag-item="s:${esc(i)}:${esc(k)}"><span class="pt">${esc(s.time || '')}</span>${grip}<span class="badge c-${esc(sk)}">${e.n}</span>
     <div class="item-main"><div class="item-name"><span class="cat-ic c-${esc(sk)}">${I(STEPIC[sk],'sm')}</span>${esc(s.desc) || 'New step'}</div><div class="item-edit"><div class="seg" role="group" aria-label="Kind of step"><button type="button" data-act="stepkind" data-k="${esc(k)}" data-v="activity" aria-pressed="${sk === 'activity'}">Activity</button><button type="button" data-act="stepkind" data-k="${esc(k)}" data-v="transport" aria-pressed="${sk === 'transport'}">Transport</button></div><div class="field" style="max-width:12rem"><label for="tt${esc(k)}">Time</label><input id="tt${esc(k)}" type="time" class="input num" data-in="ttime" data-k="${esc(k)}" value="${esc(s.time || '')}"></div>
-    <div class="field"><label for="td${esc(k)}">What happens</label><textarea id="td${esc(k)}" class="input" rows="2" data-in="tdesc" data-k="${esc(k)}" placeholder="Grab to the airport, meet the driver in the lobby">${esc(s.desc)}</textarea></div>${moveSelect(`ms${esc(i)}-${esc(k)}`, `data-in="movestep" data-k="${esc(k)}"`, i)}<div><button type="button" class="btn" data-act="donetime">Done</button></div></div></div><span class="item-acts"></span></li>`;
-  return `<li class="item timed step" data-drag-item="s:${esc(i)}:${esc(k)}"><span class="pt">${esc(s.time || '')}</span>${grip}<span class="badge c-${esc(sk)}">${e.n}</span><div class="item-main"><div class="item-name"><span class="cat-ic c-${esc(sk)}">${I(STEPIC[sk],'sm')}</span>${esc(s.desc) || '<span class="sub">No description</span>'}</div></div>
+    <div class="field"><label for="td${esc(k)}">What happens</label><textarea id="td${esc(k)}" class="input" rows="2" data-in="tdesc" data-k="${esc(k)}" placeholder="Grab to the airport, meet the driver in the lobby">${esc(s.desc)}</textarea></div><div class="field"><label for="tn${esc(k)}">Notes</label><textarea id="tn${esc(k)}" class="input" rows="3" data-in="tnote" data-k="${esc(k)}" placeholder="Booking number, meeting point, what to bring. Start a line with - for a bullet">${esc(s.note || '')}</textarea></div>${moveSelect(`ms${esc(i)}-${esc(k)}`, `data-in="movestep" data-k="${esc(k)}"`, i)}<div><button type="button" class="btn" data-act="donetime">Done</button></div></div></div><span class="item-acts"></span></li>`;
+  return `<li class="item timed step" data-drag-item="s:${esc(i)}:${esc(k)}"><span class="pt">${esc(s.time || '')}</span>${grip}<span class="badge c-${esc(sk)}">${e.n}</span><div class="item-main"><div class="item-name"><span class="cat-ic c-${esc(sk)}">${I(STEPIC[sk],'sm')}</span>${esc(s.desc) || '<span class="sub">No description</span>'}</div>${s.note ? `<div class="item-note notes">${noteHTML(s.note)}</div>` : ''}</div>
     <span class="item-acts"><button type="button" class="iconbtn" data-act="edittime" data-k="${esc(k)}" aria-label="Edit ${esc(s.desc || 'this step')}">${I('pen')}</button><button type="button" class="iconbtn" data-act="deltime" data-k="${esc(k)}" aria-label="Remove ${esc(s.desc || 'this step')}">${I('x')}</button></span></li>`;
 }
 // The trip map with its controls. Itinerary shows it beside the day; Overview shows it above the days.
@@ -2343,7 +2357,7 @@ function scrItinerary(){
   return `<div class="screen it-screen" style="gap:var(--space-xl)">${syncBanner()}${pageHead(true, `<nav class="daystrip" aria-label="Days">${tabs}</nav>`)}
     <div class="it-grid">
       <div class="plan">
-        <div class="dayhead"><div><h2 style="font-size:var(--text-display)">${esc(d.city) || 'Where to?'}</h2><p>Day ${i + 1}, ${dLong(d.date)}</p>${!S.editDay && d.notes ? `<p class="daynote">${esc(d.notes)}</p>` : ''}</div>
+        <div class="dayhead"><div><h2 style="font-size:var(--text-display)">${esc(d.city) || 'Where to?'}</h2><p>Day ${i + 1}, ${dLong(d.date)}</p>${!S.editDay && d.notes ? `<div class="daynote notes">${noteHTML(d.notes)}</div>` : ''}</div>
           <div class="chips"><button type="button" class="btn" data-act="editday" aria-pressed="${!!S.editDay}">${I('pen','sm')}Edit day</button><button type="button" class="btn btn--primary" data-act="dialog" data-d="add">${I('plus','sm')}Add to this day</button></div></div>
         ${i === ti ? nextUp(i) : ''}
         ${editDay}
@@ -2403,7 +2417,7 @@ function addPanelHTML(i){
   const tb = (k, ic, cls, label) => `<button type="button" data-act="atype" data-t="${esc(k)}" aria-pressed="${t === k}"><span class="cat-ic ${cls}">${I(ic,'sm')}</span>${label}</button>`;
   return `<div class="seg addtypes" role="group" aria-label="What to add">${tb('activity','pin','c-sight','Place')}${tb('do','flag','c-activity','Activity')}${tb('move','train','c-transport','Transport')}${tb('hotel','bed','c-hotel','Hotel')}${tb('flight','plane','c-air','Flight')}</div>
     ${main}
-    ${step ? '' : `<div class="field"><label for="anote">Note</label><textarea id="anote" class="input" rows="2" data-in="anote" placeholder="${t === 'flight' ? 'Booking reference, seat, terminal, bags' : t === 'hotel' ? 'Room type, check-in time, breakfast' : 'Why you picked it, what to order'}">${esc(S.addNote)}</textarea>
+    ${step ? `<div class="field"><label for="anote">Notes</label><textarea id="anote" class="input" rows="3" data-in="anote" placeholder="${t === 'do' ? 'Booking number, meeting point, what to bring' : 'Platform, ticket, transfer'}. Start a line with - for a bullet">${esc(S.addNote)}</textarea></div>` : `<div class="field"><label for="anote">Note</label><textarea id="anote" class="input" rows="2" data-in="anote" placeholder="${t === 'flight' ? 'Booking reference, seat, terminal, bags' : t === 'hotel' ? 'Room type, check-in time, breakfast' : 'Why you picked it, what to order'}">${esc(S.addNote)}</textarea>
       ${t !== 'flight' ? `<div><button type="button" class="link" data-act="wiki">Fill in a description from Wikipedia</button></div>` : ''}<div id="wikires">${S.wiki ? `<p class="desc">${esc(S.wiki)}</p>` : ''}</div></div>`}
     ${S.addErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.addErr)}${S.addErr.includes('without a location') ? ` <button type="button" class="link" data-act="addnopin">Add it without a location</button>` : ''}</p>` : ''}<div><button type="button" class="btn btn--primary" data-act="addplace">${({ flight:'Add the flight', hotel:'Add the hotel', do:'Add the activity', move:'Add the transport' })[t] || 'Add the place'}</button></div>
 `;
@@ -2890,7 +2904,7 @@ function addPlace(noPin = false){
   const trip = T(); const t = S.addType; const di = S.addDay != null ? S.addDay : S.day; const day = trip.days[di];
   if(t === 'do' || t === 'move'){
     if(!S.sWhat.trim()){ S.addErr = t === 'do' ? 'Say what the activity is first.' : 'Add the route or details first.'; render(); return; }
-    day.logistics.push({ time:S.sTime, desc:S.sWhat.trim(), kind: t === 'do' ? 'activity' : 'transport' });
+    day.logistics.push(Object.assign({ time:S.sTime, desc:S.sWhat.trim(), kind: t === 'do' ? 'activity' : 'transport' }, S.addNote.trim() ? { note:S.addNote.trim() } : {}));
     announce(`Added ${S.sWhat.trim()} to Day ${di + 1}`);
   } else if(t === 'flight'){
     if(!S.fName.trim()){ S.addErr = 'Enter the flight name or number first.'; render(); return; }
@@ -3188,6 +3202,7 @@ document.addEventListener('input', e => {
     case 'dnotes': d.notes = t.value; changed(); break;
     case 'ttime': d.logistics[+t.dataset.k].time = t.value; changed(); break;
     case 'tdesc': d.logistics[+t.dataset.k].desc = t.value; changed(); break;
+    case 'tnote': d.logistics[+t.dataset.k].note = t.value; changed(); break;
     case 'pnote': findPlace(t.dataset.id).p.note = t.value; changed(); break;
     case 'pname': { const f = findPlace(t.dataset.id); const old = f.p.name; f.p.name = t.value; if(f.p.type === 'hotel') trip.days.forEach(dd => dd.places.forEach(p => { if(p.type === 'hotel' && p.name === old) p.name = t.value; })); changed(); } break;
     case 'ptime': findPlace(t.dataset.id).p.time = t.value; changed(); break;
