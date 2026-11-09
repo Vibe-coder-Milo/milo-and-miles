@@ -38,7 +38,10 @@ const SAFE_ID = /^[A-Za-z0-9_-]{1,40}$/;
 const cleanId = (v, seen) => { let id = typeof v === 'string' && SAFE_ID.test(v) && !(seen && seen.has(v)) ? v : uid(); if(seen) seen.add(id); return id; };
 // A Google Maps link kept with a place (the one it was added from), and Google's id for a place.
 const GMAP_LINK = /^https:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/kgs|(www\.)?google\.[a-z.]{2,12}\/maps|maps\.google\.[a-z.]{2,12})\/[^\s"'<>]*$/;
-const cleanGmap = v => typeof v === 'string' && v.length <= 2000 && GMAP_LINK.test(v) ? v : '';
+// Amap (高德地图) links: the short surl.amap.com ones and the full ones on any amap.com address.
+const AMAP_LINK = /^https:\/\/([a-z0-9-]+\.)?amap\.com\/[^\s"'<>]*$/i;
+const isAmap = v => typeof v === 'string' && AMAP_LINK.test(v);
+const cleanGmap = v => typeof v === 'string' && v.length <= 2000 && (GMAP_LINK.test(v) || AMAP_LINK.test(v)) ? v : '';
 const cleanPlaceId = v => typeof v === 'string' && /^[A-Za-z0-9_-]{10,300}$/.test(v) ? v : '';
 // Opens the place itself in Google Maps: the link it came from, else Google's id for it, else a search for
 // its name around its pin. A bare position only shows a dropped pin, not the place.
@@ -49,8 +52,9 @@ function gmapsHref(p){
   if(p.name && p.lat != null) return `https://www.google.com/maps/search/${encodeURIComponent(q)}/@${(+p.lat).toFixed(6)},${(+p.lon).toFixed(6)},17z`;
   return `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}`;
 }
-// The Google Maps link in pasted text, made https.
-const linkIn = text => { const m = String(text || '').match(/https?:\/\/\S+/); return m ? cleanGmap(m[0].replace(/^http:/, 'https:')) : ''; };
+// The map link in pasted text (Google Maps or Amap), made https. Amap's share text can run straight on
+// into Chinese text, so the link stops at the first character a link can't have.
+const linkIn = text => { const m = String(text || '').match(/https?:\/\/[\x21-\x7e]+/); return m ? cleanGmap(m[0].replace(/^http:/, 'https:').replace(/[)\]】,，。]+$/, '')) : ''; };
 const num0 = v => { const n = Number(v); return Number.isFinite(n) ? n : null; };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const I = (name, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -597,9 +601,73 @@ const townKey = s => String(s || '').toLowerCase().replace(/\b(shi|qu|xian|zhen|
 const stripTown = s => String(s || '').replace(/\s+(Shi|Qu|Xian|Zhen|City|Ku)$/i, '').trim();
 // Distance in km between two {lat, lon} points.
 function nearKm(a, b){ const R = Math.PI / 180, x = (b.lon - a.lon) * R * Math.cos((a.lat + b.lat) / 2 * R), y = (b.lat - a.lat) * R; return Math.hypot(x, y) * 6371; }
+/* ===== Amap (高德地图) =====
+   Amap, like every map made in mainland China, uses GCJ-02: positions shifted by 100 to 700 m from the
+   true (WGS-84) ones that the free map, the search and the world map use. Amap positions are moved back.
+   Hong Kong, Macau and Taiwan are left as they are. */
+function outsideGcj(lat, lon){
+  if(lon < 72.004 || lon > 137.8347 || lat < 0.8293 || lat > 55.8271) return true;
+  if(lat > 22.13 && lat < 22.57 && lon > 113.82 && lon < 114.45) return true; // Hong Kong
+  if(lat > 22.10 && lat < 22.22 && lon > 113.52 && lon < 113.61) return true; // Macau
+  if(lat > 21.8 && lat < 25.4 && lon > 119.9 && lon < 122.1) return true;    // Taiwan
+  return false;
+}
+function wgsToGcj(lat, lon){
+  const a = 6378245.0, ee = 0.00669342162296594323, x = lon - 105.0, y = lat - 35.0;
+  let dLat = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x));
+  dLat += (20.0 * Math.sin(6.0 * x * Math.PI) + 20.0 * Math.sin(2.0 * x * Math.PI)) * 2.0 / 3.0;
+  dLat += (20.0 * Math.sin(y * Math.PI) + 40.0 * Math.sin(y / 3.0 * Math.PI)) * 2.0 / 3.0;
+  dLat += (160.0 * Math.sin(y / 12.0 * Math.PI) + 320 * Math.sin(y * Math.PI / 30.0)) * 2.0 / 3.0;
+  let dLon = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x));
+  dLon += (20.0 * Math.sin(6.0 * x * Math.PI) + 20.0 * Math.sin(2.0 * x * Math.PI)) * 2.0 / 3.0;
+  dLon += (20.0 * Math.sin(x * Math.PI) + 40.0 * Math.sin(x / 3.0 * Math.PI)) * 2.0 / 3.0;
+  dLon += (150.0 * Math.sin(x / 12.0 * Math.PI) + 300.0 * Math.sin(x / 30.0 * Math.PI)) * 2.0 / 3.0;
+  const rad = lat / 180.0 * Math.PI; let magic = Math.sin(rad); magic = 1 - ee * magic * magic; const sq = Math.sqrt(magic);
+  dLat = (dLat * 180.0) / ((a * (1 - ee)) / (magic * sq) * Math.PI); dLon = (dLon * 180.0) / (a / sq * Math.cos(rad) * Math.PI);
+  return [lat + dLat, lon + dLon];
+}
+function gcjToWgs(lat, lon){
+  if(outsideGcj(lat, lon)) return [lat, lon];
+  let wl = lat, wn = lon;
+  for(let i = 0; i < 4; i++){ const [gl, gn] = wgsToGcj(wl, wn); wl += lat - gl; wn += lon - gn; }
+  return [+wl.toFixed(6), +wn.toFixed(6)];
+}
+// The place name in Amap's share text, e.g. "【高德地图】广济桥 广东省潮州市湘桥区… https://surl.amap.com/…".
+function amapText(raw){
+  let s = String(raw || '').replace(/https?:\/\/[\x21-\x7e]+/g, ' ').replace(/【[^】]*】/g, ' ');
+  s = s.replace(/^[^：:\n]*(?:高德地图|Amap)[^：:\n]*[：:]/i, ' ').replace(/(复制|打开|点击)[^\n]*$/g, ' ').trim();
+  const first = (s.split(/\n+/).map(x => x.trim()).filter(Boolean)[0] || '');
+  const name = /[\u4e00-\u9fff]/.test(first) ? first.split(/[\s,，]+/)[0] : splitPlaceText(first).name;
+  const townM = s.match(/([\u4e00-\u9fff]{2,4})市/); // the city in an address like 广东省潮州市…
+  return { name:name || '', town:townM ? townM[1] : '', query:[name, townM ? townM[1] : ''].filter(Boolean).join(' ') };
+}
+// A position in an Amap link: any longitude,latitude pair (or latitude,longitude, as in its p= field).
+// Inside China a longitude is always the bigger number, so the order is never in doubt.
+function parseAmap(t, raw){
+  let u = t; try{ u = decodeURIComponent(t); }catch(e){}
+  const text = amapText(raw);
+  let name = text.name, pos = null;
+  const param = k => { const m = u.match(new RegExp('[?&]' + k + '=([^&#]*)')); return m ? m[1].replace(/\+/g, ' ') : ''; };
+  const pf = param('p').split(','); // p=POI id,lat,lon,name,address
+  if(pf.length >= 3 && isFinite(pf[1]) && isFinite(pf[2])){ pos = [+pf[1], +pf[2]]; if(pf[3]) name = pf[3]; }
+  if(!pos){
+    const re = /(-?\d{1,3}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})/g; let m;
+    while(!pos && (m = re.exec(u))){ const a = +m[1], b = +m[2]; if(a >= 73 && a <= 136 && b >= 3 && b <= 54) pos = [b, a]; else if(b >= 73 && b <= 136 && a >= 3 && a <= 54) pos = [a, b]; }
+  }
+  name = param('name') || param('destName') || param('title') || name;
+  if(pos){ const [lat, lon] = gcjToWgs(pos[0], pos[1]); return { kind:'coords', lat, lon, name:name || 'Pinned place', via:'link', map:'amap' }; }
+  if(/surl\.amap\.com/i.test(t)) return { kind:'short', url:t, name, town:text.town, query:text.query, map:'amap' };
+  return name ? { kind:'nameonly', name, town:text.town, query:text.query || name } : { kind:'unknown' };
+}
 function parseMaps(text){
   const raw = (text || '').trim(); if(!raw) return { kind:'empty' };
   const urlM = raw.match(/https?:\/\/\S+/); const t = urlM ? urlM[0] : raw;
+  // Amap's short links are plain letters, so they stop at the first Chinese character (share text runs on
+  // into it). Full links can carry Chinese names, so they run to the next space, less any "copy/open" tail.
+  const amapShort = raw.match(/https?:\/\/surl\.amap\.com\/[\x21-\x7e]*/i);
+  const amapLong = !amapShort && raw.match(/https?:\/\/([a-z0-9-]+\.)?amap\.com\/\S*/i);
+  if(amapShort) return parseAmap(amapShort[0], raw);
+  if(amapLong) return parseAmap(amapLong[0].replace(/(复制|打开|點擊|点击).*$/, ''), raw);
   const lines = raw.split(/\n+/).map(s => s.trim()).filter(s => s && !/^https?:\/\//.test(s));
   const num = '(-?\\d{1,3}\\.\\d+)';
   // !3d…!4d… and q=lat,lon are the place itself. @lat,lon is only where the map was centred.
@@ -648,7 +716,9 @@ async function resolveLink(){
     try{
       const res = await fetch(library.helperUrl + (library.helperUrl.includes('?') ? '&' : '?') + 'u=' + encodeURIComponent(r.url));
       const j = await res.json(); if(seq !== linkSeq) return;
-      const r2 = j && j.url ? parseMaps(j.url) : { kind:'unknown' };
+      // For Amap the reader may also send `found`: a full Amap link it found in the page the short link opens.
+      let r2 = j && j.url ? parseMaps(j.url) : { kind:'unknown' };
+      if(r2.kind !== 'coords' && j && j.found) r2 = parseMaps(j.found);
       const parts = j && j.q ? splitPlaceText(j.q) : r2;
       // The name: from the link if it has one, else from the reader's search text, else what was pasted with it.
       const name = [r2.name, parts.name, r.name].find(n => n && n !== 'Pinned place') || 'Pinned place';
@@ -657,7 +727,7 @@ async function resolveLink(){
       else if(r2.kind === 'coords') r = geo && nearKm(geo, r2) < 30 ? geo : Object.assign(r2, { name, query:parts.query || r2.query || r.query || '' });
       else if(geo) r = geo;
       else if(parts && parts.query) r = Object.assign({ kind:'nameonly' }, parts);
-      else r = { kind:'helperfail', detail:j && j.error };
+      else r = { kind:'helperfail', detail:r.map === 'amap' && j && /Not a Google Maps/.test(j.error || '') ? 'Your short-link reader is the older version, which only reads Google links. Copy the new script from Settings to read Amap links too' : j && j.error };
     }catch(e){ if(seq !== linkSeq) return; r = { kind:'helperfail' }; }
   }
   // Only the map's centre is known: search for the place by name and use it if it is nearby.
@@ -678,7 +748,7 @@ async function resolveLink(){
 }
 function linkResHTML(){
   const r = S.linkRes || { kind:'empty' };
-  if(r.kind === 'empty') return `<p class="sub">In Google Maps, tap Share, then Copy link, and paste it here. Short and full links both work.</p>`;
+  if(r.kind === 'empty') return `<p class="sub">In Google Maps or Amap (高德地图), tap Share, then Copy link, and paste it here. Short and full links both work.</p>`;
   if(r.kind === 'loading') return `<p class="sub">Reading the link…</p>`;
   if(r.kind === 'coords') return `<div class="result ok">${I('check')}<div><span class="num">${r.lat.toFixed(5)}, ${r.lon.toFixed(5)}</span>${r.found && r.found !== r.name ? ` <span>${esc(r.found)}</span>` : ''}<br><span>${r.via === 'helper' ? 'Found through your short-link reader.' : r.via === 'name' ? 'The link had no exact location, so the pin comes from a search. Check it on the map after adding.' : r.via === 'view' ? 'The link only shows the area of the map, so the pin is roughly there. Check it on the map after adding.' : 'The location was read straight from the link.'}</span></div></div>
     <div class="field"><label for="lname">Name</label><input id="lname" class="input" data-in="lname" value="${esc(r.name)}"></div>`;
