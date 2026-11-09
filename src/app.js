@@ -162,6 +162,7 @@ function migrateState(t){
       if(typeof l.desc !== 'string') l.desc = String(l.desc || '');
       if(l.kind !== 'activity') l.kind = 'transport';
       if(l.note !== undefined && typeof l.note !== 'string') l.note = String(l.note || '');
+      if(l.o !== undefined && !Number.isFinite(l.o)) delete l.o; // its place in the day's order
     });
     d.places.forEach(p => {
       p.id = cleanId(p.id, seen);
@@ -173,6 +174,7 @@ function migrateState(t){
       if(p.address != null && typeof p.address !== 'string') p.address = String(p.address);
       if(p.gmap !== undefined && !(p.gmap = cleanGmap(p.gmap))) delete p.gmap;
       if(p.placeId !== undefined && !(p.placeId = cleanPlaceId(p.placeId))) delete p.placeId;
+      if(p.o !== undefined && !Number.isFinite(p.o)) delete p.o; // its place in the day's order
       const okLat = typeof p.lat === 'number' && Math.abs(p.lat) <= 90, okLon = typeof p.lon === 'number' && Math.abs(p.lon) <= 180;
       if(!okLat || !okLon){
         p.lat = null; p.lon = null;
@@ -304,7 +306,9 @@ function planOf(d){
   const extra = d.logistics.map((s, k) => ({ kind:'step', sk:s.kind || 'transport', t:s.time || '', d:s.desc || '', k }))
     .concat(d.places.map((p, pi) => ({ p, pi })).filter(x => x.p.type === 'flight').map(x => ({ kind:'flight', p:x.p, pi:x.pi, t:flightTime(x.p) })));
   const timed = places.filter(x => x.t).concat(extra.filter(x => x.t)).sort((a, b) => a.t.localeCompare(b.t) || (a.kind === 'place' ? 1 : -1));
-  const untimed = places.filter(x => !x.t).concat(extra.filter(x => !x.t));
+  // Untimed places and steps share one order (field o, set when you drag). Without it: places, then steps.
+  const ord = x => x.kind === 'place' ? (Number.isFinite(x.p.o) ? x.p.o : x.pi) : x.kind === 'step' ? (Number.isFinite(d.logistics[x.k].o) ? d.logistics[x.k].o : 1000 + x.k) : (Number.isFinite(x.p.o) ? x.p.o : 2000 + x.pi);
+  const untimed = places.filter(x => !x.t).concat(extra.filter(x => !x.t)).sort((a, b) => ord(a) - ord(b));
   // Numbers run through the whole trip: Day 2 carries on from where Day 1 stopped.
   const t = T(); let n = 0;
   if(t && t.days.includes(d)) for(const x of t.days){ if(x === d) break; n += x.places.filter(p => p.type === 'activity' || p.type === 'flight').length + x.logistics.length; }

@@ -665,21 +665,43 @@ document.addEventListener('keydown', e => {
   e.preventDefault();
   const t = T(); const what = h.dataset.what || 'p', day = +h.dataset.day, idx = +h.dataset.idx, key = what === 's' ? 'logistics' : 'places';
   const arr = t.days[day][key]; let toDay = day, toIdx;
+  const obj = rowObj(t, what, day, idx);
   if(e.key === 'ArrowUp' || e.key === 'ArrowDown'){
-    const step = e.key === 'ArrowUp' ? -1 : 1; let j = idx + step;
-    while(j >= 0 && j < arr.length && what === 'p' && arr[j].type !== 'activity') j += step;
-    if(j < 0 || j >= arr.length) return;
-    toIdx = step < 0 ? j : j + 1;
+    // One step up or down in the day's untimed order, whatever kind the neighbour is.
+    const d = t.days[day]; const list = planOf(d).filter(x => (x.kind === 'place' || x.kind === 'step' || x.kind === 'flight') && !x.t).map(x => x.kind === 'step' ? d.logistics[x.k] : x.p);
+    const at = list.indexOf(obj); const nb = list[at + (e.key === 'ArrowUp' ? -1 : 1)]; if(at < 0 || !nb) return;
+    moveInPlan(what, day, idx, day, nb, e.key === 'ArrowUp');
+    document.querySelector(`.handle[data-drag="${h.dataset.drag}"][data-what="${what}"][data-day="${day}"][data-idx="${idx}"]`)?.focus();
   } else {
-    toDay = day + (e.key === 'ArrowLeft' ? -1 : 1); if(toDay < 0 || toDay >= t.days.length) return; toIdx = null;
+    const toDay = day + (e.key === 'ArrowLeft' ? -1 : 1); if(toDay < 0 || toDay >= t.days.length) return;
+    const newIdx = t.days[toDay][key].length;
+    moveInPlan(what, day, idx, toDay, null, false);
+    document.querySelector(`.handle[data-drag="${h.dataset.drag}"][data-what="${what}"][data-day="${toDay}"][data-idx="${newIdx}"]`)?.focus();
   }
-  const finalIdx = toDay === day ? (toIdx > idx ? toIdx - 1 : toIdx) : t.days[toDay][key].length;
-  moveItem(what, day, idx, toDay, toIdx);
-  document.querySelector(`.handle[data-drag="${h.dataset.drag}"][data-what="${what}"][data-day="${toDay}"][data-idx="${finalIdx}"]`)?.focus();
 });
 
 /* ===== drag and drop (touch and mouse) ===== */
 let drag = null;
+// Puts a place or step at a spot in a day's untimed order, before or after another row (or at the end),
+// and numbers that order again. Timed rows keep sorting by their time.
+function placeInPlan(d, obj, target, before){
+  const list = planOf(d).filter(e => (e.kind === 'place' || e.kind === 'step' || e.kind === 'flight') && !e.t).map(e => e.kind === 'step' ? d.logistics[e.k] : e.p);
+  const rest = list.filter(x => x !== obj); let at = target ? rest.indexOf(target) : -1;
+  at = at < 0 ? rest.length : at + (before ? 0 : 1);
+  rest.splice(at, 0, obj); rest.forEach((x, i) => { x.o = i + 1; });
+}
+const rowObj = (t, what, day, idx) => { const dd = t.days[day]; return dd ? (what === 's' ? dd.logistics : dd.places)[idx] : null; };
+// Drag or arrow keys: moves a place or a step to another spot in the plan, on the same day or another.
+function moveInPlan(what, fromDay, fromIdx, toDay, target, before){
+  const t = T(); const key = what === 's' ? 'logistics' : 'places'; const obj = rowObj(t, what, fromDay, fromIdx); if(!obj || obj === target) return;
+  if(toDay !== fromDay){ t.days[fromDay][key].splice(fromIdx, 1); t.days[toDay][key].push(obj); }
+  const timed = what === 's' ? !!obj.time : !!obj.time;
+  if(!timed) placeInPlan(t.days[toDay], obj, target, before);
+  const name = what === 's' ? (obj.desc || 'the step') : obj.name;
+  changed(); announce(timed && toDay === fromDay ? `${name} has a time, so it stays in time order. Change or clear its time to move it` : toDay === fromDay ? `Moved ${name}` : `Moved ${name} to Day ${toDay + 1}`);
+  if(timed && toDay === fromDay) toast(`${name} has a time, so it sorts by time. Clear the time to move it freely`);
+  render();
+}
 function moveItem(what, fromDay, fromIdx, toDay, toIdx){
   const t = T(); const key = what === 's' ? 'logistics' : 'places';
   const src = t.days[fromDay][key]; const [x] = src.splice(fromIdx, 1); const dst = t.days[toDay][key];
@@ -710,14 +732,17 @@ document.addEventListener('pointermove', e => {
   if(rowEl && rowEl !== drag.srcEl){
     const [what, dd, ii] = (rowEl.dataset.row || rowEl.dataset.dragItem).split(':'); const r = rowEl.getBoundingClientRect(); const before = e.clientY < r.top + r.height / 2;
     rowEl.classList.add(before ? 'before' : 'after');
-    drag.target = what === drag.what ? { day:+dd, idx:+ii + (before ? 0 : 1) } : { day:+dd, idx:null };
+    drag.target = { day:+dd, row:{ what: what === 's' ? 's' : 'p', idx:+ii }, before };
   } else if(dayEl){ dayEl.classList.add('drop'); drag.target = { day:+dayEl.dataset.day, idx:null }; }
 }, { passive:false });
 document.addEventListener('pointerup', () => {
   if(!drag) return; const d = drag; drag = null;
   if(!d.started) return;
   d.ghost.remove(); clearMarks(); d.srcEl.classList.remove('src');
-  if(d.target && !(d.target.day === d.day && (d.target.idx === d.idx || d.target.idx === d.idx + 1 || d.target.idx === null))) moveItem(d.what, d.day, d.idx, d.target.day, d.target.idx);
+  if(!d.target) return; const t = T();
+  const target = d.target.row ? rowObj(t, d.target.row.what, d.target.day, d.target.row.idx) : null;
+  if(!target && d.target.day === d.day) return; // dropped on its own day, not on a row
+  moveInPlan(d.what, d.day, d.idx, d.target.day, target, d.target.before);
 });
 document.addEventListener('pointercancel', () => { if(drag){ drag.ghost?.remove(); clearMarks(); drag.srcEl.classList.remove('src'); drag = null; } });
 

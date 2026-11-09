@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-fujiFi6PIJ4UgpEamxE3qNJvrXa+2aigsbAVtcOfLbc=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-gpEKynuP5sKm9xzlN4u/XZ3DAgvZYbWwkcpkJ6vtlbY=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Milo &amp; Miles</title>
 <meta name="description" content="Plan each trip day by day: places, hotels, flights, a map and spending.">
@@ -1106,6 +1106,7 @@ function migrateState(t){
       if(typeof l.desc !== 'string') l.desc = String(l.desc || '');
       if(l.kind !== 'activity') l.kind = 'transport';
       if(l.note !== undefined && typeof l.note !== 'string') l.note = String(l.note || '');
+      if(l.o !== undefined && !Number.isFinite(l.o)) delete l.o; // its place in the day's order
     });
     d.places.forEach(p => {
       p.id = cleanId(p.id, seen);
@@ -1117,6 +1118,7 @@ function migrateState(t){
       if(p.address != null && typeof p.address !== 'string') p.address = String(p.address);
       if(p.gmap !== undefined && !(p.gmap = cleanGmap(p.gmap))) delete p.gmap;
       if(p.placeId !== undefined && !(p.placeId = cleanPlaceId(p.placeId))) delete p.placeId;
+      if(p.o !== undefined && !Number.isFinite(p.o)) delete p.o; // its place in the day's order
       const okLat = typeof p.lat === 'number' && Math.abs(p.lat) <= 90, okLon = typeof p.lon === 'number' && Math.abs(p.lon) <= 180;
       if(!okLat || !okLon){
         p.lat = null; p.lon = null;
@@ -1248,7 +1250,9 @@ function planOf(d){
   const extra = d.logistics.map((s, k) => ({ kind:'step', sk:s.kind || 'transport', t:s.time || '', d:s.desc || '', k }))
     .concat(d.places.map((p, pi) => ({ p, pi })).filter(x => x.p.type === 'flight').map(x => ({ kind:'flight', p:x.p, pi:x.pi, t:flightTime(x.p) })));
   const timed = places.filter(x => x.t).concat(extra.filter(x => x.t)).sort((a, b) => a.t.localeCompare(b.t) || (a.kind === 'place' ? 1 : -1));
-  const untimed = places.filter(x => !x.t).concat(extra.filter(x => !x.t));
+  // Untimed places and steps share one order (field o, set when you drag). Without it: places, then steps.
+  const ord = x => x.kind === 'place' ? (Number.isFinite(x.p.o) ? x.p.o : x.pi) : x.kind === 'step' ? (Number.isFinite(d.logistics[x.k].o) ? d.logistics[x.k].o : 1000 + x.k) : (Number.isFinite(x.p.o) ? x.p.o : 2000 + x.pi);
+  const untimed = places.filter(x => !x.t).concat(extra.filter(x => !x.t)).sort((a, b) => ord(a) - ord(b));
   // Numbers run through the whole trip: Day 2 carries on from where Day 1 stopped.
   const t = T(); let n = 0;
   if(t && t.days.includes(d)) for(const x of t.days){ if(x === d) break; n += x.places.filter(p => p.type === 'activity' || p.type === 'flight').length + x.logistics.length; }
@@ -3270,21 +3274,43 @@ document.addEventListener('keydown', e => {
   e.preventDefault();
   const t = T(); const what = h.dataset.what || 'p', day = +h.dataset.day, idx = +h.dataset.idx, key = what === 's' ? 'logistics' : 'places';
   const arr = t.days[day][key]; let toDay = day, toIdx;
+  const obj = rowObj(t, what, day, idx);
   if(e.key === 'ArrowUp' || e.key === 'ArrowDown'){
-    const step = e.key === 'ArrowUp' ? -1 : 1; let j = idx + step;
-    while(j >= 0 && j < arr.length && what === 'p' && arr[j].type !== 'activity') j += step;
-    if(j < 0 || j >= arr.length) return;
-    toIdx = step < 0 ? j : j + 1;
+    // One step up or down in the day's untimed order, whatever kind the neighbour is.
+    const d = t.days[day]; const list = planOf(d).filter(x => (x.kind === 'place' || x.kind === 'step' || x.kind === 'flight') && !x.t).map(x => x.kind === 'step' ? d.logistics[x.k] : x.p);
+    const at = list.indexOf(obj); const nb = list[at + (e.key === 'ArrowUp' ? -1 : 1)]; if(at < 0 || !nb) return;
+    moveInPlan(what, day, idx, day, nb, e.key === 'ArrowUp');
+    document.querySelector(`.handle[data-drag="${h.dataset.drag}"][data-what="${what}"][data-day="${day}"][data-idx="${idx}"]`)?.focus();
   } else {
-    toDay = day + (e.key === 'ArrowLeft' ? -1 : 1); if(toDay < 0 || toDay >= t.days.length) return; toIdx = null;
+    const toDay = day + (e.key === 'ArrowLeft' ? -1 : 1); if(toDay < 0 || toDay >= t.days.length) return;
+    const newIdx = t.days[toDay][key].length;
+    moveInPlan(what, day, idx, toDay, null, false);
+    document.querySelector(`.handle[data-drag="${h.dataset.drag}"][data-what="${what}"][data-day="${toDay}"][data-idx="${newIdx}"]`)?.focus();
   }
-  const finalIdx = toDay === day ? (toIdx > idx ? toIdx - 1 : toIdx) : t.days[toDay][key].length;
-  moveItem(what, day, idx, toDay, toIdx);
-  document.querySelector(`.handle[data-drag="${h.dataset.drag}"][data-what="${what}"][data-day="${toDay}"][data-idx="${finalIdx}"]`)?.focus();
 });
 
 /* ===== drag and drop (touch and mouse) ===== */
 let drag = null;
+// Puts a place or step at a spot in a day's untimed order, before or after another row (or at the end),
+// and numbers that order again. Timed rows keep sorting by their time.
+function placeInPlan(d, obj, target, before){
+  const list = planOf(d).filter(e => (e.kind === 'place' || e.kind === 'step' || e.kind === 'flight') && !e.t).map(e => e.kind === 'step' ? d.logistics[e.k] : e.p);
+  const rest = list.filter(x => x !== obj); let at = target ? rest.indexOf(target) : -1;
+  at = at < 0 ? rest.length : at + (before ? 0 : 1);
+  rest.splice(at, 0, obj); rest.forEach((x, i) => { x.o = i + 1; });
+}
+const rowObj = (t, what, day, idx) => { const dd = t.days[day]; return dd ? (what === 's' ? dd.logistics : dd.places)[idx] : null; };
+// Drag or arrow keys: moves a place or a step to another spot in the plan, on the same day or another.
+function moveInPlan(what, fromDay, fromIdx, toDay, target, before){
+  const t = T(); const key = what === 's' ? 'logistics' : 'places'; const obj = rowObj(t, what, fromDay, fromIdx); if(!obj || obj === target) return;
+  if(toDay !== fromDay){ t.days[fromDay][key].splice(fromIdx, 1); t.days[toDay][key].push(obj); }
+  const timed = what === 's' ? !!obj.time : !!obj.time;
+  if(!timed) placeInPlan(t.days[toDay], obj, target, before);
+  const name = what === 's' ? (obj.desc || 'the step') : obj.name;
+  changed(); announce(timed && toDay === fromDay ? `${name} has a time, so it stays in time order. Change or clear its time to move it` : toDay === fromDay ? `Moved ${name}` : `Moved ${name} to Day ${toDay + 1}`);
+  if(timed && toDay === fromDay) toast(`${name} has a time, so it sorts by time. Clear the time to move it freely`);
+  render();
+}
 function moveItem(what, fromDay, fromIdx, toDay, toIdx){
   const t = T(); const key = what === 's' ? 'logistics' : 'places';
   const src = t.days[fromDay][key]; const [x] = src.splice(fromIdx, 1); const dst = t.days[toDay][key];
@@ -3315,14 +3341,17 @@ document.addEventListener('pointermove', e => {
   if(rowEl && rowEl !== drag.srcEl){
     const [what, dd, ii] = (rowEl.dataset.row || rowEl.dataset.dragItem).split(':'); const r = rowEl.getBoundingClientRect(); const before = e.clientY < r.top + r.height / 2;
     rowEl.classList.add(before ? 'before' : 'after');
-    drag.target = what === drag.what ? { day:+dd, idx:+ii + (before ? 0 : 1) } : { day:+dd, idx:null };
+    drag.target = { day:+dd, row:{ what: what === 's' ? 's' : 'p', idx:+ii }, before };
   } else if(dayEl){ dayEl.classList.add('drop'); drag.target = { day:+dayEl.dataset.day, idx:null }; }
 }, { passive:false });
 document.addEventListener('pointerup', () => {
   if(!drag) return; const d = drag; drag = null;
   if(!d.started) return;
   d.ghost.remove(); clearMarks(); d.srcEl.classList.remove('src');
-  if(d.target && !(d.target.day === d.day && (d.target.idx === d.idx || d.target.idx === d.idx + 1 || d.target.idx === null))) moveItem(d.what, d.day, d.idx, d.target.day, d.target.idx);
+  if(!d.target) return; const t = T();
+  const target = d.target.row ? rowObj(t, d.target.row.what, d.target.day, d.target.row.idx) : null;
+  if(!target && d.target.day === d.day) return; // dropped on its own day, not on a row
+  moveInPlan(d.what, d.day, d.idx, d.target.day, target, d.target.before);
 });
 document.addEventListener('pointercancel', () => { if(drag){ drag.ghost?.remove(); clearMarks(); drag.srcEl.classList.remove('src'); drag = null; } });
 
