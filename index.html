@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-XkG0VQ2kfUc84pD+tlWBauypSH4YK56yYHMJ8MC/0Ak=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-aM1DR1PSnRbPnEENMr9687LAzRK+IwgZScMYe6poJpQ=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Milo &amp; Miles</title>
 <meta name="description" content="Plan each trip day by day: places, hotels, flights, a map and spending.">
@@ -901,6 +901,18 @@ input.input[type="date"]::-webkit-date-and-time-value, input.input[type="time"]:
 /* notes: line breaks kept, "-" lines as bullets */
 .notes p { margin: 0; } .notes p + p, .notes ul + p, .notes p + ul { margin-top: var(--space-2xs); }
 .notes ul { margin: 0; padding-left: 1.2em; } .notes li { margin: 0; } .notes li::marker { color: var(--color-muted); }
+
+/* rich notes editor: toolbar over a contenteditable box that looks like .input */
+.rte { display: flex; flex-direction: column; gap: var(--space-2xs); }
+.rte-bar { display: flex; gap: var(--space-2xs); }
+.rte-btn { display: inline-grid; place-items: center; min-width: 40px; height: 40px; padding: 0 var(--space-xs); border: 1px solid var(--color-rule); border-radius: var(--radius-pill); background: var(--color-card); color: var(--color-ink); font-size: var(--text-md); line-height: 1; cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+.rte-btn .ic { width: 18px; height: 18px; }
+.rte-btn[aria-pressed="true"] { background: var(--color-ink); color: var(--color-card); border-color: var(--color-ink); }
+.rte-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.rte-box.input { display: block; height: auto; min-height: 6.5rem; max-height: 14rem; overflow-y: auto; padding-block: var(--space-xs); line-height: 1.5; white-space: normal; overflow-wrap: anywhere; -webkit-user-select: text; user-select: text; }
+.rte-box:empty::before, .rte-box:has(> br:only-child)::before { content: attr(data-placeholder); color: var(--color-muted); pointer-events: none; }
+.rte-box p { margin: 0; } .rte-box p + p, .rte-box ul + p, .rte-box p + ul, .rte-box ol + p, .rte-box p + ol { margin-top: var(--space-2xs); }
+.notes ol, .rte-box ul, .rte-box ol { margin: 0; padding-left: 1.4em; } .notes li::marker { color: var(--color-muted); }
 </style>
 </head>
 <body>
@@ -1000,14 +1012,60 @@ function gmapsHref(p){
 // into Chinese text, so the link stops at the first character a link can't have.
 const linkIn = text => { const m = String(text || '').match(/https?:\/\/[\x21-\x7e]+/); return m ? cleanGmap(m[0].replace(/^http:/, 'https:').replace(/[)\]】,，。]+$/, '')) : ''; };
 const num0 = v => { const n = Number(v); return Number.isFinite(n) ? n : null; };
-// Notes keep their line breaks, and lines starting with "-", "*" or "•" show as bullet points.
-// Everything is escaped first, so a note can't carry HTML.
+// Notes are strings. A rich note is stored as SANITIZED HTML: cleanNoteHTML() parses it inertly (DOMParser runs no
+// script and loads nothing) and rebuilds it from an allowlist, so only p, br, b, i, u, ul, ol and li survive, with no
+// attributes at all. It runs when a note is saved and again whenever one is shown.
+const NOTE_MAX = 20000;
+function cleanNoteHTML(html){
+  let doc; try{ doc = new DOMParser().parseFromString(String(html || '').slice(0, NOTE_MAX), 'text/html'); }catch(e){ return ''; }
+  const isBlock = n => n.nodeType === 1 && /^(p|div|ul|ol|li)$/i.test(n.nodeName);
+  const walk = (node, inLi) => {
+    let out = '';
+    node.childNodes.forEach(n => {
+      if(n.nodeType === 3){
+        if(/^(ul|ol|body)$/i.test(node.nodeName) && !n.nodeValue.trim()) return;
+        out += esc(n.nodeValue); return;
+      }
+      if(n.nodeType !== 1) return;
+      const tag = n.nodeName.toLowerCase();
+      if(tag === 'script' || tag === 'style' || tag === 'template' || tag === 'noscript') return;
+      if(tag === 'br'){ out += '<br>'; return; }
+      if(tag === 'b' || tag === 'strong'){ out += '<b>' + walk(n, inLi) + '</b>'; return; }
+      if(tag === 'i' || tag === 'em'){ out += '<i>' + walk(n, inLi) + '</i>'; return; }
+      if(tag === 'u'){ out += '<u>' + walk(n, inLi) + '</u>'; return; }
+      if(tag === 'ul' || tag === 'ol'){ out += '<' + tag + '>' + walk(n, false) + '</' + tag + '>'; return; }
+      if(tag === 'li'){ out += '<li>' + walk(n, true) + '</li>'; return; }
+      if(tag === 'p' || tag === 'div'){
+        const inner = walk(n, inLi);
+        if(inLi || [...n.childNodes].some(isBlock)){ out += inner + (inLi && n.nextSibling ? '<br>' : ''); }
+        else if(inner.replace(/<\/?(b|i|u)>/g, '')) out += '<p>' + inner + '</p>';
+        return;
+      }
+      out += walk(n, inLi);
+    });
+    return out;
+  };
+  const out = walk(doc.body, false);
+  return out.replace(/<[^>]*>|&nbsp;|\s| /g, '') ? out : '';
+}
+// Notes keep their line breaks. A rich note (made with the editor's buttons) shows through cleanNoteHTML. Older plain
+// notes show as before: lines starting with "-", "*" or "•" become bullets. Everything is escaped, so a note can't carry HTML.
+const RICH_NOTE = /<\/?(p|br|b|strong|i|em|u|ul|ol|li|div)\b/i;
 function noteHTML(text){
-  const lines = String(text || '').split(/\r?\n/); let out = '', list = [], para = [];
+  text = String(text || '');
+  if(RICH_NOTE.test(text)) return cleanNoteHTML(text);
+  const lines = text.split(/\r?\n/); let out = '', list = [], para = [];
   const flushP = () => { if(para.length){ out += `<p>${para.join('<br>')}</p>`; para = []; } };
   const flushL = () => { if(list.length){ out += `<ul>${list.map(x => `<li>${x}</li>`).join('')}</ul>`; list = []; } };
   lines.forEach(l => { const m = l.match(/^\s*[-*•·]\s+(.*)$/); if(m){ flushP(); list.push(esc(m[1])); } else if(!l.trim()){ flushP(); flushL(); } else { flushL(); para.push(esc(l)); } });
   flushP(); flushL(); return out;
+}
+// The value of a notes field: sanitized HTML for the rich editor, plain value otherwise.
+const noteValue = el => el.isContentEditable || el.hasAttribute('contenteditable') ? cleanNoteHTML(el.innerHTML) : el.value;
+// The rich editor: a small toolbar over a contenteditable box. `attrs` are the data-in/data-id attributes.
+function noteEditor(id, attrs, value, label, ph){
+  const b = (cmd, name, inner) => `<button type="button" class="rte-btn" data-rte="${cmd}" aria-label="${name}" aria-pressed="false" title="${name}">${inner}</button>`;
+  return `<div class="field"><label id="${esc(id)}-l">${esc(label)}</label><div class="rte"><div class="rte-bar" role="toolbar" aria-label="Format ${esc(label.toLowerCase())}">${b('bold', 'Bold', '<b>B</b>')}${b('italic', 'Italic', '<i>I</i>')}${b('insertUnorderedList', 'Bulleted list', '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><circle cx="4" cy="6" r="1.6"/><circle cx="4" cy="12" r="1.6"/><circle cx="4" cy="18" r="1.6"/></g><path d="M9 6h12M9 12h12M9 18h12" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>')}${b('insertOrderedList', 'Numbered list', '<span class="rte-n" aria-hidden="true">1.</span>')}</div><div id="${esc(id)}" class="input rte-box notes" contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="${esc(id)}-l" data-placeholder="${esc(ph)}" ${attrs}>${noteHTML(value)}</div></div></div>`;
 }
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const I = (name, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -1248,7 +1306,7 @@ const STEPIC = { activity:'flag', transport:'train' };
 function flightTime(p){ const a = p.arriveTime, d = p.departTime; return a && d && a < d ? a : (d || a || ''); }
 function planOf(d){
   const places = d.places.map((p, pi) => ({ kind:'place', p, pi, t:p.time || '' })).filter(x => x.p.type === 'activity');
-  const extra = d.logistics.map((s, k) => ({ kind:'step', sk:'activity', t:s.time || '', d:s.desc || '', k }))
+  const extra = d.logistics.map((s, k) => ({ kind:'step', sk:'activity', t:s.time || '', d:s.desc || '', note:s.note || '', k }))
     .concat(d.places.map((p, pi) => ({ p, pi })).filter(x => x.p.type === 'flight').map(x => ({ kind:'flight', p:x.p, pi:x.pi, t:flightTime(x.p) })));
   const byTime = (a, b) => a.t.localeCompare(b.t) || (a.kind === 'place' ? 1 : -1);
   const obj = x => x.kind === 'step' ? d.logistics[x.k] : x.p;
@@ -2148,7 +2206,7 @@ function scrOverview(){
     const rows = plan.map(e => {
       const grip = (what, idx, name) => `<button type="button" class="handle" data-drag="ov" data-what="${what}" data-day="${esc(i)}" data-idx="${esc(idx)}" aria-label="Move ${esc(name)}: drag, or use arrow keys (up and down within the day, left and right to another day)">${I('grip')}</button>`;
       if(e.kind === 'place'){ const p = e.p; return `<li class="ovrow" data-row="p:${esc(i)}:${esc(e.pi)}"><span class="pt">${esc(e.t || '')}</span>${grip('p', e.pi, p.name)}<span class="badge c-${p.category}">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-${p.category}">${I(placeIcon(p),'sm')}</span>${esc(p.name)}</b>${p.note ? `<div class="ovnote notes">${noteHTML(p.note)}</div>` : ''}</div></li>`; }
-      if(e.kind === 'step') return `<li class="ovrow" data-row="s:${esc(i)}:${esc(e.k)}"><span class="pt">${esc(e.t || '')}</span>${grip('s', e.k, e.d || 'this activity')}<span class="badge c-${esc(e.sk)}">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-${esc(e.sk)}">${I(STEPIC[e.sk],'sm')}</span>${esc(e.d) || 'No description'}</b></div></li>`;
+      if(e.kind === 'step') return `<li class="ovrow" data-row="s:${esc(i)}:${esc(e.k)}"><span class="pt">${esc(e.t || '')}</span>${grip('s', e.k, e.d || 'this activity')}<span class="badge c-${esc(e.sk)}">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-${esc(e.sk)}">${I(STEPIC[e.sk],'sm')}</span>${esc(e.d) || 'No description'}</b>${e.note ? `<div class="ovnote notes">${noteHTML(e.note)}</div>` : ''}</div></li>`;
       const fp = e.p; const lands = e.t && e.t === fp.arriveTime && fp.arriveTime !== fp.departTime;
       return `<li class="ovrow" data-row="f:${esc(i)}:${esc(e.pi)}"><span class="pt">${esc(e.t || '')}</span><span></span><span class="badge c-air">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-air">${I('plane','sm')}</span>${esc(fp.name)}</b><span class="ovnote">${e.t ? `${lands ? 'Lands' : 'Departs'} ${esc(e.t)}` : 'Times not set'}${fp.note ? '. ' + esc(fp.note) : ''}</span></div></li>`;
     }).join('');
@@ -2188,7 +2246,7 @@ function itemHTML(p, i, pi, t = null, n = null){
     : p.type === 'flight' ? `<div class="grid2"><div class="field"><label for="fd${esc(p.id)}">Departs</label><input id="fd${esc(p.id)}" type="time" class="input num" data-in="pdep" data-id="${esc(p.id)}" value="${esc(p.departTime || '')}"></div><div class="field"><label for="fa${esc(p.id)}">Arrives</label><input id="fa${esc(p.id)}" type="time" class="input num" data-in="parr" data-id="${esc(p.id)}" value="${esc(p.arriveTime || '')}"></div></div>` : '';
   const kindField = p.type === 'activity' ? `<div class="seg" role="group" aria-label="Type"><button type="button" data-act="pcat" data-id="${esc(p.id)}" data-c="attraction" aria-pressed="${p.category === 'attraction'}">Sight</button><button type="button" data-act="pcat" data-id="${esc(p.id)}" data-c="food" aria-pressed="${p.category === 'food'}">Food</button></div>` : '';
   const stayEdit = editing && p.type === 'hotel' ? (r => r ? stayPickers(trip, r[0], r[1], ['si' + p.id, 'so' + p.id], [`data-in="stayin" data-id="${esc(p.id)}"`, `data-in="stayout" data-id="${esc(p.id)}"`]) : '')(stayRun(trip, p.name, i)) : '';
-  const edit = editing ? `<div class="item-edit">${kindField}<div class="field"><label for="pn${esc(p.id)}">Name</label><input id="pn${esc(p.id)}" class="input" data-in="pname" data-id="${esc(p.id)}" value="${esc(p.name)}"></div>${timeField}<div class="field"><label for="nt${esc(p.id)}">${p.type === 'flight' ? 'Booking details' : 'Note'}</label><textarea id="nt${esc(p.id)}" class="input" rows="2" data-in="pnote" data-id="${esc(p.id)}" placeholder="${p.type === 'flight' ? 'Booking reference, seats, terminal' : p.type === 'hotel' ? 'Room type, check-in time, breakfast' : 'Why you picked it, what to order'}">${esc(p.note)}</textarea></div>${p.type === 'hotel' ? stayEdit : move}<div class="chips"><button type="button" class="btn" data-act="doneitem">Done</button>${p.type !== 'flight' && p.lat != null ? `<button type="button" class="btn btn--quiet" data-act="pick" data-id="${esc(p.id)}">Move the pin</button>` : ''}</div></div>` : '';
+  const edit = editing ? `<div class="item-edit">${kindField}<div class="field"><label for="pn${esc(p.id)}">Name</label><input id="pn${esc(p.id)}" class="input" data-in="pname" data-id="${esc(p.id)}" value="${esc(p.name)}"></div>${timeField}${noteEditor('nt' + p.id, `data-in="pnote" data-id="${esc(p.id)}"`, p.note, p.type === 'flight' ? 'Booking details' : 'Note', p.type === 'flight' ? 'Booking reference, seats, terminal' : p.type === 'hotel' ? 'Room type, check-in time, breakfast' : 'Why you picked it, what to order')}${p.type === 'hotel' ? stayEdit : move}<div class="chips"><button type="button" class="btn" data-act="doneitem">Done</button>${p.type !== 'flight' && p.lat != null ? `<button type="button" class="btn btn--quiet" data-act="pick" data-id="${esc(p.id)}">Move the pin</button>` : ''}</div></div>` : '';
   return `<li class="item ${timed ? 'timed' : ''}" ${p.type === 'activity' ? `data-drag-item="p:${esc(i)}:${esc(pi)}"` : ''}>
     ${timed ? `<span class="pt">${esc(t || '')}</span>` : ''}${p.type === 'activity' ? `<button type="button" class="handle" data-drag="it" data-what="p" data-day="${esc(i)}" data-idx="${esc(pi)}" aria-label="Move ${esc(p.name)}: drag, or use arrow keys">${I('grip')}</button>` : '<span></span>'}${badge}
     <div class="item-main"><div class="item-name">${n != null ? `<span class="cat-ic ${cls}">${I(placeIcon(p),'sm')}</span>` : ''}${p.lat != null ? `<button type="button" class="row-open" data-act="showpin" data-id="${esc(p.id)}" aria-label="Show ${esc(p.name)} on the map">${esc(p.name)}</button>` : esc(p.name)}</div>${sub ? `<div class="item-sub">${esc(sub)}</div>` : ''}
@@ -2201,7 +2259,7 @@ function stepHTML(e, i){
   const grip = `<button type="button" class="handle" data-drag="it" data-what="s" data-day="${esc(i)}" data-idx="${esc(k)}" aria-label="Move ${esc(s.desc || 'this activity')}: drag, or use arrow keys">${I('grip')}</button>`;
   if(S.editTime === k) return `<li class="item timed step editing" data-drag-item="s:${esc(i)}:${esc(k)}"><span class="pt">${esc(s.time || '')}</span>${grip}<span class="badge c-${esc(sk)}">${e.n}</span>
     <div class="item-main"><div class="item-name"><span class="cat-ic c-${esc(sk)}">${I(STEPIC[sk],'sm')}</span>${esc(s.desc) || 'New activity'}</div><div class="item-edit"><div class="field" style="max-width:12rem"><label for="tt${esc(k)}">Time</label><input id="tt${esc(k)}" type="time" class="input num" data-in="ttime" data-k="${esc(k)}" value="${esc(s.time || '')}"></div>
-    <div class="field"><label for="td${esc(k)}">What happens</label><textarea id="td${esc(k)}" class="input" rows="2" data-in="tdesc" data-k="${esc(k)}" placeholder="Grab to the airport, meet the driver in the lobby">${esc(s.desc)}</textarea></div><div class="field"><label for="tn${esc(k)}">Notes</label><textarea id="tn${esc(k)}" class="input" rows="3" data-in="tnote" data-k="${esc(k)}" placeholder="Booking number, meeting point, what to bring. Start a line with - for a bullet">${esc(s.note || '')}</textarea></div>${moveSelect(`ms${esc(i)}-${esc(k)}`, `data-in="movestep" data-k="${esc(k)}"`, i)}<div><button type="button" class="btn" data-act="donetime">Done</button></div></div></div><span class="item-acts"></span></li>`;
+    <div class="field"><label for="td${esc(k)}">What happens</label><textarea id="td${esc(k)}" class="input" rows="2" data-in="tdesc" data-k="${esc(k)}" placeholder="Grab to the airport, meet the driver in the lobby">${esc(s.desc)}</textarea></div>${noteEditor('tn' + k, `data-in="tnote" data-k="${esc(k)}"`, s.note, 'Notes', 'Booking number, meeting point, what to bring')}${moveSelect(`ms${esc(i)}-${esc(k)}`, `data-in="movestep" data-k="${esc(k)}"`, i)}<div><button type="button" class="btn" data-act="donetime">Done</button></div></div></div><span class="item-acts"></span></li>`;
   return `<li class="item timed step" data-drag-item="s:${esc(i)}:${esc(k)}"><span class="pt">${esc(s.time || '')}</span>${grip}<span class="badge c-${esc(sk)}">${e.n}</span><div class="item-main"><div class="item-name"><span class="cat-ic c-${esc(sk)}">${I(STEPIC[sk],'sm')}</span>${esc(s.desc) || '<span class="sub">No description</span>'}</div>${s.note ? `<div class="item-note notes">${noteHTML(s.note)}</div>` : ''}</div>
     <span class="item-acts"><button type="button" class="iconbtn" data-act="edittime" data-k="${esc(k)}" aria-label="Edit ${esc(s.desc || 'this activity')}">${I('pen')}</button><button type="button" class="iconbtn" data-act="deltime" data-k="${esc(k)}" aria-label="Remove ${esc(s.desc || 'this activity')}">${I('x')}</button></span></li>`;
 }
@@ -2215,7 +2273,7 @@ function tripMapPanel(where){
   const groups = t.days.map((d, j) => { const o = d.places.filter(p => p.type !== 'flight' && p.lat != null); return o.length ? `<optgroup label="${esc(dayLabel(d, j).replace(/, \d+ \w+,/, ','))}">${o.map(p => `<option value="${esc(p.id)}" ${S.mapFocus === p.id ? 'selected' : ''}>${p.type === 'hotel' ? esc(p.name) + ' (hotel)' : nums[p.id] + '. ' + esc(p.name)}</option>`).join('')}</optgroup>` : ''; }).join('');
   const unplaced = ov ? [] : t.days[i].places.filter(p => p.lat == null && p.type !== 'flight');
   let popup = '';
-  if(S.mapPopup){ const f = findPlace(S.mapPopup); if(f){ const p = f.p; const di = t.days.indexOf(f.d); popup = `<div class="popup"><div class="top"><b>${p.type === 'hotel' ? '' : (nums[p.id] || '') + '. '}${esc(p.name)}</b><button type="button" class="iconbtn" data-act="closepop" aria-label="Close details">${I('x','sm')}</button></div><span class="sub">${p.type === 'hotel' ? 'Hotel, ' + dayList((r => r ? Array.from({ length:r[1] - r[0] }, (_, k) => r[0] + k + 1) : hotelDays(t, p.name))(stayRun(t, p.name, di))) : 'Day ' + (di + 1) + (f.d.city ? ', ' + esc(f.d.city) : '') + (p.time ? ', ' + p.time : '')}</span>${ov || di !== S.day ? `<div><button type="button" class="link" data-act="day" data-i="${esc(di)}">Open Day ${di + 1}</button></div>` : ''}${p.note ? `<p>${esc(p.note)}</p>` : ''}<div class="chips">${isAmap(p.gmap) ? `<a class="link" href="${esc(p.gmap)}" target="_blank" rel="noopener">Open in Amap</a>` : `<a class="link" href="${esc(gmapsHref(p))}" target="_blank" rel="noopener">Open in Google Maps</a>`}</div></div>`; } }
+  if(S.mapPopup){ const f = findPlace(S.mapPopup); if(f){ const p = f.p; const di = t.days.indexOf(f.d); popup = `<div class="popup"><div class="top"><b>${p.type === 'hotel' ? '' : (nums[p.id] || '') + '. '}${esc(p.name)}</b><button type="button" class="iconbtn" data-act="closepop" aria-label="Close details">${I('x','sm')}</button></div><span class="sub">${p.type === 'hotel' ? 'Hotel, ' + dayList((r => r ? Array.from({ length:r[1] - r[0] }, (_, k) => r[0] + k + 1) : hotelDays(t, p.name))(stayRun(t, p.name, di))) : 'Day ' + (di + 1) + (f.d.city ? ', ' + esc(f.d.city) : '') + (p.time ? ', ' + p.time : '')}</span>${ov || di !== S.day ? `<div><button type="button" class="link" data-act="day" data-i="${esc(di)}">Open Day ${di + 1}</button></div>` : ''}${p.note ? `<div class="notes">${noteHTML(p.note)}</div>` : ''}<div class="chips">${isAmap(p.gmap) ? `<a class="link" href="${esc(p.gmap)}" target="_blank" rel="noopener">Open in Amap</a>` : `<a class="link" href="${esc(gmapsHref(p))}" target="_blank" rel="noopener">Open in Google Maps</a>`}</div></div>`; } }
   const picking = S.picking ? findPlace(S.picking) : null;
   S.lastMap = { filter, focus:S.mapFocus, picking:!!picking, curDay:i };
   const full = S.mapFull;
@@ -2378,7 +2436,7 @@ function scrItinerary(){
   const editDay = S.editDay ? `<section class="box dayedit" aria-labelledby="h-ed"><div class="sechead"><h3 id="h-ed">${I('pen')}Edit Day ${i + 1}</h3><button type="button" class="btn" data-act="doneday">Done</button></div>
       <div class="details"><div class="field"><label for="ddate">Date</label><input id="ddate" type="date" class="input" data-in="ddate" value="${esc(d.date)}"></div>
       <div class="field"><label for="dcity">Town</label><input id="dcity" class="input" data-in="dcity" value="${esc(d.city)}" placeholder="For example, Shantou" aria-describedby="dcity-help"><span class="help" id="dcity-help">Helps search find places nearby</span></div></div>
-      <div class="field"><label for="dnotes">Day note</label><textarea id="dnotes" class="input" rows="2" data-in="dnotes" placeholder="Anything to remember for the whole day">${esc(d.notes)}</textarea></div>
+      ${noteEditor('dnotes', 'data-in="dnotes"', d.notes, 'Day note', 'Anything to remember for the whole day')}
       <div class="dayactions"><button type="button" class="btn btn--quiet" data-act="moveday" data-i="${esc(i)}" data-d="-1" ${i === 0 ? 'disabled' : ''}>${I('left','sm')}Move day earlier</button><button type="button" class="btn btn--quiet" data-act="moveday" data-i="${esc(i)}" data-d="1" ${i === t.days.length - 1 ? 'disabled' : ''}>Move day later${I('right','sm')}</button><button type="button" class="btn btn--danger" data-act="askdelday">Delete Day ${i + 1}</button></div></section>`
     : '';
   return `<div class="screen it-screen" style="gap:var(--space-xl)">${syncBanner()}${pageHead(true, `<nav class="daystrip" aria-label="Days">${tabs}</nav>`)}
@@ -2390,7 +2448,7 @@ function scrItinerary(){
         ${editDay}
         <section class="box" aria-labelledby="h-plan"><div class="sechead"><h3 id="h-plan">${I('clock')}Plan for the day</h3></div>
           ${plan.length ? `<ul class="ruled">${rows}</ul>` : `<p class="empty">Nothing planned yet. Add a place, or an activity such as a train or a check-in.</p>`}
-          <p class="sub planhint">Timed stops sort by time. Drag the others into order.</p></section>
+          <p class="sub planhint">Stops with a time keep their time order. Drag the others anywhere, even between them.</p></section>
         <section class="box" aria-labelledby="h-st"><div class="sechead"><h3 id="h-st">${I('bed')}Where you stay</h3></div>${hotels.length ? `<ul class="ruled stays">${hotels.map(({ p, pi }) => itemHTML(p, i, pi)).join('')}</ul>` : '<p class="empty">No hotel yet. Add one with the button above.</p>'}</section>
       </div>
       ${mapAside()}
@@ -2444,7 +2502,7 @@ function addPanelHTML(i){
   const tb = (k, ic, cls, label) => `<button type="button" data-act="atype" data-t="${esc(k)}" aria-pressed="${t === k}"><span class="cat-ic ${cls}">${I(ic,'sm')}</span>${label}</button>`;
   return `<div class="seg addtypes" role="group" aria-label="What to add">${tb('activity','pin','c-sight','Place')}${tb('do','flag','c-activity','Activity')}${tb('hotel','bed','c-hotel','Hotel')}${tb('flight','plane','c-air','Flight')}</div>
     ${main}
-    ${step ? `<div class="field"><label for="anote">Notes</label><textarea id="anote" class="input" rows="3" data-in="anote" placeholder="Booking number, meeting point, what to bring. Start a line with - for a bullet">${esc(S.addNote)}</textarea></div>` : `<div class="field"><label for="anote">Note</label><textarea id="anote" class="input" rows="2" data-in="anote" placeholder="${t === 'flight' ? 'Booking reference, seat, terminal, bags' : t === 'hotel' ? 'Room type, check-in time, breakfast' : 'Why you picked it, what to order'}">${esc(S.addNote)}</textarea>
+    ${step ? noteEditor('anote', 'data-in="anote"', S.addNote, 'Notes', 'Booking number, meeting point, what to bring') : `<div>${noteEditor('anote', 'data-in="anote"', S.addNote, 'Note', t === 'flight' ? 'Booking reference, seat, terminal, bags' : t === 'hotel' ? 'Room type, check-in time, breakfast' : 'Why you picked it, what to order')}
       ${t !== 'flight' ? `<div><button type="button" class="link" data-act="wiki">Fill in a description from Wikipedia</button></div>` : ''}<div id="wikires">${S.wiki ? `<p class="desc">${esc(S.wiki)}</p>` : ''}</div></div>`}
     ${S.addErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.addErr)}${S.addErr.includes('without a location') ? ` <button type="button" class="link" data-act="addnopin">Add it without a location</button>` : ''}</p>` : ''}<div><button type="button" class="btn btn--primary" data-act="addplace">${({ flight:'Add the flight', hotel:'Add the hotel', do:'Add the activity' })[t] || 'Add the place'}</button></div>
 `;
@@ -3202,7 +3260,7 @@ document.addEventListener('click', e => {
       if(out) out.innerHTML = '<p class="sub">Looking on Wikipedia…</p>';
       fetchWikipediaSummary(name).then(txt => {
         S.wiki = txt || `No Wikipedia summary found for “${name}”. Write your own note instead.`;
-        if(txt && !S.addNote.trim()){ S.addNote = txt; const n = document.getElementById('anote'); if(n) n.value = txt; }
+        if(txt && !cleanNoteHTML(S.addNote)){ S.addNote = '<p>' + esc(txt) + '</p>'; const n = document.getElementById('anote'); if(n) n.innerHTML = S.addNote; }
         const o = document.getElementById('wikires'); if(o) o.innerHTML = `<p class="desc">${esc(S.wiki)}</p>`;
       });
       return;
@@ -3228,6 +3286,26 @@ async function runSearch(q){
   if(seq !== searchSeq) return;
   S.results = res || []; S.searching = false; paintResults();
 }
+// Rich-notes toolbar. Pressing a button must not take focus or the selection away from the editor (iPad too).
+document.addEventListener('pointerdown', e => { if(e.target.closest('.rte-btn')) e.preventDefault(); });
+document.addEventListener('mousedown', e => { if(e.target.closest('.rte-btn')) e.preventDefault(); });
+document.addEventListener('click', e => {
+  const b = e.target.closest('.rte-btn'); if(!b) return;
+  const box = b.closest('.rte').querySelector('.rte-box'); if(document.activeElement !== box) box.focus();
+  try{ document.execCommand('defaultParagraphSeparator', false, 'p'); document.execCommand(b.dataset.rte, false, null); }catch(err){}
+  box.dispatchEvent(new Event('input', { bubbles:true })); rteState();
+});
+function rteState(){
+  const box = document.activeElement && document.activeElement.closest && document.activeElement.closest('.rte-box'); if(!box) return;
+  box.closest('.rte').querySelectorAll('.rte-btn').forEach(b => { let on = false; try{ on = document.queryCommandState(b.dataset.rte); }catch(err){} b.setAttribute('aria-pressed', String(!!on)); });
+}
+document.addEventListener('selectionchange', rteState);
+// Pasting into a note keeps the text only.
+document.addEventListener('paste', e => {
+  const box = e.target.closest && e.target.closest('.rte-box'); if(!box) return;
+  e.preventDefault(); const txt = (e.clipboardData || window.clipboardData).getData('text/plain');
+  try{ document.execCommand('insertText', false, txt); }catch(err){}
+});
 document.addEventListener('input', e => {
   const t = e.target; const trip = T(); const d = trip && trip.days[S.day];
   if(t.dataset.f){ S.draft[t.dataset.f] = t.value; if(S.expErr && t.id === S.expErr.f){ S.expErr = null; t.removeAttribute('aria-invalid'); document.getElementById('experr')?.remove(); } const c = document.getElementById('calc'); if(c) c.outerHTML = calcHTML(); return; }
@@ -3236,11 +3314,11 @@ document.addEventListener('input', e => {
   switch(t.dataset.in){
     case 'tripname': trip.tripName = t.value; changed(); break;
     case 'dcity': d.city = t.value; changed(); break;
-    case 'dnotes': d.notes = t.value; changed(); break;
+    case 'dnotes': d.notes = noteValue(t); changed(); break;
     case 'ttime': d.logistics[+t.dataset.k].time = t.value; changed(); break;
     case 'tdesc': d.logistics[+t.dataset.k].desc = t.value; changed(); break;
-    case 'tnote': d.logistics[+t.dataset.k].note = t.value; changed(); break;
-    case 'pnote': findPlace(t.dataset.id).p.note = t.value; changed(); break;
+    case 'tnote': d.logistics[+t.dataset.k].note = noteValue(t); changed(); break;
+    case 'pnote': findPlace(t.dataset.id).p.note = noteValue(t); changed(); break;
     case 'pname': { const f = findPlace(t.dataset.id); const old = f.p.name; f.p.name = t.value; if(f.p.type === 'hotel') trip.days.forEach(dd => dd.places.forEach(p => { if(p.type === 'hotel' && p.name === old) p.name = t.value; })); changed(); } break;
     case 'ptime': findPlace(t.dataset.id).p.time = t.value; changed(); break;
     case 'pdep': findPlace(t.dataset.id).p.departTime = t.value; changed(); break;
@@ -3256,7 +3334,7 @@ document.addEventListener('input', e => {
     case 'alink': S.link = t.value; S.addErr = null; clearTimeout(linkTimer); linkTimer = setTimeout(resolveLink, 250); break;
     case 'fname': S.fName = t.value; break;
     case 'swhat': S.sWhat = t.value; break;
-    case 'anote': S.addNote = t.value; break;
+    case 'anote': S.addNote = noteValue(t); break;
   }
 });
 document.addEventListener('change', e => {

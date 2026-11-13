@@ -571,7 +571,7 @@ document.addEventListener('click', e => {
       if(out) out.innerHTML = '<p class="sub">Looking on Wikipedia…</p>';
       fetchWikipediaSummary(name).then(txt => {
         S.wiki = txt || `No Wikipedia summary found for “${name}”. Write your own note instead.`;
-        if(txt && !S.addNote.trim()){ S.addNote = txt; const n = document.getElementById('anote'); if(n) n.value = txt; }
+        if(txt && !cleanNoteHTML(S.addNote)){ S.addNote = '<p>' + esc(txt) + '</p>'; const n = document.getElementById('anote'); if(n) n.innerHTML = S.addNote; }
         const o = document.getElementById('wikires'); if(o) o.innerHTML = `<p class="desc">${esc(S.wiki)}</p>`;
       });
       return;
@@ -597,6 +597,26 @@ async function runSearch(q){
   if(seq !== searchSeq) return;
   S.results = res || []; S.searching = false; paintResults();
 }
+// Rich-notes toolbar. Pressing a button must not take focus or the selection away from the editor (iPad too).
+document.addEventListener('pointerdown', e => { if(e.target.closest('.rte-btn')) e.preventDefault(); });
+document.addEventListener('mousedown', e => { if(e.target.closest('.rte-btn')) e.preventDefault(); });
+document.addEventListener('click', e => {
+  const b = e.target.closest('.rte-btn'); if(!b) return;
+  const box = b.closest('.rte').querySelector('.rte-box'); if(document.activeElement !== box) box.focus();
+  try{ document.execCommand('defaultParagraphSeparator', false, 'p'); document.execCommand(b.dataset.rte, false, null); }catch(err){}
+  box.dispatchEvent(new Event('input', { bubbles:true })); rteState();
+});
+function rteState(){
+  const box = document.activeElement && document.activeElement.closest && document.activeElement.closest('.rte-box'); if(!box) return;
+  box.closest('.rte').querySelectorAll('.rte-btn').forEach(b => { let on = false; try{ on = document.queryCommandState(b.dataset.rte); }catch(err){} b.setAttribute('aria-pressed', String(!!on)); });
+}
+document.addEventListener('selectionchange', rteState);
+// Pasting into a note keeps the text only.
+document.addEventListener('paste', e => {
+  const box = e.target.closest && e.target.closest('.rte-box'); if(!box) return;
+  e.preventDefault(); const txt = (e.clipboardData || window.clipboardData).getData('text/plain');
+  try{ document.execCommand('insertText', false, txt); }catch(err){}
+});
 document.addEventListener('input', e => {
   const t = e.target; const trip = T(); const d = trip && trip.days[S.day];
   if(t.dataset.f){ S.draft[t.dataset.f] = t.value; if(S.expErr && t.id === S.expErr.f){ S.expErr = null; t.removeAttribute('aria-invalid'); document.getElementById('experr')?.remove(); } const c = document.getElementById('calc'); if(c) c.outerHTML = calcHTML(); return; }
@@ -605,11 +625,11 @@ document.addEventListener('input', e => {
   switch(t.dataset.in){
     case 'tripname': trip.tripName = t.value; changed(); break;
     case 'dcity': d.city = t.value; changed(); break;
-    case 'dnotes': d.notes = t.value; changed(); break;
+    case 'dnotes': d.notes = noteValue(t); changed(); break;
     case 'ttime': d.logistics[+t.dataset.k].time = t.value; changed(); break;
     case 'tdesc': d.logistics[+t.dataset.k].desc = t.value; changed(); break;
-    case 'tnote': d.logistics[+t.dataset.k].note = t.value; changed(); break;
-    case 'pnote': findPlace(t.dataset.id).p.note = t.value; changed(); break;
+    case 'tnote': d.logistics[+t.dataset.k].note = noteValue(t); changed(); break;
+    case 'pnote': findPlace(t.dataset.id).p.note = noteValue(t); changed(); break;
     case 'pname': { const f = findPlace(t.dataset.id); const old = f.p.name; f.p.name = t.value; if(f.p.type === 'hotel') trip.days.forEach(dd => dd.places.forEach(p => { if(p.type === 'hotel' && p.name === old) p.name = t.value; })); changed(); } break;
     case 'ptime': findPlace(t.dataset.id).p.time = t.value; changed(); break;
     case 'pdep': findPlace(t.dataset.id).p.departTime = t.value; changed(); break;
@@ -625,7 +645,7 @@ document.addEventListener('input', e => {
     case 'alink': S.link = t.value; S.addErr = null; clearTimeout(linkTimer); linkTimer = setTimeout(resolveLink, 250); break;
     case 'fname': S.fName = t.value; break;
     case 'swhat': S.sWhat = t.value; break;
-    case 'anote': S.addNote = t.value; break;
+    case 'anote': S.addNote = noteValue(t); break;
   }
 });
 document.addEventListener('change', e => {

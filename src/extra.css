@@ -242,3 +242,15 @@ input.input[type="date"]::-webkit-date-and-time-value, input.input[type="time"]:
 /* notes: line breaks kept, "-" lines as bullets */
 .notes p { margin: 0; } .notes p + p, .notes ul + p, .notes p + ul { margin-top: var(--space-2xs); }
 .notes ul { margin: 0; padding-left: 1.2em; } .notes li { margin: 0; } .notes li::marker { color: var(--color-muted); }
+
+/* rich notes editor: toolbar over a contenteditable box that looks like .input */
+.rte { display: flex; flex-direction: column; gap: var(--space-2xs); }
+.rte-bar { display: flex; gap: var(--space-2xs); }
+.rte-btn { display: inline-grid; place-items: center; min-width: 40px; height: 40px; padding: 0 var(--space-xs); border: 1px solid var(--color-rule); border-radius: var(--radius-pill); background: var(--color-card); color: var(--color-ink); font-size: var(--text-md); line-height: 1; cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+.rte-btn .ic { width: 18px; height: 18px; }
+.rte-btn[aria-pressed="true"] { background: var(--color-ink); color: var(--color-card); border-color: var(--color-ink); }
+.rte-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.rte-box.input { display: block; height: auto; min-height: 6.5rem; max-height: 14rem; overflow-y: auto; padding-block: var(--space-xs); line-height: 1.5; white-space: normal; overflow-wrap: anywhere; -webkit-user-select: text; user-select: text; }
+.rte-box:empty::before, .rte-box:has(> br:only-child)::before { content: attr(data-placeholder); color: var(--color-muted); pointer-events: none; }
+.rte-box p { margin: 0; } .rte-box p + p, .rte-box ul + p, .rte-box p + ul, .rte-box ol + p, .rte-box p + ol { margin-top: var(--space-2xs); }
+.notes ol, .rte-box ul, .rte-box ol { margin: 0; padding-left: 1.4em; } .notes li::marker { color: var(--color-muted); }

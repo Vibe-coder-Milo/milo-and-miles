@@ -56,14 +56,60 @@ function gmapsHref(p){
 // into Chinese text, so the link stops at the first character a link can't have.
 const linkIn = text => { const m = String(text || '').match(/https?:\/\/[\x21-\x7e]+/); return m ? cleanGmap(m[0].replace(/^http:/, 'https:').replace(/[)\]】,，。]+$/, '')) : ''; };
 const num0 = v => { const n = Number(v); return Number.isFinite(n) ? n : null; };
-// Notes keep their line breaks, and lines starting with "-", "*" or "•" show as bullet points.
-// Everything is escaped first, so a note can't carry HTML.
+// Notes are strings. A rich note is stored as SANITIZED HTML: cleanNoteHTML() parses it inertly (DOMParser runs no
+// script and loads nothing) and rebuilds it from an allowlist, so only p, br, b, i, u, ul, ol and li survive, with no
+// attributes at all. It runs when a note is saved and again whenever one is shown.
+const NOTE_MAX = 20000;
+function cleanNoteHTML(html){
+  let doc; try{ doc = new DOMParser().parseFromString(String(html || '').slice(0, NOTE_MAX), 'text/html'); }catch(e){ return ''; }
+  const isBlock = n => n.nodeType === 1 && /^(p|div|ul|ol|li)$/i.test(n.nodeName);
+  const walk = (node, inLi) => {
+    let out = '';
+    node.childNodes.forEach(n => {
+      if(n.nodeType === 3){
+        if(/^(ul|ol|body)$/i.test(node.nodeName) && !n.nodeValue.trim()) return;
+        out += esc(n.nodeValue); return;
+      }
+      if(n.nodeType !== 1) return;
+      const tag = n.nodeName.toLowerCase();
+      if(tag === 'script' || tag === 'style' || tag === 'template' || tag === 'noscript') return;
+      if(tag === 'br'){ out += '<br>'; return; }
+      if(tag === 'b' || tag === 'strong'){ out += '<b>' + walk(n, inLi) + '</b>'; return; }
+      if(tag === 'i' || tag === 'em'){ out += '<i>' + walk(n, inLi) + '</i>'; return; }
+      if(tag === 'u'){ out += '<u>' + walk(n, inLi) + '</u>'; return; }
+      if(tag === 'ul' || tag === 'ol'){ out += '<' + tag + '>' + walk(n, false) + '</' + tag + '>'; return; }
+      if(tag === 'li'){ out += '<li>' + walk(n, true) + '</li>'; return; }
+      if(tag === 'p' || tag === 'div'){
+        const inner = walk(n, inLi);
+        if(inLi || [...n.childNodes].some(isBlock)){ out += inner + (inLi && n.nextSibling ? '<br>' : ''); }
+        else if(inner.replace(/<\/?(b|i|u)>/g, '')) out += '<p>' + inner + '</p>';
+        return;
+      }
+      out += walk(n, inLi);
+    });
+    return out;
+  };
+  const out = walk(doc.body, false);
+  return out.replace(/<[^>]*>|&nbsp;|\s| /g, '') ? out : '';
+}
+// Notes keep their line breaks. A rich note (made with the editor's buttons) shows through cleanNoteHTML. Older plain
+// notes show as before: lines starting with "-", "*" or "•" become bullets. Everything is escaped, so a note can't carry HTML.
+const RICH_NOTE = /<\/?(p|br|b|strong|i|em|u|ul|ol|li|div)\b/i;
 function noteHTML(text){
-  const lines = String(text || '').split(/\r?\n/); let out = '', list = [], para = [];
+  text = String(text || '');
+  if(RICH_NOTE.test(text)) return cleanNoteHTML(text);
+  const lines = text.split(/\r?\n/); let out = '', list = [], para = [];
   const flushP = () => { if(para.length){ out += `<p>${para.join('<br>')}</p>`; para = []; } };
   const flushL = () => { if(list.length){ out += `<ul>${list.map(x => `<li>${x}</li>`).join('')}</ul>`; list = []; } };
   lines.forEach(l => { const m = l.match(/^\s*[-*•·]\s+(.*)$/); if(m){ flushP(); list.push(esc(m[1])); } else if(!l.trim()){ flushP(); flushL(); } else { flushL(); para.push(esc(l)); } });
   flushP(); flushL(); return out;
+}
+// The value of a notes field: sanitized HTML for the rich editor, plain value otherwise.
+const noteValue = el => el.isContentEditable || el.hasAttribute('contenteditable') ? cleanNoteHTML(el.innerHTML) : el.value;
+// The rich editor: a small toolbar over a contenteditable box. `attrs` are the data-in/data-id attributes.
+function noteEditor(id, attrs, value, label, ph){
+  const b = (cmd, name, inner) => `<button type="button" class="rte-btn" data-rte="${cmd}" aria-label="${name}" aria-pressed="false" title="${name}">${inner}</button>`;
+  return `<div class="field"><label id="${esc(id)}-l">${esc(label)}</label><div class="rte"><div class="rte-bar" role="toolbar" aria-label="Format ${esc(label.toLowerCase())}">${b('bold', 'Bold', '<b>B</b>')}${b('italic', 'Italic', '<i>I</i>')}${b('insertUnorderedList', 'Bulleted list', '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><circle cx="4" cy="6" r="1.6"/><circle cx="4" cy="12" r="1.6"/><circle cx="4" cy="18" r="1.6"/></g><path d="M9 6h12M9 12h12M9 18h12" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>')}${b('insertOrderedList', 'Numbered list', '<span class="rte-n" aria-hidden="true">1.</span>')}</div><div id="${esc(id)}" class="input rte-box notes" contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="${esc(id)}-l" data-placeholder="${esc(ph)}" ${attrs}>${noteHTML(value)}</div></div></div>`;
 }
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const I = (name, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -304,7 +350,7 @@ const STEPIC = { activity:'flag', transport:'train' };
 function flightTime(p){ const a = p.arriveTime, d = p.departTime; return a && d && a < d ? a : (d || a || ''); }
 function planOf(d){
   const places = d.places.map((p, pi) => ({ kind:'place', p, pi, t:p.time || '' })).filter(x => x.p.type === 'activity');
-  const extra = d.logistics.map((s, k) => ({ kind:'step', sk:'activity', t:s.time || '', d:s.desc || '', k }))
+  const extra = d.logistics.map((s, k) => ({ kind:'step', sk:'activity', t:s.time || '', d:s.desc || '', note:s.note || '', k }))
     .concat(d.places.map((p, pi) => ({ p, pi })).filter(x => x.p.type === 'flight').map(x => ({ kind:'flight', p:x.p, pi:x.pi, t:flightTime(x.p) })));
   const byTime = (a, b) => a.t.localeCompare(b.t) || (a.kind === 'place' ? 1 : -1);
   const obj = x => x.kind === 'step' ? d.logistics[x.k] : x.p;
