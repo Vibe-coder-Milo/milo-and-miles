@@ -283,7 +283,18 @@ function render(){
   if(!T() && S.screen !== 'settings') S.screen = 'home';
   const scr = { home:scrHome, overview:scrOverview, itinerary:scrItinerary, budget:scrBudget, settings:scrSettings }[S.screen]();
   Object.values(MAPS).forEach(M => { if(M && M.el.parentNode) M.el.remove(); });
+  // The day strip is rebuilt on every render, which would reset its horizontal scroll to Day 1. Keep the old
+  // position, then centre the current day tab if it has been scrolled out of view. Only the strip scrolls here,
+  // never the page (scrollIntoView would also move the page up or down).
+  const oldStrip = app.querySelector('.daystrip');
+  const stripX = oldStrip ? oldStrip.scrollLeft : null;
   app.innerHTML = `${bar()}<main class="wrap" id="main">${scr}</main>${dialogHTML()}`;
+  const strip = app.querySelector('.daystrip');
+  if(strip){
+    if(stripX != null) strip.scrollLeft = stripX;
+    const cur = strip.querySelector('.daytab[aria-current="true"]');
+    if(cur){ const sr = strip.getBoundingClientRect(), cr = cur.getBoundingClientRect(); if(cr.left < sr.left || cr.right > sr.right) strip.scrollLeft += (cr.left + cr.width / 2) - (sr.left + sr.width / 2); }
+  }
   document.title = (S.screen !== 'home' && S.screen !== 'settings' && T() ? tripLabel(T()) + ', ' : '') + 'Milo & Miles';
   if(S.screen === 'itinerary' && T() && T().days.length){ mountMap(); setTimeout(autoLocate, 1500); }
   if(S.screen === 'overview' && T() && T().days.length) mountMap();

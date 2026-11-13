@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-gpEKynuP5sKm9xzlN4u/XZ3DAgvZYbWwkcpkJ6vtlbY=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-Tor/JimOq1EqDgGqpLM05Z4LxqS0NP1nIFBYnzp/trA=' https://cdnjs.cloudflare.com https://*.googleapis.com https://*.gstatic.com 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://cdnjs.cloudflare.com https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com https://*.ggpht.com; connect-src 'self' https://api.github.com https://photon.komoot.io https://en.wikipedia.org https://script.google.com https://script.googleusercontent.com https://*.googleapis.com https://*.gstatic.com https://maps.google.com data: blob:; worker-src 'self' blob:; frame-src https://*.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Milo &amp; Miles</title>
 <meta name="description" content="Plan each trip day by day: places, hotels, flights, a map and spending.">
@@ -2193,7 +2193,7 @@ function tripMapPanel(where){
   const groups = t.days.map((d, j) => { const o = d.places.filter(p => p.type !== 'flight' && p.lat != null); return o.length ? `<optgroup label="${esc(dayLabel(d, j).replace(/, \d+ \w+,/, ','))}">${o.map(p => `<option value="${esc(p.id)}" ${S.mapFocus === p.id ? 'selected' : ''}>${p.type === 'hotel' ? esc(p.name) + ' (hotel)' : nums[p.id] + '. ' + esc(p.name)}</option>`).join('')}</optgroup>` : ''; }).join('');
   const unplaced = ov ? [] : t.days[i].places.filter(p => p.lat == null && p.type !== 'flight');
   let popup = '';
-  if(S.mapPopup){ const f = findPlace(S.mapPopup); if(f){ const p = f.p; const di = t.days.indexOf(f.d); popup = `<div class="popup"><div class="top"><b>${p.type === 'hotel' ? '' : (nums[p.id] || '') + '. '}${esc(p.name)}</b><button type="button" class="iconbtn" data-act="closepop" aria-label="Close details">${I('x','sm')}</button></div><span class="sub">${p.type === 'hotel' ? 'Hotel, ' + dayList((r => r ? Array.from({ length:r[1] - r[0] }, (_, k) => r[0] + k + 1) : hotelDays(t, p.name))(stayRun(t, p.name, di))) : 'Day ' + (di + 1) + (f.d.city ? ', ' + esc(f.d.city) : '') + (p.time ? ', ' + p.time : '')}</span>${ov || di !== S.day ? `<div><button type="button" class="link" data-act="day" data-i="${esc(di)}">Open Day ${di + 1}</button></div>` : ''}${p.note ? `<p>${esc(p.note)}</p>` : ''}<div class="chips">${isAmap(p.gmap) ? `<a class="link" href="${esc(p.gmap)}" target="_blank" rel="noopener">Open in Amap</a> ` : ''}<a class="link" href="${esc(isAmap(p.gmap) ? gmapsHref(Object.assign({}, p, { gmap:'' })) : gmapsHref(p))}" target="_blank" rel="noopener">Open in Google Maps</a></div></div>`; } }
+  if(S.mapPopup){ const f = findPlace(S.mapPopup); if(f){ const p = f.p; const di = t.days.indexOf(f.d); popup = `<div class="popup"><div class="top"><b>${p.type === 'hotel' ? '' : (nums[p.id] || '') + '. '}${esc(p.name)}</b><button type="button" class="iconbtn" data-act="closepop" aria-label="Close details">${I('x','sm')}</button></div><span class="sub">${p.type === 'hotel' ? 'Hotel, ' + dayList((r => r ? Array.from({ length:r[1] - r[0] }, (_, k) => r[0] + k + 1) : hotelDays(t, p.name))(stayRun(t, p.name, di))) : 'Day ' + (di + 1) + (f.d.city ? ', ' + esc(f.d.city) : '') + (p.time ? ', ' + p.time : '')}</span>${ov || di !== S.day ? `<div><button type="button" class="link" data-act="day" data-i="${esc(di)}">Open Day ${di + 1}</button></div>` : ''}${p.note ? `<p>${esc(p.note)}</p>` : ''}<div class="chips">${isAmap(p.gmap) ? `<a class="link" href="${esc(p.gmap)}" target="_blank" rel="noopener">Open in Amap</a>` : `<a class="link" href="${esc(gmapsHref(p))}" target="_blank" rel="noopener">Open in Google Maps</a>`}</div></div>`; } }
   const picking = S.picking ? findPlace(S.picking) : null;
   S.lastMap = { filter, focus:S.mapFocus, picking:!!picking, curDay:i };
   const full = S.mapFull;
@@ -2892,7 +2892,18 @@ function render(){
   if(!T() && S.screen !== 'settings') S.screen = 'home';
   const scr = { home:scrHome, overview:scrOverview, itinerary:scrItinerary, budget:scrBudget, settings:scrSettings }[S.screen]();
   Object.values(MAPS).forEach(M => { if(M && M.el.parentNode) M.el.remove(); });
+  // The day strip is rebuilt on every render, which would reset its horizontal scroll to Day 1. Keep the old
+  // position, then centre the current day tab if it has been scrolled out of view. Only the strip scrolls here,
+  // never the page (scrollIntoView would also move the page up or down).
+  const oldStrip = app.querySelector('.daystrip');
+  const stripX = oldStrip ? oldStrip.scrollLeft : null;
   app.innerHTML = `${bar()}<main class="wrap" id="main">${scr}</main>${dialogHTML()}`;
+  const strip = app.querySelector('.daystrip');
+  if(strip){
+    if(stripX != null) strip.scrollLeft = stripX;
+    const cur = strip.querySelector('.daytab[aria-current="true"]');
+    if(cur){ const sr = strip.getBoundingClientRect(), cr = cur.getBoundingClientRect(); if(cr.left < sr.left || cr.right > sr.right) strip.scrollLeft += (cr.left + cr.width / 2) - (sr.left + sr.width / 2); }
+  }
   document.title = (S.screen !== 'home' && S.screen !== 'settings' && T() ? tripLabel(T()) + ', ' : '') + 'Milo & Miles';
   if(S.screen === 'itinerary' && T() && T().days.length){ mountMap(); setTimeout(autoLocate, 1500); }
   if(S.screen === 'overview' && T() && T().days.length) mountMap();
