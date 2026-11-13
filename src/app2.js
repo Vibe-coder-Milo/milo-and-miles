@@ -87,7 +87,7 @@ function scrOverview(){
       if(e.kind === 'divider') return '<li class="anytime">Any time</li>';
       const grip = (what, idx, name) => `<button type="button" class="handle" data-drag="ov" data-what="${what}" data-day="${esc(i)}" data-idx="${esc(idx)}" aria-label="Move ${esc(name)}: drag, or use arrow keys (up and down within the day, left and right to another day)">${I('grip')}</button>`;
       if(e.kind === 'place'){ const p = e.p; return `<li class="ovrow" data-row="p:${esc(i)}:${esc(e.pi)}"><span class="pt">${esc(e.t || '')}</span>${grip('p', e.pi, p.name)}<span class="badge c-${p.category}">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-${p.category}">${I(placeIcon(p),'sm')}</span>${esc(p.name)}</b>${p.note ? `<div class="ovnote notes">${noteHTML(p.note)}</div>` : ''}</div></li>`; }
-      if(e.kind === 'step') return `<li class="ovrow" data-row="s:${esc(i)}:${esc(e.k)}"><span class="pt">${esc(e.t || '')}</span>${grip('s', e.k, e.d || 'this step')}<span class="badge c-${esc(e.sk)}">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-${esc(e.sk)}">${I(STEPIC[e.sk],'sm')}</span>${esc(e.d) || 'No description'}</b></div></li>`;
+      if(e.kind === 'step') return `<li class="ovrow" data-row="s:${esc(i)}:${esc(e.k)}"><span class="pt">${esc(e.t || '')}</span>${grip('s', e.k, e.d || 'this activity')}<span class="badge c-${esc(e.sk)}">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-${esc(e.sk)}">${I(STEPIC[e.sk],'sm')}</span>${esc(e.d) || 'No description'}</b></div></li>`;
       const fp = e.p; const lands = e.t && e.t === fp.arriveTime && fp.arriveTime !== fp.departTime;
       return `<li class="ovrow" data-row="f:${esc(i)}:${esc(e.pi)}"><span class="pt">${esc(e.t || '')}</span><span></span><span class="badge c-air">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-air">${I('plane','sm')}</span>${esc(fp.name)}</b><span class="ovnote">${e.t ? `${lands ? 'Lands' : 'Departs'} ${esc(e.t)}` : 'Times not set'}${fp.note ? '. ' + esc(fp.note) : ''}</span></div></li>`;
     }).join('');
@@ -106,7 +106,7 @@ function scrOverview(){
     ${spendSummary(t)}
     ${tripMapPanel('ov')}
     <section aria-labelledby="h-days"><div class="sechead"><h2 id="h-days">Day by day</h2><button type="button" class="btn btn--quiet" data-act="print">${I('print','sm')}Save as PDF</button></div>
-      <div class="ovkey"><ul class="legend" aria-label="Key">${[['attraction','pin','Sight'],['food','bowl','Food'],['activity','flag','Activity'],['transport','train','Transport'],['air','plane','Flight'],['hotel','bed','Hotel']].map(([c, ic, l]) => `<li><span class="keydot c-${c}"></span><span class="cat-ic c-${c}">${I(ic,'sm')}</span>${l}</li>`).join('')}</ul>
+      <div class="ovkey"><ul class="legend" aria-label="Key">${[['attraction','pin','Sight'],['food','bowl','Food'],['activity','flag','Activity'],['air','plane','Flight'],['hotel','bed','Hotel']].map(([c, ic, l]) => `<li><span class="keydot c-${c}"></span><span class="cat-ic c-${c}">${I(ic,'sm')}</span>${l}</li>`).join('')}</ul>
       <p class="sub">Drag a stop by its handle to move it to another day, or select the handle and use the arrow keys. Earlier and Later swap whole days; the dates stay in order.</p></div>
       <ol class="daylist">${days}</ol>
       <div style="margin-top:var(--space-lg)"><button type="button" class="btn" data-act="addday">${I('plus','sm')}Add a day</button></div></section></div>`;
@@ -136,13 +136,13 @@ function itemHTML(p, i, pi, t = null, n = null){
     <span class="item-acts">${editing ? '' : `<button type="button" class="iconbtn" data-act="edititem" data-id="${esc(p.id)}" aria-label="Edit ${esc(p.name)}">${I('pen')}</button>`}<button type="button" class="iconbtn" data-act="delplace" data-id="${esc(p.id)}" aria-label="Remove ${esc(p.name)}">${I('x')}</button></span></li>`;
 }
 function stepHTML(e, i){
-  const k = e.k; const s = T().days[i].logistics[k]; const sk = s.kind || 'transport';
-  const grip = `<button type="button" class="handle" data-drag="it" data-what="s" data-day="${esc(i)}" data-idx="${esc(k)}" aria-label="Move ${esc(s.desc || 'this step')}: drag, or use arrow keys">${I('grip')}</button>`;
+  const k = e.k; const s = T().days[i].logistics[k]; const sk = 'activity';
+  const grip = `<button type="button" class="handle" data-drag="it" data-what="s" data-day="${esc(i)}" data-idx="${esc(k)}" aria-label="Move ${esc(s.desc || 'this activity')}: drag, or use arrow keys">${I('grip')}</button>`;
   if(S.editTime === k) return `<li class="item timed step editing" data-drag-item="s:${esc(i)}:${esc(k)}"><span class="pt">${esc(s.time || '')}</span>${grip}<span class="badge c-${esc(sk)}">${e.n}</span>
-    <div class="item-main"><div class="item-name"><span class="cat-ic c-${esc(sk)}">${I(STEPIC[sk],'sm')}</span>${esc(s.desc) || 'New step'}</div><div class="item-edit"><div class="seg" role="group" aria-label="Kind of step"><button type="button" data-act="stepkind" data-k="${esc(k)}" data-v="activity" aria-pressed="${sk === 'activity'}">Activity</button><button type="button" data-act="stepkind" data-k="${esc(k)}" data-v="transport" aria-pressed="${sk === 'transport'}">Transport</button></div><div class="field" style="max-width:12rem"><label for="tt${esc(k)}">Time</label><input id="tt${esc(k)}" type="time" class="input num" data-in="ttime" data-k="${esc(k)}" value="${esc(s.time || '')}"></div>
+    <div class="item-main"><div class="item-name"><span class="cat-ic c-${esc(sk)}">${I(STEPIC[sk],'sm')}</span>${esc(s.desc) || 'New activity'}</div><div class="item-edit"><div class="field" style="max-width:12rem"><label for="tt${esc(k)}">Time</label><input id="tt${esc(k)}" type="time" class="input num" data-in="ttime" data-k="${esc(k)}" value="${esc(s.time || '')}"></div>
     <div class="field"><label for="td${esc(k)}">What happens</label><textarea id="td${esc(k)}" class="input" rows="2" data-in="tdesc" data-k="${esc(k)}" placeholder="Grab to the airport, meet the driver in the lobby">${esc(s.desc)}</textarea></div><div class="field"><label for="tn${esc(k)}">Notes</label><textarea id="tn${esc(k)}" class="input" rows="3" data-in="tnote" data-k="${esc(k)}" placeholder="Booking number, meeting point, what to bring. Start a line with - for a bullet">${esc(s.note || '')}</textarea></div>${moveSelect(`ms${esc(i)}-${esc(k)}`, `data-in="movestep" data-k="${esc(k)}"`, i)}<div><button type="button" class="btn" data-act="donetime">Done</button></div></div></div><span class="item-acts"></span></li>`;
   return `<li class="item timed step" data-drag-item="s:${esc(i)}:${esc(k)}"><span class="pt">${esc(s.time || '')}</span>${grip}<span class="badge c-${esc(sk)}">${e.n}</span><div class="item-main"><div class="item-name"><span class="cat-ic c-${esc(sk)}">${I(STEPIC[sk],'sm')}</span>${esc(s.desc) || '<span class="sub">No description</span>'}</div>${s.note ? `<div class="item-note notes">${noteHTML(s.note)}</div>` : ''}</div>
-    <span class="item-acts"><button type="button" class="iconbtn" data-act="edittime" data-k="${esc(k)}" aria-label="Edit ${esc(s.desc || 'this step')}">${I('pen')}</button><button type="button" class="iconbtn" data-act="deltime" data-k="${esc(k)}" aria-label="Remove ${esc(s.desc || 'this step')}">${I('x')}</button></span></li>`;
+    <span class="item-acts"><button type="button" class="iconbtn" data-act="edittime" data-k="${esc(k)}" aria-label="Edit ${esc(s.desc || 'this activity')}">${I('pen')}</button><button type="button" class="iconbtn" data-act="deltime" data-k="${esc(k)}" aria-label="Remove ${esc(s.desc || 'this activity')}">${I('x')}</button></span></li>`;
 }
 // The trip map with its controls. Itinerary shows it beside the day; Overview shows it above the days.
 // Either can go full screen.
@@ -328,7 +328,7 @@ function scrItinerary(){
         ${i === ti ? nextUp(i) : ''}
         ${editDay}
         <section class="box" aria-labelledby="h-plan"><div class="sechead"><h3 id="h-plan">${I('clock')}Plan for the day</h3></div>
-          ${plan.length ? `<ul class="ruled">${rows}</ul>` : `<p class="empty">Nothing planned yet. Add a place, or a step such as a train or a check-in.</p>`}
+          ${plan.length ? `<ul class="ruled">${rows}</ul>` : `<p class="empty">Nothing planned yet. Add a place, or an activity such as a train or a check-in.</p>`}
           <p class="sub planhint">Timed stops sort by time. Drag the others into order.</p></section>
         <section class="box" aria-labelledby="h-st"><div class="sechead"><h3 id="h-st">${I('bed')}Where you stay</h3></div>${hotels.length ? `<ul class="ruled stays">${hotels.map(({ p, pi }) => itemHTML(p, i, pi)).join('')}</ul>` : '<p class="empty">No hotel yet. Add one with the button above.</p>'}</section>
       </div>
@@ -358,7 +358,7 @@ function stayPickers(trip, a, b, ids, attrs){
 function stayPickHTML(trip, di){ const [a, b] = stayRange(trip, di); return stayPickers(trip, a, b, ['hfrom', 'hto'], ['data-in="hfrom"', 'data-in="hto"']); }
 function addCityHint(){ const t = T(); const di = S.addDay != null ? S.addDay : S.day; const d = t && t.days[di]; return d ? cityName(d.city) : ''; }
 function addPanelHTML(i){
-  const trip = T(); const t = S.addType; const di = S.addDay != null ? S.addDay : i; const step = t === 'do' || t === 'move';
+  const trip = T(); const t = S.addType; const di = S.addDay != null ? S.addDay : i; const step = t === 'do';
   const dayOpts = sel => trip.days.map((d, j) => `<option value="${esc(j)}" ${j === sel ? 'selected' : ''}>${esc(dayLabel(d, j))}</option>`).join('');
   const dayField = `<div class="field"><label for="aday">Day</label><select id="aday" class="input" data-in="aday">${dayOpts(di)}</select></div>`;
   let main;
@@ -381,11 +381,11 @@ function addPanelHTML(i){
     main = `${cat}${how}${finder}${days}`;
   }
   const tb = (k, ic, cls, label) => `<button type="button" data-act="atype" data-t="${esc(k)}" aria-pressed="${t === k}"><span class="cat-ic ${cls}">${I(ic,'sm')}</span>${label}</button>`;
-  return `<div class="seg addtypes" role="group" aria-label="What to add">${tb('activity','pin','c-sight','Place')}${tb('do','flag','c-activity','Activity')}${tb('move','train','c-transport','Transport')}${tb('hotel','bed','c-hotel','Hotel')}${tb('flight','plane','c-air','Flight')}</div>
+  return `<div class="seg addtypes" role="group" aria-label="What to add">${tb('activity','pin','c-sight','Place')}${tb('do','flag','c-activity','Activity')}${tb('hotel','bed','c-hotel','Hotel')}${tb('flight','plane','c-air','Flight')}</div>
     ${main}
-    ${step ? `<div class="field"><label for="anote">Notes</label><textarea id="anote" class="input" rows="3" data-in="anote" placeholder="${t === 'do' ? 'Booking number, meeting point, what to bring' : 'Platform, ticket, transfer'}. Start a line with - for a bullet">${esc(S.addNote)}</textarea></div>` : `<div class="field"><label for="anote">Note</label><textarea id="anote" class="input" rows="2" data-in="anote" placeholder="${t === 'flight' ? 'Booking reference, seat, terminal, bags' : t === 'hotel' ? 'Room type, check-in time, breakfast' : 'Why you picked it, what to order'}">${esc(S.addNote)}</textarea>
+    ${step ? `<div class="field"><label for="anote">Notes</label><textarea id="anote" class="input" rows="3" data-in="anote" placeholder="Booking number, meeting point, what to bring. Start a line with - for a bullet">${esc(S.addNote)}</textarea></div>` : `<div class="field"><label for="anote">Note</label><textarea id="anote" class="input" rows="2" data-in="anote" placeholder="${t === 'flight' ? 'Booking reference, seat, terminal, bags' : t === 'hotel' ? 'Room type, check-in time, breakfast' : 'Why you picked it, what to order'}">${esc(S.addNote)}</textarea>
       ${t !== 'flight' ? `<div><button type="button" class="link" data-act="wiki">Fill in a description from Wikipedia</button></div>` : ''}<div id="wikires">${S.wiki ? `<p class="desc">${esc(S.wiki)}</p>` : ''}</div></div>`}
-    ${S.addErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.addErr)}${S.addErr.includes('without a location') ? ` <button type="button" class="link" data-act="addnopin">Add it without a location</button>` : ''}</p>` : ''}<div><button type="button" class="btn btn--primary" data-act="addplace">${({ flight:'Add the flight', hotel:'Add the hotel', do:'Add the activity', move:'Add the transport' })[t] || 'Add the place'}</button></div>
+    ${S.addErr ? `<p class="formerr" role="alert">${I('alert','sm')}${esc(S.addErr)}${S.addErr.includes('without a location') ? ` <button type="button" class="link" data-act="addnopin">Add it without a location</button>` : ''}</p>` : ''}<div><button type="button" class="btn btn--primary" data-act="addplace">${({ flight:'Add the flight', hotel:'Add the hotel', do:'Add the activity' })[t] || 'Add the place'}</button></div>
 `;
 }
 function searchResHTML(){

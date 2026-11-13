@@ -160,7 +160,7 @@ function migrateState(t){
     d.logistics.forEach(l => {
       l.time = normalizeTimeForInput(l.time);
       if(typeof l.desc !== 'string') l.desc = String(l.desc || '');
-      if(l.kind !== 'activity') l.kind = 'transport';
+      if(l.kind !== 'activity') l.kind = 'activity'; // old saves had a separate 'transport' kind; it is all Activity now
       if(l.note !== undefined && typeof l.note !== 'string') l.note = String(l.note || '');
       if(l.o !== undefined && !Number.isFinite(l.o)) delete l.o; // its place in the day's order
     });
@@ -303,7 +303,7 @@ const STEPIC = { activity:'flag', transport:'train' };
 function flightTime(p){ const a = p.arriveTime, d = p.departTime; return a && d && a < d ? a : (d || a || ''); }
 function planOf(d){
   const places = d.places.map((p, pi) => ({ kind:'place', p, pi, t:p.time || '' })).filter(x => x.p.type === 'activity');
-  const extra = d.logistics.map((s, k) => ({ kind:'step', sk:s.kind || 'transport', t:s.time || '', d:s.desc || '', k }))
+  const extra = d.logistics.map((s, k) => ({ kind:'step', sk:'activity', t:s.time || '', d:s.desc || '', k }))
     .concat(d.places.map((p, pi) => ({ p, pi })).filter(x => x.p.type === 'flight').map(x => ({ kind:'flight', p:x.p, pi:x.pi, t:flightTime(x.p) })));
   const timed = places.filter(x => x.t).concat(extra.filter(x => x.t)).sort((a, b) => a.t.localeCompare(b.t) || (a.kind === 'place' ? 1 : -1));
   // Untimed places and steps share one order (field o, set when you drag). Without it: places, then steps.

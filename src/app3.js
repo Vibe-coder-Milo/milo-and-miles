@@ -309,9 +309,9 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if
 function resetAdd(){ Object.assign(S, { addMode:'search', q:'', results:null, searching:false, picked:null, link:'', linkRes:null, addErr:null, addNote:'', wiki:null, sTime:'', sWhat:'', fName:'', fDep:'', fArr:'', addDay:null, hFrom:null, hTo:null }); }
 function addPlace(noPin = false){
   const trip = T(); const t = S.addType; const di = S.addDay != null ? S.addDay : S.day; const day = trip.days[di];
-  if(t === 'do' || t === 'move'){
-    if(!S.sWhat.trim()){ S.addErr = t === 'do' ? 'Say what the activity is first.' : 'Add the route or details first.'; render(); return; }
-    day.logistics.push(Object.assign({ time:S.sTime, desc:S.sWhat.trim(), kind: t === 'do' ? 'activity' : 'transport' }, S.addNote.trim() ? { note:S.addNote.trim() } : {}));
+  if(t === 'do'){
+    if(!S.sWhat.trim()){ S.addErr = 'Say what the activity is first.'; render(); return; }
+    day.logistics.push(Object.assign({ time:S.sTime, desc:S.sWhat.trim(), kind:'activity' }, S.addNote.trim() ? { note:S.addNote.trim() } : {}));
     announce(`Added ${S.sWhat.trim()} to Day ${di + 1}`);
   } else if(t === 'flight'){
     if(!S.fName.trim()){ S.addErr = 'Enter the flight name or number first.'; render(); return; }
@@ -516,7 +516,6 @@ document.addEventListener('click', e => {
     case 'pcat': { const f = findPlace(el.dataset.id); f.p.category = el.dataset.c; changed(); } break;
     case 'editday': S.editDay = !S.editDay; break;
     case 'doneday': S.editDay = false; break;
-    case 'stepkind': t.days[S.day].logistics[+el.dataset.k].kind = el.dataset.v; changed(); break;
     case 'mapm': S.mapMode = el.dataset.m; S.mapFocus = null; S.mapPopup = null; S.tripShow = null; S.placesZoom = null; break;
     case 'mapday': S.day = +el.dataset.i; S.mapMode = 'day'; S.mapFocus = null; S.mapPopup = null; S.editItem = null; S.editTime = null; S.scrollDay = true; break;
     case 'closepop': S.mapPopup = null; S.mapFocus = null; break;
@@ -551,7 +550,7 @@ document.addEventListener('click', e => {
     case 'undo': { const fn = S.undo; S.undo = null; document.querySelector('.toast')?.remove(); if(fn){ fn(); announce('Restored'); } } break;
     case 'edittime': S.editTime = +el.dataset.k; S.editItem = null; break;
     case 'donetime': S.editTime = null; break;
-    case 'deltime': { const dd = t.days[S.day]; const k = +el.dataset.k; const [x] = dd.logistics.splice(k, 1); S.editTime = null; changed(); undoToast(`Removed ${x.desc || 'the step'}`, () => { dd.logistics.splice(k, 0, x); changed(); }); } break;
+    case 'deltime': { const dd = t.days[S.day]; const k = +el.dataset.k; const [x] = dd.logistics.splice(k, 1); S.editTime = null; changed(); undoToast(`Removed ${x.desc || 'the activity'}`, () => { dd.logistics.splice(k, 0, x); changed(); }); } break;
     case 'atype': S.addType = el.dataset.t; S.wiki = null; S.addErr = null; break;
     case 'acat': S.addCat = el.dataset.c; break;
     case 'amode': S.addMode = el.dataset.m; S.addErr = null; break;
@@ -660,7 +659,7 @@ document.addEventListener('change', e => {
     case 'mofrom': trip.start = t.value; changed(); break;
     case 'moto': trip.end = t.value; changed(); break;
     case 'findplace': S.mapFocus = t.value || null; S.mapPopup = t.value || null; render(); break;
-    case 'movestep': { const from = trip.days[S.day]; const [x] = from.logistics.splice(+t.dataset.k, 1); trip.days[+t.value].logistics.push(x); S.editTime = null; changed(); announce(`Moved ${x.desc || 'the step'} to Day ${+t.value + 1}`); render(); } break;
+    case 'movestep': { const from = trip.days[S.day]; const [x] = from.logistics.splice(+t.dataset.k, 1); trip.days[+t.value].logistics.push(x); S.editTime = null; changed(); announce(`Moved ${x.desc || 'the activity'} to Day ${+t.value + 1}`); render(); } break;
     case 'moveto': { const f = findPlace(t.dataset.id); const to = +t.value; f.d.places.splice(f.i, 1); trip.days[to].places.push(f.p); S.editItem = null; changed(); announce(`Moved ${f.p.name} to Day ${to + 1}`); render(); } break;
   }
 });
@@ -708,7 +707,7 @@ function moveInPlan(what, fromDay, fromIdx, toDay, target, before){
   if(toDay !== fromDay){ t.days[fromDay][key].splice(fromIdx, 1); t.days[toDay][key].push(obj); }
   const timed = what === 's' ? !!obj.time : !!obj.time;
   if(!timed) placeInPlan(t.days[toDay], obj, target, before);
-  const name = what === 's' ? (obj.desc || 'the step') : obj.name;
+  const name = what === 's' ? (obj.desc || 'the activity') : obj.name;
   changed(); announce(timed && toDay === fromDay ? `${name} has a time, so it stays in time order. Change or clear its time to move it` : toDay === fromDay ? `Moved ${name}` : `Moved ${name} to Day ${toDay + 1}`);
   if(timed && toDay === fromDay) toast(`${name} has a time, so it sorts by time. Clear the time to move it freely`);
   render();
@@ -718,7 +717,7 @@ function moveItem(what, fromDay, fromIdx, toDay, toIdx){
   const src = t.days[fromDay][key]; const [x] = src.splice(fromIdx, 1); const dst = t.days[toDay][key];
   let at = toIdx == null ? dst.length : toIdx; if(fromDay === toDay && fromIdx < at) at -= 1;
   dst.splice(Math.max(0, Math.min(at, dst.length)), 0, x);
-  const name = what === 's' ? (x.desc || 'the step') : x.name;
+  const name = what === 's' ? (x.desc || 'the activity') : x.name;
   changed(); announce(fromDay === toDay ? `Moved ${name}` : `Moved ${name} to Day ${toDay + 1}`);
   render();
 }
