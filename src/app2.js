@@ -84,7 +84,6 @@ function scrOverview(){
     const hotels = [...new Set(d.places.filter(p => p.type === 'hotel').map(p => p.name))];
     const plan = planOf(d);
     const rows = plan.map(e => {
-      if(e.kind === 'divider') return '<li class="anytime">Any time</li>';
       const grip = (what, idx, name) => `<button type="button" class="handle" data-drag="ov" data-what="${what}" data-day="${esc(i)}" data-idx="${esc(idx)}" aria-label="Move ${esc(name)}: drag, or use arrow keys (up and down within the day, left and right to another day)">${I('grip')}</button>`;
       if(e.kind === 'place'){ const p = e.p; return `<li class="ovrow" data-row="p:${esc(i)}:${esc(e.pi)}"><span class="pt">${esc(e.t || '')}</span>${grip('p', e.pi, p.name)}<span class="badge c-${p.category}">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-${p.category}">${I(placeIcon(p),'sm')}</span>${esc(p.name)}</b>${p.note ? `<div class="ovnote notes">${noteHTML(p.note)}</div>` : ''}</div></li>`; }
       if(e.kind === 'step') return `<li class="ovrow" data-row="s:${esc(i)}:${esc(e.k)}"><span class="pt">${esc(e.t || '')}</span>${grip('s', e.k, e.d || 'this activity')}<span class="badge c-${esc(e.sk)}">${e.n}</span><div class="ovtext"><b><span class="cat-ic c-${esc(e.sk)}">${I(STEPIC[e.sk],'sm')}</span>${esc(e.d) || 'No description'}</b></div></li>`;
@@ -313,7 +312,7 @@ function scrItinerary(){
   const tabs = t.days.map((dd, j) => `<button type="button" class="daytab" data-act="day" data-i="${esc(j)}" aria-current="${j === i}"><b>${j === ti ? 'Today' : 'Day ' + (j + 1)}</b><span>${dShort(dd.date)}, ${esc(dd.city) || 'not set'}</span></button>`).join('') + `<button type="button" class="daytab add" data-act="addday">${I('plus','sm')}Add a day</button>`;
   const plan = planOf(d);
   const hotels = d.places.map((p, pi) => ({ p, pi })).filter(x => x.p.type === 'hotel');
-  const rows = plan.map(e => e.kind === 'divider' ? '<li class="anytime">Any time</li>' : e.kind === 'step' ? stepHTML(e, i) : itemHTML(e.p, i, e.pi, e.t, e.n)).join('');
+  const rows = plan.map(e => e.kind === 'step' ? stepHTML(e, i) : itemHTML(e.p, i, e.pi, e.t, e.n)).join('');
   const editDay = S.editDay ? `<section class="box dayedit" aria-labelledby="h-ed"><div class="sechead"><h3 id="h-ed">${I('pen')}Edit Day ${i + 1}</h3><button type="button" class="btn" data-act="doneday">Done</button></div>
       <div class="details"><div class="field"><label for="ddate">Date</label><input id="ddate" type="date" class="input" data-in="ddate" value="${esc(d.date)}"></div>
       <div class="field"><label for="dcity">Town</label><input id="dcity" class="input" data-in="dcity" value="${esc(d.city)}" placeholder="For example, Shantou" aria-describedby="dcity-help"><span class="help" id="dcity-help">Helps search find places nearby</span></div></div>

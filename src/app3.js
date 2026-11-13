@@ -677,8 +677,8 @@ document.addEventListener('keydown', e => {
   const arr = t.days[day][key]; let toDay = day, toIdx;
   const obj = rowObj(t, what, day, idx);
   if(e.key === 'ArrowUp' || e.key === 'ArrowDown'){
-    // One step up or down in the day's untimed order, whatever kind the neighbour is.
-    const d = t.days[day]; const list = planOf(d).filter(x => (x.kind === 'place' || x.kind === 'step' || x.kind === 'flight') && !x.t).map(x => x.kind === 'step' ? d.logistics[x.k] : x.p);
+    // One step up or down in the day's plan, whatever the neighbour is (a row with a time included).
+    const d = t.days[day]; const list = planOf(d).map(x => x.kind === 'step' ? d.logistics[x.k] : x.p);
     const at = list.indexOf(obj); const nb = list[at + (e.key === 'ArrowUp' ? -1 : 1)]; if(at < 0 || !nb) return;
     moveInPlan(what, day, idx, day, nb, e.key === 'ArrowUp');
     document.querySelector(`.handle[data-drag="${h.dataset.drag}"][data-what="${what}"][data-day="${day}"][data-idx="${idx}"]`)?.focus();
@@ -692,13 +692,14 @@ document.addEventListener('keydown', e => {
 
 /* ===== drag and drop (touch and mouse) ===== */
 let drag = null;
-// Puts a place or step at a spot in a day's untimed order, before or after another row (or at the end),
-// and numbers that order again. Timed rows keep sorting by their time.
+// Puts a place or step without a time at a spot in a day's plan, before or after another row (or at the end),
+// and saves the whole day's order (o on every row, d.mixed). Rows with a time may be the neighbour; they
+// still sort by time among themselves (see planOf).
 function placeInPlan(d, obj, target, before){
-  const list = planOf(d).filter(e => (e.kind === 'place' || e.kind === 'step' || e.kind === 'flight') && !e.t).map(e => e.kind === 'step' ? d.logistics[e.k] : e.p);
+  const list = planOf(d).map(e => e.kind === 'step' ? d.logistics[e.k] : e.p);
   const rest = list.filter(x => x !== obj); let at = target ? rest.indexOf(target) : -1;
   at = at < 0 ? rest.length : at + (before ? 0 : 1);
-  rest.splice(at, 0, obj); rest.forEach((x, i) => { x.o = i + 1; });
+  rest.splice(at, 0, obj); rest.forEach((x, i) => { x.o = i + 1; }); d.mixed = true;
 }
 const rowObj = (t, what, day, idx) => { const dd = t.days[day]; return dd ? (what === 's' ? dd.logistics : dd.places)[idx] : null; };
 // Drag or arrow keys: moves a place or a step to another spot in the plan, on the same day or another.
@@ -707,6 +708,7 @@ function moveInPlan(what, fromDay, fromIdx, toDay, target, before){
   if(toDay !== fromDay){ t.days[fromDay][key].splice(fromIdx, 1); t.days[toDay][key].push(obj); }
   const timed = what === 's' ? !!obj.time : !!obj.time;
   if(!timed) placeInPlan(t.days[toDay], obj, target, before);
+  else if(toDay !== fromDay) delete obj.o; // on its new day a row with a time goes in by its time
   const name = what === 's' ? (obj.desc || 'the activity') : obj.name;
   changed(); announce(timed && toDay === fromDay ? `${name} has a time, so it stays in time order. Change or clear its time to move it` : toDay === fromDay ? `Moved ${name}` : `Moved ${name} to Day ${toDay + 1}`);
   if(timed && toDay === fromDay) toast(`${name} has a time, so it sorts by time. Clear the time to move it freely`);

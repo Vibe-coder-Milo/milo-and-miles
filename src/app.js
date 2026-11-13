@@ -157,6 +157,7 @@ function migrateState(t){
     }
     d.places = objs(d.places);
     d.logistics = objs(d.logistics);
+    if(d.mixed !== true) delete d.mixed; // true once rows with and without a time share one order (see planOf)
     d.logistics.forEach(l => {
       l.time = normalizeTimeForInput(l.time);
       if(typeof l.desc !== 'string') l.desc = String(l.desc || '');
@@ -305,15 +306,37 @@ function planOf(d){
   const places = d.places.map((p, pi) => ({ kind:'place', p, pi, t:p.time || '' })).filter(x => x.p.type === 'activity');
   const extra = d.logistics.map((s, k) => ({ kind:'step', sk:'activity', t:s.time || '', d:s.desc || '', k }))
     .concat(d.places.map((p, pi) => ({ p, pi })).filter(x => x.p.type === 'flight').map(x => ({ kind:'flight', p:x.p, pi:x.pi, t:flightTime(x.p) })));
-  const timed = places.filter(x => x.t).concat(extra.filter(x => x.t)).sort((a, b) => a.t.localeCompare(b.t) || (a.kind === 'place' ? 1 : -1));
-  // Untimed places and steps share one order (field o, set when you drag). Without it: places, then steps.
+  const byTime = (a, b) => a.t.localeCompare(b.t) || (a.kind === 'place' ? 1 : -1);
+  const obj = x => x.kind === 'step' ? d.logistics[x.k] : x.p;
+  const timed = places.filter(x => x.t).concat(extra.filter(x => x.t)).sort(byTime);
+  // Order saved before rows could be mixed (no d.mixed): timed rows first, then the untimed ones by their o
+  // (set when dragged), or without it: places, then steps.
   const ord = x => x.kind === 'place' ? (Number.isFinite(x.p.o) ? x.p.o : x.pi) : x.kind === 'step' ? (Number.isFinite(d.logistics[x.k].o) ? d.logistics[x.k].o : 1000 + x.k) : (Number.isFinite(x.p.o) ? x.p.o : 2000 + x.pi);
   const untimed = places.filter(x => !x.t).concat(extra.filter(x => !x.t)).sort((a, b) => ord(a) - ord(b));
+  let list = timed.concat(untimed);
+  // One mixed order (d.mixed, set the first time a row is moved): every row has an o, its spot in the day.
+  // Rule: rows without a time sit exactly where they were dropped. Rows with a time share the spots that
+  // timed rows hold in that order, and fill them in time order, so they can never be out of time order.
+  // A row with no o yet (just added, or moved here with a time) goes in by its time, or last without one.
+  if(d.mixed === true){
+    const has = x => Number.isFinite(obj(x).o);
+    const placed = list.filter(has).sort((a, b) => obj(a).o - obj(b).o);
+    const inTime = placed.filter(x => x.t).sort(byTime); let k = 0;
+    list = placed.map(x => x.t ? inTime[k++] : x);
+    timed.filter(x => !has(x)).forEach(x => {
+      let at = list.findIndex(y => y.t && byTime(y, x) > 0);
+      if(at < 0){ at = list.length; while(at > 0 && !list[at - 1].t) at--; if(!at && !list.some(y => y.t)) at = list.length; }
+      list.splice(at, 0, x);
+    });
+    list = list.concat(untimed.filter(x => !has(x)));
+    // Keep each o equal to the row's spot on screen, so changing or clearing a time later starts from what you see.
+    list.forEach((x, i) => { obj(x).o = i + 1; });
+  }
   // Numbers run through the whole trip: Day 2 carries on from where Day 1 stopped.
   const t = T(); let n = 0;
   if(t && t.days.includes(d)) for(const x of t.days){ if(x === d) break; n += x.places.filter(p => p.type === 'activity' || p.type === 'flight').length + x.logistics.length; }
-  timed.concat(untimed).forEach(e => { e.n = ++n; });
-  return untimed.length && timed.length ? timed.concat([{ kind:'divider' }], untimed) : timed.concat(untimed);
+  list.forEach(e => { e.n = ++n; });
+  return list;
 }
 function numbering(t){ const m = {}; t.days.forEach(d => planOf(d).forEach(e => { if(e.kind === 'place') m[e.p.id] = e.n; })); return m; }
 function hotelDays(t, name){ return t.days.map((d, i) => d.places.some(p => p.type === 'hotel' && p.name === name) ? i + 1 : null).filter(Boolean); }
